@@ -12,8 +12,12 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        // Configuração para produção e desenvolvimento usando a baseUrl atual
-        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+        // Configuração para consultar a API através do domínio que o Coolify gerar (usando o caminho atual /api não funcionou no proxy do Nginx no Coolify)
+        var apiUrl = builder.HostEnvironment.BaseAddress.Contains("localhost") 
+            ? "http://localhost:5062" 
+            : builder.HostEnvironment.BaseAddress.Replace("xw4owos4wwckck440w4gg48k", "t00skwc00sg0csgw0ck8g4ks"); // Mapeia o frontend (xw4) pro dominio da API (t00) gerado pelo Coolify
+        
+        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
         builder.Services.AddSingleton<CarrinhoState>();
         builder.Services.AddScoped<BatatasFritas.Web.Services.KdsAuthService>();
 
