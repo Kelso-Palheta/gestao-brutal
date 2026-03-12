@@ -31,19 +31,5 @@ services:
     container_name: batatas_fritas_web
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: batatas_fritas_proxy
-    restart: unless-stopped
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - api
-      - web
-
 volumes:
   postgres_data_prod:
-  caddy_data:
-  caddy_config:
