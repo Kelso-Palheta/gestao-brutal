@@ -1,0 +1,473 @@
+@page "/kds"
+@layout KdsLayout
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject BatatasFritas.Web.Services.KdsAuthService KdsAuth
+@inject NavigationManager Nav
+
+<!-- ============================
+     KANBAN PRINCIPAL
+     ============================ -->
+<div class="kds-kanban">
+
+    <!-- Coluna: Recebidos -->
+    <div class="kds-column">
+        <div class="kds-column-header bg-recebido">
+            <h2>
+                Novos (Avaliar)
+                @if (pedidosRecebidos.Any())
+                {
+                    <span class="kds-badge-count">@pedidosRecebidos.Count()</span>
+                }
+            </h2>
+        </div>
+        <div class="kds-column-body">
+            @foreach (var p in pedidosRecebidos)
+            {
+                <div class="kds-card @(idsNovos.Contains(p.Id) ? "kds-card-novo" : "")">
+                    <div class="kds-card-header">
+                        <span>#@p.Id — @p.NomeCliente</span>
+                        <span class="kds-time">@p.DataHoraPedido.ToString("HH:mm")</span>
+                    </div>
+                    <ul class="kds-card-items">
+                        @foreach (var i in p.Itens)
+                        {
+                            <li style="margin-bottom: 5px;">
+                                <strong>@i.Quantidade</strong>x @i.NomeProduto
+                                @if (!string.IsNullOrWhiteSpace(i.Observacao))
+                                {
+                                    <div class="kds-obs">@i.Observacao</div>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <div class="kds-card-actions">
+                        <button class="kds-btn kds-btn-aceitar" @onclick="() => MoverStatus(p.Id, StatusPedido.Aceito)">
+                            Aceitar 👍
+                        </button>
+                        <button class="kds-btn kds-btn-cancelar-pedido" @onclick="() => AbrirCancelamento(p)" title="Cancelar pedido">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Coluna: Fila (Aceitos) -->
+    <div class="kds-column">
+        <div class="kds-column-header bg-aceito">
+            <h2>
+                Na Fila (Aceitos)
+                @if (pedidosAceitos.Any())
+                {
+                    <span class="kds-badge-count">@pedidosAceitos.Count()</span>
+                }
+            </h2>
+        </div>
+        <div class="kds-column-body">
+            @foreach (var p in pedidosAceitos)
+            {
+                <div class="kds-card border-aceito">
+                    <div class="kds-card-header">
+                        <span>#@p.Id — @p.NomeCliente</span>
+                    </div>
+                    <ul class="kds-card-items">
+                        @foreach (var i in p.Itens)
+                        {
+                            <li style="margin-bottom: 5px;">
+                                <strong>@i.Quantidade</strong>x @i.NomeProduto
+                                @if (!string.IsNullOrWhiteSpace(i.Observacao))
+                                {
+                                    <div class="kds-obs">@i.Observacao</div>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <div class="kds-card-actions">
+                        <button class="kds-btn kds-btn-preparo" @onclick="() => MoverStatus(p.Id, StatusPedido.EmPreparo)">
+                            Cozinhar 👨‍🍳
+                        </button>
+                        <button class="kds-btn" style="background:#fff; flex: 0 0 44px;" @onclick="() => ImprimirCupom(p)" title="Imprimir">
+                            🖨️
+                        </button>
+                        <button class="kds-btn kds-btn-cancelar-pedido" @onclick="() => AbrirCancelamento(p)" title="Cancelar pedido">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Coluna: Em Preparo -->
+    <div class="kds-column">
+        <div class="kds-column-header bg-preparo">
+            <h2>
+                Fritando 🔥
+                @if (pedidosEmPreparo.Any())
+                {
+                    <span class="kds-badge-count">@pedidosEmPreparo.Count()</span>
+                }
+            </h2>
+        </div>
+        <div class="kds-column-body">
+            @foreach (var p in pedidosEmPreparo)
+            {
+                <div class="kds-card border-preparo">
+                    <div class="kds-card-header">
+                        <span>#@p.Id — @p.NomeCliente</span>
+                    </div>
+                    <ul class="kds-card-items">
+                        @foreach (var i in p.Itens)
+                        {
+                            <li style="margin-bottom: 5px;">
+                                <strong>@i.Quantidade</strong>x @i.NomeProduto
+                                @if (!string.IsNullOrWhiteSpace(i.Observacao))
+                                {
+                                    <div class="kds-obs">@i.Observacao</div>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <div class="kds-card-actions">
+                        <button class="kds-btn kds-btn-pronto" @onclick="() => MoverStatus(p.Id, StatusPedido.ProntoParaEntrega)">
+                            Pronto ✅
+                        </button>
+                        <button class="kds-btn kds-btn-cancelar-pedido" @onclick="() => AbrirCancelamento(p)" title="Cancelar pedido">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Coluna: Prontos (Despache) -->
+    <div class="kds-column">
+        <div class="kds-column-header bg-pronto">
+            <h2>
+                Despache 🛵
+                @if (pedidosProntos.Any())
+                {
+                    <span class="kds-badge-count">@pedidosProntos.Count()</span>
+                }
+            </h2>
+        </div>
+        <div class="kds-column-body">
+            @foreach (var p in pedidosProntos)
+            {
+                <div class="kds-card border-pronto">
+                    <div class="kds-card-header">
+                        <span>#@p.Id — @p.NomeCliente</span>
+                    </div>
+                    <div class="kds-delivery-info">
+                        📞 @p.TelefoneCliente<br />
+                        🏠 <strong>@p.NomeBairro</strong> — @p.EnderecoEntrega<br />
+                        💳 <strong>@(p.MetodoPagamento.ToString())</strong>
+                        <br />💰 <strong>Total: @p.ValorTotal.ToString("C2")</strong>
+                        @if (p.MetodoPagamento == MetodoPagamento.Dinheiro)
+                        {
+                            var trocoReal = (p.TrocoPara ?? 0) - p.ValorTotal;
+                            var exibirTroco = trocoReal > 0 ? trocoReal.ToString("C2") : "Nenhum";
+                            <br /><span class="kds-troco">💵 Levar Troco: @exibirTroco</span>
+                        }
+                    </div>
+                    <ul class="kds-card-items">
+                        @foreach (var i in p.Itens)
+                        {
+                            <li style="margin-bottom: 5px;">
+                                <strong>@i.Quantidade</strong>x @i.NomeProduto
+                                @if (!string.IsNullOrWhiteSpace(i.Observacao))
+                                {
+                                    <div class="kds-obs">@i.Observacao</div>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <div class="kds-card-actions">
+                        <button class="kds-btn kds-btn-entregue" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
+                            Despachar ✅
+                        </button>
+                        <button class="kds-btn" style="background:#fff; flex: 0 0 44px;" @onclick="() => ImprimirCupom(p)" title="Imprimir">
+                            🖨️
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ============================
+     MODAL — CANCELAR PEDIDO
+     ============================ -->
+@if (pedidoParaCancelar != null)
+{
+    <div class="modal-overlay" @onclick="FecharCancelamento">
+        <div class="kds-cancel-modal" @onclick:stopPropagation="true">
+            <div class="kds-cancel-modal-header">
+                ⚠️ Cancelar Pedido #@pedidoParaCancelar.Id
+            </div>
+            <div class="kds-cancel-modal-body">
+                <p><strong>Cliente:</strong> @pedidoParaCancelar.NomeCliente</p>
+                <p class="kds-cancel-aviso">Esta ação não pode ser desfeita. Informe o motivo:</p>
+                <div class="kds-cancel-field">
+                    <label>Motivo do Cancelamento</label>
+                    <textarea @bind="motivoCancelamento"
+                              rows="3"
+                              placeholder="Ex: Cliente desistiu, item indisponível..."
+                              class="kds-cancel-textarea"></textarea>
+                </div>
+                @if (!string.IsNullOrEmpty(erroCancelamento))
+                {
+                    <div class="kds-cancel-erro">❌ @erroCancelamento</div>
+                }
+            </div>
+            <div class="kds-cancel-modal-footer">
+                <button class="kds-btn" style="background:#eee; flex:1;" @onclick="FecharCancelamento" disabled="@cancelando">
+                    Voltar
+                </button>
+                <button class="kds-btn kds-btn-confirmar-cancelar" @onclick="ConfirmarCancelamento" disabled="@cancelando">
+                    @(cancelando ? "Cancelando..." : "🗑️ Confirmar Cancelamento")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ============================
+     CONTAINER DE IMPRESSÃO (OCULTO)
+     ============================ -->
+@if (pedidoAtualParaImpressao != null)
+{
+    <div id="cupomFritaria" class="cupom-termico">
+        <h2>BATATA</h2>
+        <h2>PALHETA BRUTAL</h2>
+        <p>Pedido #@pedidoAtualParaImpressao.Id</p>
+        <p>@pedidoAtualParaImpressao.DataHoraPedido.ToString("dd/MM/yyyy HH:mm")</p>
+        <hr />
+        <p><strong>CLIENTE:</strong> @pedidoAtualParaImpressao.NomeCliente</p>
+        <p>📞 @pedidoAtualParaImpressao.TelefoneCliente</p>
+        <p><strong>ENTREGA:</strong></p>
+        <p>@pedidoAtualParaImpressao.NomeBairro</p>
+        <p>@pedidoAtualParaImpressao.EnderecoEntrega</p>
+        <hr />
+        <table class="cupom-tabela">
+            <thead>
+                <tr>
+                    <th>Qtd</th>
+                    <th>Item</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var i in pedidoAtualParaImpressao.Itens)
+                {
+                    <tr>
+                        <td>@i.Quantidade</td>
+                        <td>
+                            @i.NomeProduto
+                            @if (!string.IsNullOrWhiteSpace(i.Observacao))
+                            {
+                                <div style="font-size: 0.8em; margin-top: 2px;">OBS: @i.Observacao</div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <hr />
+        <p>PAGAMENTO: @pedidoAtualParaImpressao.MetodoPagamento</p>
+        <div class="cupom-total">TOTAL: @pedidoAtualParaImpressao.ValorTotal.ToString("C2")</div>
+        @if (pedidoAtualParaImpressao.MetodoPagamento == MetodoPagamento.Dinheiro && pedidoAtualParaImpressao.TrocoPara != null)
+        {
+            var troco = pedidoAtualParaImpressao.TrocoPara.Value - pedidoAtualParaImpressao.ValorTotal;
+            if (troco > 0)
+            {
+                <div class="cupom-total" style="font-size: 14px; margin-top: 5px;">TROCO P/: @pedidoAtualParaImpressao.TrocoPara.Value.ToString("C2")</div>
+                <div class="cupom-total" style="font-size: 14px;">LEVAR: @troco.ToString("C2")</div>
+            }
+        }
+        <hr />
+        <p style="margin-top: 15px;">Obrigado pela preferência!</p>
+        <p>Palheta Brutal Delivery</p>
+    </div>
+}
+
+@code {
+    // ── Estado dos pedidos ──────────────────────────────────────────────
+    private List<PedidoDetalheDto> todosAbertos = new();
+
+    private IEnumerable<PedidoDetalheDto> pedidosRecebidos  => todosAbertos.Where(p => p.Status == StatusPedido.Recebido);
+    private IEnumerable<PedidoDetalheDto> pedidosAceitos    => todosAbertos.Where(p => p.Status == StatusPedido.Aceito);
+    private IEnumerable<PedidoDetalheDto> pedidosEmPreparo  => todosAbertos.Where(p => p.Status == StatusPedido.EmPreparo);
+    private IEnumerable<PedidoDetalheDto> pedidosProntos    => todosAbertos.Where(p =>
+        p.Status == StatusPedido.ProntoParaEntrega || p.Status == StatusPedido.SaiuParaEntrega);
+
+    // ── Alerta Sonoro (rastreia IDs que já existiam) ─────────────────────
+    /// IDs dos pedidos recebidos conhecidos pelo front. Se aparecer um ID novo → toca o beep.
+    private HashSet<int> idsConhecidos = new();
+    /// IDs que chegaram NESTA rodada de polling (para piscar o card brevemente).
+    private HashSet<int> idsNovos = new();
+
+    // ── Impressão ────────────────────────────────────────────────────────
+    private PedidoDetalheDto? pedidoAtualParaImpressao;
+    private Timer? pollingTimer;
+
+    // ── Cancelamento ─────────────────────────────────────────────────────
+    private PedidoDetalheDto? pedidoParaCancelar;
+    private string motivoCancelamento = string.Empty;
+    private string erroCancelamento = string.Empty;
+    private bool cancelando = false;
+
+    // ────────────────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await KdsAuth.EstaAutenticadoAsync())
+        {
+            Nav.NavigateTo("/kds/login", replace: true);
+            return;
+        }
+
+        await LoadPedidos(primeiraVez: true);
+
+        // Polling a cada 3 segundos
+        pollingTimer = new Timer(async _ =>
+        {
+            await LoadPedidos(primeiraVez: false);
+            await InvokeAsync(StateHasChanged);
+        }, null, 3000, 3000);
+    }
+
+    private async Task LoadPedidos(bool primeiraVez = false)
+    {
+        try
+        {
+            var ativos = await Http.GetFromJsonAsync<List<PedidoDetalheDto>>("api/kds/ativos");
+            if (ativos == null) return;
+
+            todosAbertos = ativos.OrderBy(p => p.DataHoraPedido).ToList();
+
+            // Detectar pedidos NOVOS (presentes na coluna Recebido, ainda não conhecidos)
+            var idsRecebidosAgora = ativos
+                .Where(p => p.Status == StatusPedido.Recebido)
+                .Select(p => p.Id)
+                .ToHashSet();
+
+            if (!primeiraVez)
+            {
+                var novosDessaRodada = idsRecebidosAgora.Except(idsConhecidos).ToHashSet();
+                if (novosDessaRodada.Any())
+                {
+                    idsNovos = novosDessaRodada;
+                    // Toca o beep de alerta — novo pedido!
+                    await JS.InvokeVoidAsync("kdsInterop.tocarAlerta", "novo");
+
+                    // Piscar por 4 segundos e depois remover destaque
+                    _ = Task.Delay(4000).ContinueWith(async _ =>
+                    {
+                        idsNovos.Clear();
+                        await InvokeAsync(StateHasChanged);
+                    });
+                }
+            }
+
+            // Atualiza os IDs conhecidos (apenas "Recebido" — as outras colunas não alertam)
+            idsConhecidos = idsRecebidosAgora;
+        }
+        catch
+        {
+            // Falha passageira de rede — ignora para não travar o polling
+        }
+    }
+
+    private async Task MoverStatus(int id, StatusPedido novoStatus)
+    {
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/kds/{id}/status", novoStatus);
+            if (response.IsSuccessStatusCode)
+                await LoadPedidos();
+        }
+        catch { }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // CANCELAMENTO
+    // ────────────────────────────────────────────────────────────────────
+
+    private void AbrirCancelamento(PedidoDetalheDto pedido)
+    {
+        pedidoParaCancelar = pedido;
+        motivoCancelamento = string.Empty;
+        erroCancelamento = string.Empty;
+        cancelando = false;
+    }
+
+    private void FecharCancelamento()
+    {
+        pedidoParaCancelar = null;
+        motivoCancelamento = string.Empty;
+        erroCancelamento = string.Empty;
+    }
+
+    private async Task ConfirmarCancelamento()
+    {
+        if (pedidoParaCancelar == null) return;
+
+        if (string.IsNullOrWhiteSpace(motivoCancelamento))
+        {
+            erroCancelamento = "Informe o motivo do cancelamento.";
+            return;
+        }
+
+        cancelando = true;
+        erroCancelamento = string.Empty;
+
+        try
+        {
+            var body = new { motivo = motivoCancelamento.Trim() };
+            var response = await Http.PostAsJsonAsync($"api/kds/{pedidoParaCancelar.Id}/cancelar", body);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Toca beep de cancelamento
+                await JS.InvokeVoidAsync("kdsInterop.tocarAlerta", "cancelar");
+                FecharCancelamento();
+                await LoadPedidos();
+            }
+            else
+            {
+                erroCancelamento = $"Erro: {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            erroCancelamento = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            cancelando = false;
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // IMPRESSÃO
+    // ────────────────────────────────────────────────────────────────────
+
+    private async Task ImprimirCupom(PedidoDetalheDto pedido)
+    {
+        pedidoAtualParaImpressao = pedido;
+        StateHasChanged();
+        await Task.Delay(50);
+        await JS.InvokeVoidAsync("printInterop.printCupom", "cupomFritaria");
+    }
+
+    public void Dispose()
+    {
+        pollingTimer?.Dispose();
+    }
+}

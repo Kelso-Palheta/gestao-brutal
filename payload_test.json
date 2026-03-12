@@ -1,0 +1,10 @@
+{
+  "handle": "batatapalhetabrutal",
+  "items": [{"quantity": 1, "price": 1000, "description": "Teste"}],
+  "order_nsu": "teste-bypass",
+  "customer": {
+    "name": "Cliente Totem",
+    "email": "cliente@totem.com",
+    "phone_number": "+5511999999999"
+  }
+}

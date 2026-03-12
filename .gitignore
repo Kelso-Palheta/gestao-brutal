@@ -1,0 +1,79 @@
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Mac OS X hidden files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+
+# Thumbnails
+._*
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# .NET Core
+project.lock.json
+project.assets.json
+*.assets.json
+
+# Directories
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Packages
+nuget/
+packages/
+.nuget_packages/
+.tmp/
+.tmp_http_cache/
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+batatasfritas.db
+
+# Rider/Resharper
+.idea/
+*.DotSettings.user
+
+# VS / VS Code
+.vs/
+.vscode/
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+api_log.txt

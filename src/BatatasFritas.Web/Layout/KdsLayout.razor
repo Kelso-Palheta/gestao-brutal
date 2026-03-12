@@ -1,0 +1,34 @@
+@inherits LayoutComponentBase
+@using BatatasFritas.Web.Services
+@inject KdsAuthService KdsAuth
+@inject NavigationManager Nav
+
+<div class="kds-page">
+    <main class="kds-main w-100">
+        <div class="kds-top-row px-4 d-flex justify-content-between align-items-center" style="background-color: #000; color: #e6ff00; padding: 15px; border-bottom: 4px solid #e6ff00;">
+            <h1 style="margin: 0; font-weight: 900; font-size: 1.5rem; text-transform: uppercase;">🍳 Monitor da Cozinha (KDS)</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="/" style="color: #fff; text-decoration: none; font-weight: bold; padding: 6px 12px; border: 2px solid #fff; background: transparent;">⬅ Salão</a>
+                <button @onclick="Sair" style="color: #000; font-weight: 900; padding: 6px 12px; background: #e6ff00; border: 2px solid #e6ff00; cursor: pointer; text-transform: uppercase;">🔒 Sair</button>
+            </div>
+        </div>
+
+        <article class="content px-4 py-3" style="background-color: #f4f4f4; min-height: calc(100vh - 70px);">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    private async Task Sair()
+    {
+        await KdsAuth.LogoutAsync();
+        Nav.NavigateTo("/kds/login", replace: true);
+    }
+}

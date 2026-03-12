@@ -1,0 +1,433 @@
+@page "/admin/dashboard"
+@layout EmptyLayout
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Web.Services
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject KdsAuthService KdsAuth
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="dash-container">
+    @if (carregando)
+    {
+        <div class="dash-loading">⏳ Carregando dados financeiros...</div>
+    }
+    else if (dados != null)
+    {
+        <!-- CABEÇALHO -->
+        <div class="dash-header no-print">
+            <div class="dash-header-left">
+                <h1>📊 Dashboard Financeiro</h1>
+                <p>Visão geral de receitas, despesas e lucro em tempo real.</p>
+            </div>
+            <div class="dash-header-right">
+                <a href="/admin" class="dash-btn-nav">⚙️ Admin</a>
+                <a href="/admin/estoque" class="dash-btn-nav">📦 Estoque</a>
+                <button class="dash-btn-print" @onclick="ImprimirRelatorio">🖨️ Fechar Caixa</button>
+            </div>
+        </div>
+
+        <!-- MENSAGENS -->
+        @if (!string.IsNullOrEmpty(msgSucesso)) { <div class="dash-msg-ok no-print">✅ @msgSucesso</div> }
+        @if (!string.IsNullOrEmpty(msgErro))    { <div class="dash-msg-err no-print">❌ @msgErro</div> }
+
+        <!-- CABEÇALHO DE IMPRESSÃO (Oculto na tela normal) -->
+        <div class="print-only print-header">
+            <h2>Fechamento de Caixa - Batatas Fritas</h2>
+            <p>Data: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
+        </div>
+
+        <!-- BLOCO 1: RESUMO DO DIA -->
+        <div class="dash-section">
+            <h2 class="dash-section-title">Acompanhamento do Dia (@DateTime.Now.ToString("dd/MM/yyyy"))</h2>
+            
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-title">Vendas (Receitas)</div>
+                    <div class="dash-kpi-value cor-receita">@dados.VendasHoje.ToString("C2")</div>
+                    <div class="dash-kpi-sub">@dados.TotalPedidosHoje pedidos entregues</div>
+                </div>
+                
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-title">Compras (Estoque)</div>
+                    <div class="dash-kpi-value cor-despesa">@dados.ComprasHoje.ToString("C2")</div>
+                    <div class="dash-kpi-sub">Dinheiro que saiu hoje</div>
+                </div>
+
+                <div class="dash-kpi-card @(dados.LucroHoje >= 0 ? "lucro-positivo" : "lucro-negativo")">
+                    <div class="dash-kpi-title">Lucro Estimado</div>
+                    <div class="dash-kpi-value text-shadow">@dados.LucroHoje.ToString("C2")</div>
+                    <div class="dash-kpi-sub">Receitas - Despesas de Estoque</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOCO 2: DIVISÃO DE PAGAMENTOS E META -->
+        <div class="dash-grid-2col">
+            <!-- Coluna 1: Métodos de Pagamento -->
+            <div class="dash-card">
+                <h3>Divisão por Métodos de Pagamento (Hoje)</h3>
+                
+                <div class="dash-pagamento-row">
+                    <span>📱 PIX</span>
+                    <strong>@dados.PixHoje.ToString("C2")</strong>
+                </div>
+                <div class="dash-pagamento-row">
+                    <span>💳 Cartões (Débito/Crédito)</span>
+                    <strong>@dados.CartaoHoje.ToString("C2")</strong>
+                </div>
+                <div class="dash-pagamento-row">
+                    <span>💵 Dinheiro</span>
+                    <strong>@dados.DinheiroHoje.ToString("C2")</strong>
+                </div>
+                
+                <div class="dash-pagamento-total">
+                    <span>Total Recebido:</span>
+                    <strong>@dados.VendasHoje.ToString("C2")</strong>
+                </div>
+            </div>
+
+            <!-- Coluna 2: Meta e Resumo do Mês -->
+            <div class="dash-card">
+                <h3>Desempenho Geral</h3>
+                
+                <div class="dash-meta-box no-print">
+                    <div class="dash-meta-header">
+                        <span>Meta Diária</span>
+                        @if(editandoMeta)
+                        {
+                            <div class="dash-meta-edit-group">
+                                <input type="number" class="dash-input-meta" @bind="novaMetaInput" placeholder="0.00" />
+                                <button class="dash-btn-salvar-meta" @onclick="SalvarMeta">✔</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="dash-meta-valor" @onclick="HabilitarEdicaoMeta">
+                                🎯 @dados.MetaDiaria.ToString("C2") ✏️
+                            </span>
+                        }
+                    </div>
+                    
+                    <div class="dash-progress-wrapper">
+                        <div class="dash-progress-bar" style="width: @(Math.Min(100, dados.ProgressoMeta))%; background-color: @(dados.ProgressoMeta >= 100 ? "#4caf50" : "#ffb347");"></div>
+                    </div>
+                    <p class="dash-meta-perc">@dados.ProgressoMeta.ToString("F1")% concluído hoje</p>
+                </div>
+
+                <div class="dash-mes-group">
+                    <h4>Acumulado do Mês Atual</h4>
+                    <div class="dash-mes-row">
+                        <span>Faturamento Bruto:</span>
+                        <strong class="cor-receita">@dados.VendasMes.ToString("C2")</strong>
+                    </div>
+                    <div class="dash-mes-row">
+                        <span>Gastos com Estoque:</span>
+                        <strong class="cor-despesa">@dados.ComprasMes.ToString("C2")</strong>
+                    </div>
+                    <div class="dash-mes-row destaque">
+                        <span>Lucro Acumulado:</span>
+                        <strong class="@(dados.LucroMes >= 0 ? "cor-receita" : "cor-despesa")">@dados.LucroMes.ToString("C2")</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="print-footer print-only">
+            <p>Assinatura Responsável: _______________________________</p>
+        </div>
+    }
+</div>
+
+<style>
+/* ========================================================= 
+   DASHBOARD STYLES (Glassmorphism & Brutal aesthetic)
+========================================================= */
+.dash-container {
+    padding: 30px;
+    background: #111;
+    min-height: 100vh;
+    color: #fff;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+.dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #333;
+}
+.dash-header h1 { margin: 0; color: #ffb347; font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+.dash-header p { margin: 5px 0 0 0; color: #aaa; font-size: 16px; }
+
+.dash-btn-nav {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #2a2a2a;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-left: 10px;
+    transition: 0.2s;
+    border: 1px solid #444;
+}
+.dash-btn-nav:hover { background: #3a3a3a; transform: translateY(-2px); }
+.dash-btn-print {
+    padding: 10px 20px;
+    background: #ffb347;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: 0.2s;
+}
+.dash-btn-print:hover { background: #e09e3f; transform: scale(1.05); }
+
+/* Grid de KPIs (Top) */
+.dash-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.dash-kpi-card {
+    background: rgba(40, 40, 40, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+}
+.dash-kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 4px;
+    background: #444;
+}
+.dash-kpi-card.lucro-positivo::before { background: linear-gradient(90deg, #4caf50, #81c784); }
+.dash-kpi-card.lucro-negativo::before { background: linear-gradient(90deg, #f44336, #e57373); }
+
+.dash-kpi-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 600; margin-bottom: 10px; }
+.dash-kpi-value { font-size: 42px; font-weight: 900; margin-bottom: 5px; letter-spacing: -2px; }
+.dash-kpi-sub { color: #aaa; font-size: 13px; }
+
+.cor-receita { color: #4caf50; }
+.cor-despesa { color: #f44336; }
+.text-shadow { text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+
+/* Grid Inferior de 2 Colunas */
+.dash-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.dash-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 25px;
+}
+.dash-card h3 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    color: #fff;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+/* Tabela de Pagamentos */
+.dash-pagamento-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #2a2a2a;
+    font-size: 16px;
+}
+.dash-pagamento-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 0 0 0;
+    margin-top: 10px;
+    font-size: 20px;
+    color: #ffb347;
+}
+
+/* Meta Diária Widget */
+.dash-meta-box {
+    background: #222;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+}
+.dash-meta-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.dash-meta-valor {
+    color: #ffb347;
+    font-weight: bold;
+    cursor: pointer;
+    background: #333;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: 0.2s;
+}
+.dash-meta-valor:hover { background: #444; }
+
+.dash-meta-edit-group { display: flex; gap: 5px; }
+.dash-input-meta { width: 100px; padding: 5px; border-radius: 4px; border: 1px solid #ffb347; background: #000; color: #fff; }
+.dash-btn-salvar-meta { background: #ffb347; color: #000; border: none; font-weight: bold; border-radius: 4px; cursor: pointer; }
+
+.dash-progress-wrapper {
+    height: 12px;
+    background: #111;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+.dash-progress-bar {
+    height: 100%;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dash-meta-perc {
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: #888;
+    text-align: right;
+}
+
+/* Resumo do Mês */
+.dash-mes-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 15px;
+}
+.dash-mes-row.destaque {
+    font-size: 18px;
+    padding-top: 12px;
+    margin-top: 8px;
+    border-top: 1px dashed #444;
+}
+
+.dash-msg-ok, .dash-msg-err {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+.dash-msg-ok { background: rgba(76, 175, 80, 0.2); border: 1px solid #4caf50; color: #81c784; }
+.dash-msg-err { background: rgba(244, 67, 54, 0.2); border: 1px solid #f44336; color: #e57373; }
+
+/* ========================================================= 
+   PRINT STYLES (Somente para "Fechar Caixa")
+========================================================= */
+.print-only { display: none; }
+@@media print {
+    body { background: #fff !important; color: #000 !important; }
+    .dash-container { background: #fff !important; color: #000 !important; padding: 0 !important; }
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    
+    .print-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+    .print-footer { margin-top: 50px; text-align: center; font-size: 14px; }
+    
+    .dash-card, .dash-kpi-card { 
+        border: 1px solid #000 !important; 
+        background: #fff !important; 
+        color: #000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+    }
+    .cor-receita, .cor-despesa { color: #000 !important; }
+    .dash-kpi-value { font-size: 24px !important; letter-spacing: normal !important; text-shadow: none !important; }
+    .dash-kpi-grid { gap: 10px !important; }
+    .dash-grid-2col { display: block !important; }
+    .dash-card { margin-bottom: 20px !important; }
+}
+</style>
+
+@code {
+    private bool carregando = true;
+    private FinanceiroDashboardDto? dados;
+    private string msgSucesso = "";
+    private string msgErro = "";
+    
+    // Edição de Meta Dinâmica
+    private bool editandoMeta = false;
+    private decimal novaMetaInput = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await KdsAuth.EstaAutenticadoAsync())
+        {
+            Nav.NavigateTo("/kds/login", replace: true);
+            return;
+        }
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        carregando = true;
+        msgErro = "";
+        try
+        {
+            dados = await Http.GetFromJsonAsync<FinanceiroDashboardDto>("api/financeiro/dashboard");
+        }
+        catch (Exception ex)
+        {
+            msgErro = "Erro ao carregar dados financeiros: " + ex.Message;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private void HabilitarEdicaoMeta()
+    {
+        if (dados != null)
+        {
+            novaMetaInput = dados.MetaDiaria;
+            editandoMeta = true;
+        }
+    }
+
+    private async Task SalvarMeta()
+    {
+        msgSucesso = ""; msgErro = "";
+        try
+        {
+            var r = await Http.PostAsJsonAsync("api/financeiro/meta", novaMetaInput);
+            if (r.IsSuccessStatusCode)
+            {
+                msgSucesso = "Meta atualizada com sucesso!";
+                editandoMeta = false;
+                await CarregarDados();
+            }
+            else
+            {
+                msgErro = "Erro ao salvar meta.";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = "Erro de conexão: " + ex.Message;
+        }
+    }
+
+    private async Task ImprimirRelatorio()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

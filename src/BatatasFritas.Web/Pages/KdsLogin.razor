@@ -1,0 +1,94 @@
+@page "/kds/login"
+@layout EmptyLayout
+@using BatatasFritas.Web.Services
+@inject KdsAuthService KdsAuth
+@inject NavigationManager Nav
+
+<div class="kds-login-page">
+    <div class="kds-login-card">
+        <div class="kds-login-logo">
+            <h1>🍟</h1>
+            <h2>BATATA<br/>PALHETA BRUTAL</h2>
+            <p class="kds-login-subtitle">Monitor da Cozinha (KDS)</p>
+        </div>
+
+        <div class="kds-login-form">
+            @if (!string.IsNullOrEmpty(erroMsg))
+            {
+                <div class="kds-login-erro">
+                    ❌ @erroMsg
+                </div>
+            }
+
+            <div class="kds-login-field">
+                <label>Senha de Acesso</label>
+                <input type="password"
+                       @bind="senha"
+                       @onkeydown="TeclaPressionada"
+                       placeholder="Digite a senha da cozinha..."
+                       class="kds-login-input"
+                       id="input-senha-kds"
+                       autocomplete="current-password" />
+            </div>
+
+            <button class="kds-login-btn" @onclick="FazerLogin" disabled="@carregando">
+                @if (carregando)
+                {
+                    <span>Verificando...</span>
+                }
+                else
+                {
+                    <span>🔓 Entrar na Cozinha</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string senha = "";
+    private string erroMsg = "";
+    private bool carregando = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Se já estiver logado, vai direto pro KDS
+        if (await KdsAuth.EstaAutenticadoAsync())
+        {
+            Nav.NavigateTo("/kds", replace: true);
+        }
+    }
+
+    private async Task FazerLogin()
+    {
+        if (string.IsNullOrWhiteSpace(senha))
+        {
+            erroMsg = "Por favor, digite a senha da cozinha.";
+            return;
+        }
+
+        carregando = true;
+        erroMsg = "";
+
+        var sucesso = await KdsAuth.LoginAsync(senha);
+
+        if (sucesso)
+        {
+            Nav.NavigateTo("/kds", replace: true);
+        }
+        else
+        {
+            erroMsg = "Senha incorreta! Tente novamente.";
+            senha = "";
+            carregando = false;
+        }
+    }
+
+    private async Task TeclaPressionada(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await FazerLogin();
+        }
+    }
+}

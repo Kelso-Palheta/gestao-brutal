@@ -1,0 +1,81 @@
+@page "/totem/pagamento-result"
+@layout TotemLayout
+@inject NavigationManager Nav
+@using System.Web
+@using System.Threading
+
+<div class="totem-success">
+    <div class="t-success-box">
+        @if (!string.IsNullOrEmpty(warning))
+        {
+            <div class="t-icon" style="color:#ff4444;">❌</div>
+            <h1 style="color:#ff4444;">Pagamento não aprovado</h1>
+            <p>Ocorreu um problema: @warning</p>
+            <p class="t-footer-msg">Tente novamente ou pague no caixa.</p>
+        }
+        else
+        {
+            <div class="t-icon">✅</div>
+            <h1 style="color:#7fff7f;">Pagamento Aprovado!</h1>
+            <p>Seu pedido <strong>#@orderId</strong> foi pago com sucesso.</p>
+
+            @if (!string.IsNullOrEmpty(cardBrand))
+            {
+                <p style="color:#aaa; font-size:14px;">Bandeira: @cardBrand</p>
+            }
+
+            <p class="t-footer-msg">Aguarde chamarmos o seu nome ou número no painel. Obrigado!</p>
+        }
+
+        <div class="t-timer" style="margin-top:20px;">
+            Retornando ao início em @timeLeft segundos...
+        </div>
+
+        <button class="totem-btn-next" @onclick="VoltarAoInicio" style="margin-top:20px; width: 100%;">Fazer novo pedido</button>
+    </div>
+</div>
+
+@code {
+    private string orderId = "";
+    private string nsu = "";
+    private string aut = "";
+    private string cardBrand = "";
+    private string warning = "";
+    private int timeLeft = 12;
+    private Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        var absUri = Nav.ToAbsoluteUri(Nav.Uri);
+        var qs = HttpUtility.ParseQueryString(absUri.Query);
+        orderId   = qs["order_id"] ?? "";
+        nsu       = qs["nsu"] ?? "";
+        aut       = qs["aut"] ?? "";
+        cardBrand = qs["card_brand"] ?? "";
+        warning   = qs["warning"] ?? "";
+
+        timer = new Timer(Tick, null, 1000, 1000);
+    }
+
+    private void Tick(object? state)
+    {
+        timeLeft--;
+        InvokeAsync(StateHasChanged);
+        if (timeLeft <= 0)
+        {
+            timer?.Dispose();
+            InvokeAsync(VoltarAoInicio);
+        }
+    }
+
+    private void VoltarAoInicio()
+    {
+        timer?.Dispose();
+        Nav.NavigateTo("/totem");
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+}

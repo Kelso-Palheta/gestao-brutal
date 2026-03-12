@@ -1,0 +1,605 @@
+@page "/admin/estoque"
+@layout EmptyLayout
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Web.Services
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject KdsAuthService KdsAuth
+@inject NavigationManager Nav
+
+<div class="est-container">
+
+    <!-- ── CABEÇALHO ─────────────────────────────────────────── -->
+    <div class="est-header">
+        <div class="est-header-left">
+            <h1>📦 Estoque</h1>
+            <span class="est-header-sub">Insumos, Compras e Movimentações</span>
+        </div>
+        <div class="est-header-right">
+            <a href="/admin" class="est-btn-nav">⚙️ Admin</a>
+            <a href="/admin/dashboard" class="est-btn-nav">📊 Dashboard</a>
+        </div>
+    </div>
+
+    <!-- ── ABAS ───────────────────────────────────────────────── -->
+    <div class="est-tabs">
+        <button class="est-tab @(abaAtiva == "dashboard" ? "ativo" : "")" @onclick='() => abaAtiva = "dashboard"'>
+            🏠 Visão Geral
+        </button>
+        <button class="est-tab @(abaAtiva == "insumos" ? "ativo" : "")" @onclick='() => MudarAba("insumos")'>
+            🧂 Insumos @(dashboard?.InsumosAbaixoMinimo > 0 ? $"⚠️{dashboard.InsumosAbaixoMinimo}" : "")
+        </button>
+        <button class="est-tab @(abaAtiva == "compras" ? "ativo" : "")" @onclick='() => MudarAba("compras")'>
+            🛒 Compras / Entradas
+        </button>
+        <button class="est-tab @(abaAtiva == "saidas" ? "ativo" : "")" @onclick='() => MudarAba("saidas")'>
+            📉 Movimentações
+        </button>
+    </div>
+
+    <!-- ── BARRA DE FILTRO POR PERÍODO ────────────────────────── -->
+    <div class="rel-filtro-bar" style="margin-top: 15px; margin-bottom: 20px;">
+        <div class="rel-filtro-grupo">
+            <label>De</label>
+            <input type="date" @bind="filtroInicio" class="rel-filtro-input" />
+        </div>
+        <div class="rel-filtro-grupo">
+            <label>Até</label>
+            <input type="date" @bind="filtroFim" class="rel-filtro-input" />
+        </div>
+
+        <div class="rel-filtro-atalhos">
+            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("hoje")'>Hoje</button>
+            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("7dias")'>7 dias</button>
+            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("30dias")'>30 dias</button>
+            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("mes")'>Este mês</button>
+        </div>
+
+        <button class="rel-btn-filtrar" @onclick="CarregarTudo" disabled="@carregando">
+            @(carregando ? "⏳" : "🔍 Filtrar")
+        </button>
+    </div>
+
+    @if (carregando)
+    {
+        <div class="est-loading">⏳ Carregando...</div>
+    }
+    else
+    {
+        <!-- ================================================================
+             ABA: VISÃO GERAL
+             ================================================================ -->
+        @if (abaAtiva == "dashboard" && dashboard != null)
+        {
+            <div class="est-section">
+                <!-- KPIs -->
+                <div class="est-kpi-grid">
+                    <div class="est-kpi-card">
+                        <div class="est-kpi-label">🧂 Total de Insumos</div>
+                        <div class="est-kpi-valor">@dashboard.TotalInsumos</div>
+                    </div>
+                    <div class="est-kpi-card @(dashboard.InsumosAbaixoMinimo > 0 ? "est-kpi-alerta" : "")">
+                        <div class="est-kpi-label">⚠️ Abaixo do Mínimo</div>
+                        <div class="est-kpi-valor">@dashboard.InsumosAbaixoMinimo</div>
+                    </div>
+                    <div class="est-kpi-card">
+                        <div class="est-kpi-label">💰 Valor do Estoque</div>
+                        <div class="est-kpi-valor">@dashboard.ValorEstoqueAtual.ToString("C2")</div>
+                    </div>
+                    <div class="est-kpi-card">
+                        <div class="est-kpi-label">🛒 Total Gasto em Compras</div>
+                        <div class="est-kpi-valor">@dashboard.TotalGastosCompras.ToString("C2")</div>
+                    </div>
+                </div>
+
+                <!-- Alertas -->
+                @if (dashboard.AlertasEstoque.Any())
+                {
+                    <div class="est-card" style="margin-top:20px">
+                        <div class="est-card-title">⚠️ Insumos Abaixo do Mínimo</div>
+                        <div class="est-table-wrap">
+                            <table class="est-table">
+                                <thead><tr><th>Insumo</th><th>Atual</th><th>Mínimo</th><th>Ação</th></tr></thead>
+                                <tbody>
+                                @foreach (var i in dashboard.AlertasEstoque)
+                                {
+                                    <tr class="est-row-alerta">
+                                        <td>@i.Nome</td>
+                                        <td class="est-td-alerta">@i.EstoqueAtual @i.Unidade</td>
+                                        <td>@i.EstoqueMinimo @i.Unidade</td>
+                                        <td><button class="est-btn-entrada" @onclick="() => AbrirEntrada(i)">+ Entrada</button></td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                <!-- Últimas movimentações -->
+                @if (dashboard.UltimasMovimentacoes.Any())
+                {
+                    <div class="est-card" style="margin-top:20px">
+                        <div class="est-card-title">🕐 Últimas Movimentações</div>
+                        <div class="est-table-wrap">
+                            <table class="est-table">
+                                <thead><tr><th>Data</th><th>Insumo</th><th>Tipo</th><th>Qtd</th><th>Valor</th><th>Motivo</th></tr></thead>
+                                <tbody>
+                                @foreach (var m in dashboard.UltimasMovimentacoes)
+                                {
+                                    <tr>
+                                        <td>@m.DataMovimentacao.ToString("dd/MM HH:mm")</td>
+                                        <td>@m.InsumoNome</td>
+                                        <td><span class="est-badge-tipo est-tipo-@m.Tipo.ToLower()">@m.Tipo</span></td>
+                                        <td>@m.Quantidade</td>
+                                        <td>@m.ValorTotal.ToString("C2")</td>
+                                        <td class="est-td-motivo">@m.Motivo</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- ================================================================
+             ABA: INSUMOS
+             ================================================================ -->
+        @if (abaAtiva == "insumos")
+        {
+            <div class="est-section">
+                <!-- Mensagens -->
+                @if (!string.IsNullOrEmpty(msgSucesso)) { <div class="est-msg-ok">✅ @msgSucesso</div> }
+                @if (!string.IsNullOrEmpty(msgErro))    { <div class="est-msg-err">❌ @msgErro</div> }
+
+                <!-- Formulário novo/editar insumo -->
+                <div class="est-card">
+                    <div class="est-card-title">@(editandoInsumo?.Id > 0 ? "✏️ Editar Insumo" : "➕ Novo Insumo")</div>
+                    <div class="est-form-grid">
+                        <div class="est-form-grupo">
+                            <label>Nome *</label>
+                            <input @bind="editandoInsumo!.Nome" class="est-input" placeholder="Ex: Batata Rústica" />
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Unidade</label>
+                            <select @bind="editandoInsumo.Unidade" class="est-input">
+                                <option value="kg">kg</option>
+                                <option value="g">g</option>
+                                <option value="L">L</option>
+                                <option value="ml">ml</option>
+                                <option value="un">un</option>
+                                <option value="cx">cx</option>
+                                <option value="pct">pct</option>
+                            </select>
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Estoque Mínimo</label>
+                            <input type="number" step="0.01" @bind="editandoInsumo.EstoqueMinimo" class="est-input" />
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Custo por Unidade (R$)</label>
+                            <input type="number" step="0.01" @bind="editandoInsumo.CustoPorUnidade" class="est-input" />
+                        </div>
+                    </div>
+                    <div class="est-form-btns">
+                        <button class="est-btn-salvar" @onclick="SalvarInsumo">💾 Salvar</button>
+                        @if (editandoInsumo.Id > 0)
+                        {
+                            <button class="est-btn-cancelar" @onclick="NovoInsumo">✕ Cancelar</button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Lista de insumos -->
+                <div class="est-card" style="margin-top:16px">
+                    <div class="est-card-title">🧂 Todos os Insumos</div>
+                    @if (insumos.Any())
+                    {
+                        <div class="est-table-wrap">
+                            <table class="est-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Unidade</th>
+                                        <th>Estoque</th>
+                                        <th>Mínimo</th>
+                                        <th>Custo/Un</th>
+                                        <th>Valor Total</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var i in insumos.OrderBy(x => x.Nome))
+                                {
+                                    <tr class="@(i.AbaixoDoMinimo ? "est-row-alerta" : "")">
+                                        <td>
+                                            @i.Nome
+                                            @if (i.AbaixoDoMinimo) { <span class="est-badge-alerta">⚠️ Baixo</span> }
+                                        </td>
+                                        <td>@i.Unidade</td>
+                                        <td><strong>@i.EstoqueAtual</strong></td>
+                                        <td>@i.EstoqueMinimo</td>
+                                        <td>@i.CustoPorUnidade.ToString("C2")</td>
+                                        <td>@((i.EstoqueAtual * i.CustoPorUnidade).ToString("C2"))</td>
+                                        <td class="est-td-acoes">
+                                            <button class="est-btn-editar" @onclick="() => EditarInsumo(i)">✏️</button>
+                                            <button class="est-btn-entrada" @onclick="() => AbrirEntrada(i)">+ In</button>
+                                            <button class="est-btn-deletar" @onclick="() => DeletarInsumo(i)">🗑️</button>
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="est-empty">Nenhum insumo cadastrado. Adicione o primeiro acima.</p>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- ================================================================
+             ABA: COMPRAS / ENTRADAS
+             ================================================================ -->
+        @if (abaAtiva == "compras")
+        {
+            <div class="est-section">
+                @if (!string.IsNullOrEmpty(msgSucesso)) { <div class="est-msg-ok">✅ @msgSucesso</div> }
+                @if (!string.IsNullOrEmpty(msgErro))    { <div class="est-msg-err">❌ @msgErro</div> }
+
+                <div class="est-card">
+                    <div class="est-card-title">🛒 Registrar Compra / Entrada</div>
+                    <div class="est-form-grid">
+                        <div class="est-form-grupo">
+                            <label>Insumo *</label>
+                            <select @bind="novaMovimentacao.InsumoId" class="est-input">
+                                <option value="0">— Selecione —</option>
+                                @foreach (var i in insumos)
+                                {
+                                    <option value="@i.Id">@i.Nome (@i.Unidade)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Quantidade</label>
+                            <input type="number" step="0.01" @bind="novaMovimentacao.Quantidade" class="est-input" />
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Valor Unitário (R$)</label>
+                            <input type="number" step="0.01" @bind="novaMovimentacao.ValorUnitario" class="est-input" />
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Fornecedor</label>
+                            <input @bind="novaMovimentacao.Fornecedor" class="est-input" placeholder="Nome do fornecedor" />
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Nº NF / Cupom</label>
+                            <input @bind="novaMovimentacao.NumeroNF" class="est-input" placeholder="Opcional" />
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Motivo / Observação</label>
+                            <input @bind="novaMovimentacao.Motivo" class="est-input" placeholder="Ex: Compra semanal" />
+                        </div>
+                    </div>
+                    @if (novaMovimentacao.Quantidade > 0 && novaMovimentacao.ValorUnitario > 0)
+                    {
+                        <div class="est-total-compra">
+                            Total da compra: <strong>@((novaMovimentacao.Quantidade * novaMovimentacao.ValorUnitario).ToString("C2"))</strong>
+                        </div>
+                    }
+                    <div class="est-form-btns">
+                        <button class="est-btn-salvar" @onclick="RegistrarEntrada">✅ Registrar Entrada</button>
+                    </div>
+                </div>
+
+                <!-- Histórico de entradas -->
+                <div class="est-card" style="margin-top:16px">
+                    <div class="est-card-title">📋 Histórico de Compras</div>
+                    @if (movimentacoes.Any(m => m.Tipo == "Entrada"))
+                    {
+                        var entradas = movimentacoes.Where(m => m.Tipo == "Entrada").ToList();
+                        <div class="est-resumo-bar">
+                            Total gasto: <strong>@entradas.Sum(e => e.ValorTotal).ToString("C2")</strong>
+                            em @entradas.Count compras
+                        </div>
+                        <div class="est-table-wrap">
+                            <table class="est-table">
+                                <thead><tr><th>Data</th><th>Insumo</th><th>Qtd</th><th>Unit.</th><th>Total</th><th>Fornecedor</th><th>NF</th></tr></thead>
+                                <tbody>
+                                @foreach (var m in entradas)
+                                {
+                                    <tr>
+                                        <td>@m.DataMovimentacao.ToString("dd/MM/yy HH:mm")</td>
+                                        <td>@m.InsumoNome</td>
+                                        <td>@m.Quantidade</td>
+                                        <td>@m.ValorUnitario.ToString("C2")</td>
+                                        <td><strong>@m.ValorTotal.ToString("C2")</strong></td>
+                                        <td>@(string.IsNullOrEmpty(m.Fornecedor) ? "—" : m.Fornecedor)</td>
+                                        <td>@(string.IsNullOrEmpty(m.NumeroNF) ? "—" : m.NumeroNF)</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="est-empty">Nenhuma compra registrada ainda.</p>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- ================================================================
+             ABA: TODAS AS MOVIMENTAÇÕES
+             ================================================================ -->
+        @if (abaAtiva == "saidas")
+        {
+            <div class="est-section">
+                <!-- Ajuste manual de estoque -->
+                <div class="est-card">
+                    <div class="est-card-title">🔧 Ajuste Manual de Estoque</div>
+                    <div class="est-form-grid">
+                        <div class="est-form-grupo">
+                            <label>Insumo</label>
+                            <select @bind="ajuste.InsumoId" class="est-input">
+                                <option value="0">— Selecione —</option>
+                                @foreach (var i in insumos)
+                                {
+                                    <option value="@i.Id">@i.Nome (@i.EstoqueAtual @i.Unidade)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Tipo</label>
+                            <select @bind="ajuste.Tipo" class="est-input">
+                                <option value="Ajuste">Ajuste (+ ou -)</option>
+                                <option value="Saida">Saída Manual</option>
+                            </select>
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Quantidade @(ajuste.Tipo == "Ajuste" ? "(use − para reduzir)" : "")</label>
+                            <input type="number" step="0.01" @bind="ajuste.Quantidade" class="est-input" />
+                        </div>
+                        <div class="est-form-grupo">
+                            <label>Motivo</label>
+                            <input @bind="ajuste.Motivo" class="est-input" placeholder="Ex: Perda, vencimento, inventário" />
+                        </div>
+                    </div>
+                    <div class="est-form-btns">
+                        <button class="est-btn-salvar" @onclick="RegistrarAjuste">✅ Registrar Ajuste</button>
+                    </div>
+                </div>
+
+                <!-- Histórico completo -->
+                <div class="est-card" style="margin-top:16px">
+                    <div class="est-card-title">📋 Todas as Movimentações</div>
+                    @if (movimentacoes.Any())
+                    {
+                        <div class="est-table-wrap">
+                            <table class="est-table">
+                                <thead><tr><th>Data</th><th>Insumo</th><th>Tipo</th><th>Qtd</th><th>Valor</th><th>Motivo</th></tr></thead>
+                                <tbody>
+                                @foreach (var m in movimentacoes)
+                                {
+                                    <tr>
+                                        <td>@m.DataMovimentacao.ToString("dd/MM HH:mm")</td>
+                                        <td>@m.InsumoNome</td>
+                                        <td><span class="est-badge-tipo est-tipo-@m.Tipo.ToLower()">@m.Tipo</span></td>
+                                        <td>@m.Quantidade</td>
+                                        <td>@m.ValorTotal.ToString("C2")</td>
+                                        <td class="est-td-motivo">@m.Motivo</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="est-empty">Sem movimentações registradas.</p>
+                    }
+                </div>
+            </div>
+        }
+    }
+
+    <!-- ── MODAL DE ENTRADA RÁPIDA ──────────────────────────────── -->
+    @if (mostrarModalEntrada && insumoEntrada != null)
+    {
+        <div class="est-modal-overlay" @onclick="FecharModalEntrada">
+            <div class="est-modal" @onclick:stopPropagation="true">
+                <h3>📦 Entrada de Estoque</h3>
+                <p class="est-modal-sub">Insumo: <strong>@insumoEntrada.Nome</strong> (Atual: @insumoEntrada.EstoqueAtual @insumoEntrada.Unidade)</p>
+                <div class="est-form-grid">
+                    <div class="est-form-grupo">
+                        <label>Quantidade *</label>
+                        <input type="number" step="0.01" @bind="entradaRapida.Quantidade" class="est-input" />
+                    </div>
+                    <div class="est-form-grupo">
+                        <label>Valor Unitário (R$)</label>
+                        <input type="number" step="0.01" @bind="entradaRapida.ValorUnitario" class="est-input" />
+                    </div>
+                    <div class="est-form-grupo">
+                        <label>Fornecedor</label>
+                        <input @bind="entradaRapida.Fornecedor" class="est-input" placeholder="Opcional" />
+                    </div>
+                    <div class="est-form-grupo">
+                        <label>Nº NF</label>
+                        <input @bind="entradaRapida.NumeroNF" class="est-input" placeholder="Opcional" />
+                    </div>
+                </div>
+                <div class="est-modal-btns">
+                    <button class="est-btn-cancelar" @onclick="FecharModalEntrada">Cancelar</button>
+                    <button class="est-btn-salvar" @onclick="ConfirmarEntradaRapida">✅ Confirmar</button>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    private string abaAtiva = "dashboard";
+    private bool carregando = true;
+    private string msgSucesso = string.Empty;
+    private string msgErro    = string.Empty;
+
+    private EstoqueDashboardDto? dashboard;
+    private List<InsumoDto> insumos = new();
+    private List<MovimentacaoDto> movimentacoes = new();
+
+    private InsumoDto editandoInsumo = new();
+    private NovaMovimentacaoRequest novaMovimentacao = new() { Tipo = "Entrada" };
+    private NovaMovimentacaoRequest ajuste           = new() { Tipo = "Ajuste" };
+
+    // Modal entrada rápida
+    private bool mostrarModalEntrada = false;
+    private InsumoDto? insumoEntrada;
+    private NovaMovimentacaoRequest entradaRapida = new() { Tipo = "Entrada" };
+
+    // Filtros de data
+    private DateTime filtroInicio = DateTime.Today.AddDays(-6);
+    private DateTime filtroFim    = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await KdsAuth.EstaAutenticadoAsync())
+        {
+            Nav.NavigateTo("/kds/login", replace: true);
+            return;
+        }
+        await CarregarTudo();
+    }
+
+    private async Task CarregarTudo()
+    {
+        carregando = true;
+        try
+        {
+            var de  = filtroInicio.ToString("yyyy-MM-dd");
+            var ate = filtroFim.ToString("yyyy-MM-dd");
+
+            dashboard     = await Http.GetFromJsonAsync<EstoqueDashboardDto>($"api/insumos/dashboard?de={de}&ate={ate}");
+            insumos       = await Http.GetFromJsonAsync<List<InsumoDto>>("api/insumos") ?? new();
+            movimentacoes = await Http.GetFromJsonAsync<List<MovimentacaoDto>>($"api/insumos/movimentacoes?de={de}&ate={ate}") ?? new();
+        }
+        catch { }
+        finally { carregando = false; }
+    }
+
+    private void AplicarAtalho(string atalho)
+    {
+        var hoje = DateTime.Today;
+        (filtroInicio, filtroFim) = atalho switch
+        {
+            "hoje"   => (hoje, hoje),
+            "7dias"  => (hoje.AddDays(-6), hoje),
+            "30dias" => (hoje.AddDays(-29), hoje),
+            "mes"    => (new DateTime(hoje.Year, hoje.Month, 1), hoje),
+            _        => (filtroInicio, filtroFim)
+        };
+    }
+
+    private async Task MudarAba(string aba)
+    {
+        abaAtiva = aba;
+        await CarregarTudo();
+    }
+
+    // ── Insumos ───────────────────────────────────────────────────────────
+    private void NovoInsumo() => editandoInsumo = new();
+    private void EditarInsumo(InsumoDto i) => editandoInsumo = new InsumoDto
+    {
+        Id = i.Id, Nome = i.Nome, Unidade = i.Unidade,
+        EstoqueMinimo = i.EstoqueMinimo, CustoPorUnidade = i.CustoPorUnidade
+    };
+
+    private async Task SalvarInsumo()
+    {
+        LimparMensagens();
+        if (string.IsNullOrWhiteSpace(editandoInsumo.Nome))
+        { msgErro = "Informe o nome do insumo."; return; }
+
+        HttpResponseMessage resp;
+        if (editandoInsumo.Id == 0)
+            resp = await Http.PostAsJsonAsync("api/insumos", editandoInsumo);
+        else
+            resp = await Http.PutAsJsonAsync($"api/insumos/{editandoInsumo.Id}", editandoInsumo);
+
+        if (resp.IsSuccessStatusCode) { msgSucesso = "Insumo salvo!"; editandoInsumo = new(); await CarregarTudo(); }
+        else msgErro = await resp.Content.ReadAsStringAsync();
+    }
+
+    private async Task DeletarInsumo(InsumoDto i)
+    {
+        LimparMensagens();
+        var r = await Http.DeleteAsync($"api/insumos/{i.Id}");
+        if (r.IsSuccessStatusCode) { msgSucesso = $"'{i.Nome}' removido."; await CarregarTudo(); }
+        else msgErro = "Erro ao remover.";
+    }
+
+    // ── Movimentações ─────────────────────────────────────────────────────
+    private async Task RegistrarEntrada()
+    {
+        LimparMensagens();
+        novaMovimentacao.Tipo = "Entrada";
+        if (novaMovimentacao.InsumoId == 0) { msgErro = "Selecione o insumo."; return; }
+        if (novaMovimentacao.Quantidade <= 0) { msgErro = "Informe a quantidade."; return; }
+
+        var r = await Http.PostAsJsonAsync("api/insumos/movimentar", novaMovimentacao);
+        if (r.IsSuccessStatusCode)
+        {
+            msgSucesso = "Entrada registrada com sucesso!";
+            novaMovimentacao = new() { Tipo = "Entrada" };
+            await CarregarTudo();
+        }
+        else msgErro = await r.Content.ReadAsStringAsync();
+    }
+
+    private async Task RegistrarAjuste()
+    {
+        LimparMensagens();
+        if (ajuste.InsumoId == 0) { msgErro = "Selecione o insumo."; return; }
+        if (ajuste.Quantidade == 0) { msgErro = "Informe a quantidade."; return; }
+
+        var r = await Http.PostAsJsonAsync("api/insumos/movimentar", ajuste);
+        if (r.IsSuccessStatusCode)
+        {
+            msgSucesso = "Ajuste registrado!";
+            ajuste = new() { Tipo = "Ajuste" };
+            await CarregarTudo();
+        }
+        else msgErro = await r.Content.ReadAsStringAsync();
+    }
+
+    // ── Modal entrada rápida ──────────────────────────────────────────────
+    private void AbrirEntrada(InsumoDto i)
+    {
+        insumoEntrada = i;
+        entradaRapida = new() { Tipo = "Entrada", InsumoId = i.Id, ValorUnitario = i.CustoPorUnidade };
+        mostrarModalEntrada = true;
+    }
+
+    private void FecharModalEntrada() { mostrarModalEntrada = false; insumoEntrada = null; }
+
+    private async Task ConfirmarEntradaRapida()
+    {
+        LimparMensagens();
+        if (entradaRapida.Quantidade <= 0) { msgErro = "Informe a quantidade."; return; }
+        var r = await Http.PostAsJsonAsync("api/insumos/movimentar", entradaRapida);
+        if (r.IsSuccessStatusCode)
+        {
+            msgSucesso = $"Entrada de {entradaRapida.Quantidade} {insumoEntrada?.Unidade} registrada!";
+            FecharModalEntrada();
+            await CarregarTudo();
+        }
+        else msgErro = await r.Content.ReadAsStringAsync();
+    }
+
+    private void LimparMensagens() { msgSucesso = string.Empty; msgErro = string.Empty; }
+}

@@ -1,0 +1,34 @@
+using BatatasFritas.Domain.Entities;
+using FluentNHibernate.Mapping;
+using BatatasFritas.Shared.Enums;
+
+namespace BatatasFritas.Infrastructure.Mappings;
+
+public class PedidoMap : ClassMap<Pedido>
+{
+    public PedidoMap()
+    {
+        Table("pedidos");
+
+        Id(x => x.Id).GeneratedBy.Identity().Column("id");
+        Map(x => x.NomeCliente).Not.Nullable().Length(100).Column("nome_cliente");
+        Map(x => x.TelefoneCliente).Not.Nullable().Length(20).Column("telefone_cliente");
+        Map(x => x.EnderecoEntrega).Length(200).Column("endereco_entrega");
+        References(x => x.BairroEntrega).Column("bairro_id").Nullable();
+
+        Map(x => x.DataHoraPedido).Not.Nullable().Column("data_hora");
+        Map(x => x.Status).CustomType<StatusPedido>().Not.Nullable().Column("status");
+        Map(x => x.MetodoPagamento).CustomType<MetodoPagamento>().Not.Nullable().Column("metodo_pagamento");
+        Map(x => x.TrocoPara).Column("troco_para").Nullable();
+        Map(x => x.Observacao).Column("observacao").Nullable().Length(500);
+
+        Map(x => x.LinkPagamento).Column("link_pagamento").Nullable().Length(1000);
+        Map(x => x.StatusPagamento).CustomType<StatusPagamento>().Not.Nullable().Column("status_pagamento").Default("1");
+        Map(x => x.TipoAtendimento).CustomType<TipoAtendimento>().Not.Nullable().Column("tipo_atendimento").Default("1");
+
+        HasMany(x => x.Itens)
+            .KeyColumn("pedido_id")
+            .Inverse()
+            .Cascade.AllDeleteOrphan();
+    }
+}

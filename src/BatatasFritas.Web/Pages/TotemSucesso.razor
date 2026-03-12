@@ -1,0 +1,98 @@
+@page "/totem/sucesso/{PedidoId:int}"
+@layout TotemLayout
+@inject NavigationManager Nav
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using System.Threading
+@using System.Web
+@using System.Net.Http.Json
+
+<div class="totem-success">
+    <div class="t-success-box">
+        <div class="t-icon">✅</div>
+        <h1>Pedido Recebido!</h1>
+
+        <div class="t-number-box">
+            <span>SEU NÚMERO</span>
+            <strong>#@PedidoId.ToString("D3")</strong>
+        </div>
+
+        @* ═══════════════ PIX / CARTÃO ═══════════════ *@
+        @if (tipoPagamento == "Pix" || tipoPagamento == "Cartao")
+        {
+            <div style="margin-top:20px; text-align:center;">
+                <p style="font-size:48px; margin:10px 0;">@(tipoPagamento == "Pix" ? "📱" : "💳")</p>
+                <p style="font-size:16px; color:#ffb347; font-weight:bold;">
+                    Aguarde! O atendente irá até você para o pagamento.
+                </p>
+                <p style="font-size:24px; font-weight:900; color:#fff; margin-top:10px;">
+                    Total: R$ @((amount / 100m).ToString("N2"))
+                </p>
+            </div>
+        }
+
+        @* ═══════════════ DINHEIRO ═══════════════ *@
+        @if (tipoPagamento == "Dinheiro")
+        {
+            <div style="margin-top:20px; text-align:center;">
+                <p style="font-size:48px; margin:10px 0;">💵</p>
+                <p style="font-size:16px; color:#ffb347; font-weight:bold;">
+                    Por favor, dirija-se ao caixa para efetuar o pagamento.
+                </p>
+                <p style="font-size:24px; font-weight:900; color:#fff; margin-top:10px;">
+                    Total: R$ @((amount / 100m).ToString("N2"))
+                </p>
+            </div>
+        }
+
+        <p style="color:#aaa; font-size:13px; margin-top:16px;">Aguarde chamarmos o seu nome no painel.</p>
+
+        <div class="t-timer" style="margin-top:16px;">
+            Retornando ao início em @timeLeft segundos...
+        </div>
+
+        <button class="totem-btn-next" @onclick="VoltarAoInicio" style="margin-top:16px; width: 100%;">Fazer novo pedido</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int PedidoId { get; set; }
+
+    private string tipoPagamento = "";
+    private int amount;
+    private int timeLeft = 30;
+    private Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        // Parse query string
+        var absUri = Nav.ToAbsoluteUri(Nav.Uri);
+        var qs = HttpUtility.ParseQueryString(absUri.Query);
+        tipoPagamento = qs["tipo"] ?? "";
+        int.TryParse(qs["amount"], out amount);
+
+        timer = new Timer(Tick, null, 1000, 1000);
+    }
+
+    private void Tick(object? state)
+    {
+        timeLeft--;
+        InvokeAsync(StateHasChanged);
+        if (timeLeft <= 0)
+        {
+            timer?.Dispose();
+            InvokeAsync(VoltarAoInicio);
+        }
+    }
+
+    private void VoltarAoInicio()
+    {
+        timer?.Dispose();
+        Nav.NavigateTo("/totem");
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+}

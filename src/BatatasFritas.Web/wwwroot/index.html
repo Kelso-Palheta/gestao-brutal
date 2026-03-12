@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Batata Palheta Brutal</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css?v=3" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="BatatasFritas.Web.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        // =============================================
+        // QR CODE — Renderiza QR code num container
+        // =============================================
+        window.renderQrCode = function (containerId, text) {
+            var el = document.getElementById(containerId);
+            if (el) {
+                el.innerHTML = '';
+                new QRCode(el, {
+                    text: text,
+                    width: 220,
+                    height: 220,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        };
+
+        // =============================================
+        // PRINT INTEROP — Cupom Térmico
+        // =============================================
+        window.printInterop = {
+            printCupom: function (elementId) {
+                document.body.classList.add('modo-impressao-cupom');
+                var cupomEl = document.getElementById(elementId);
+                if (cupomEl) cupomEl.classList.add('imprimindo-ativo');
+                window.print();
+                document.body.classList.remove('modo-impressao-cupom');
+                if (cupomEl) cupomEl.classList.remove('imprimindo-ativo');
+            }
+        };
+
+        // =============================================
+        // KDS INTEROP — Alertas Sonoros + Confirmações
+        // =============================================
+        window.kdsInterop = {
+
+            // Toca um beep de alerta via Web Audio API (sem arquivo de áudio externo)
+            // tipo: 'novo' = beep agudo duplo (novo pedido!)
+            //       'cancelar' = beep grave (confirmação de cancelamento)
+            tocarAlerta: function (tipo) {
+                try {
+                    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    var sequencia = [];
+
+                    if (tipo === 'novo') {
+                        // Beep agudo duplo — ♪ novo pedido chegou!
+                        sequencia = [
+                            { freq: 880, inicio: 0, dur: 0.12 },
+                            { freq: 880, inicio: 0.18, dur: 0.12 },
+                            { freq: 1100, inicio: 0.36, dur: 0.18 }
+                        ];
+                    } else if (tipo === 'cancelar') {
+                        // Beep grave descendente — confirmação de cancelamento
+                        sequencia = [
+                            { freq: 440, inicio: 0, dur: 0.18 },
+                            { freq: 300, inicio: 0.22, dur: 0.25 }
+                        ];
+                    }
+
+                    sequencia.forEach(function (nota) {
+                        var osc = ctx.createOscillator();
+                        var gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.frequency.value = nota.freq;
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0.4, ctx.currentTime + nota.inicio);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + nota.inicio + nota.dur);
+                        osc.start(ctx.currentTime + nota.inicio);
+                        osc.stop(ctx.currentTime + nota.inicio + nota.dur + 0.05);
+                    });
+                } catch (e) {
+                    console.warn('KDS Audio: Web Audio API não disponível.', e);
+                }
+            },
+
+            // Abre uma caixa de confirmação nativa e retorna true/false para o Blazor
+            confirmar: function (mensagem) {
+                return window.confirm(mensagem);
+            }
+        };
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.24" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BatatasFritas.Infrastructure\BatatasFritas.Infrastructure.csproj" />
+    <ProjectReference Include="..\BatatasFritas.Shared\BatatasFritas.Shared.csproj" />
+    <ProjectReference Include="..\BatatasFritas.Domain\BatatasFritas.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

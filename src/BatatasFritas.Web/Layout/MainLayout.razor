@@ -1,0 +1,57 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject BatatasFritas.Web.Services.CarrinhoState Carrinho
+
+<div class="app-shell">
+    <!-- Header fixo no topo (substitui sidebar) -->
+    <header class="app-header">
+        <div class="app-header-inner">
+            <a href="/" class="app-logo">
+                🍟 <span>Palheta Brutal</span>
+            </a>
+            <nav class="app-nav">
+                <a href="/" class="app-nav-link">Cardápio</a>
+                <a href="/carrinho" class="app-nav-link app-nav-carrinho">
+                    🛒
+                    @if (Carrinho.Itens.Any())
+                    {
+                        <span class="app-cart-badge">@Carrinho.Itens.Sum(i => i.Quantidade)</span>
+                    }
+                    <span class="app-nav-label">Carrinho</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Conteúdo principal -->
+    <main class="app-main">
+        @Body
+    </main>
+
+    <!-- Botão flutuante do carrinho (mobile) -->
+    @if (Carrinho.Itens.Any())
+    {
+        <a href="/carrinho" class="float-cart-btn" id="float-cart-btn">
+            🛒 <span class="float-cart-count">@Carrinho.Itens.Sum(i => i.Quantidade)</span>
+            <span class="float-cart-label">Ver carrinho</span>
+        </a>
+    }
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Carrinho.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Carrinho.OnChange -= StateHasChanged;
+    }
+}

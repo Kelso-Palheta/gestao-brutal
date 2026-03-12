@@ -1,0 +1,377 @@
+@page "/carrinho"
+@using BatatasFritas.Web.Services
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
+@using System.Net.Http.Json
+@inject CarrinhoState Carrinho
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<div class="carrinho-container">
+    <h2>Seu Carrinho</h2>
+    
+    @if (!Carrinho.Itens.Any())
+    {
+        <p>O carrinho está vazio.</p>
+    }
+    else
+    {
+        <ul class="carrinho-lista">
+            @foreach (var item in Carrinho.Itens)
+            {
+                <li class="carrinho-item" style="display: flex; flex-direction: column; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <strong>@item.Quantidade x @item.NomeProduto</strong>
+                        <span>R$ @((item.PrecoUnitario * item.Quantidade).ToString("F2"))</span>
+                        <button @onclick="() => Remover(item.ProdutoId)" style="color: red; border: none; background: transparent; cursor: pointer; font-weight: bold; font-size: 1.2rem;">&times;</button>
+                    </div>
+                    @if (!string.IsNullOrEmpty(item.Observacao))
+                    {
+                        <span style="font-size: 0.85em; color: #777; margin-top: 4px;">@item.Observacao</span>
+                    }
+                </li>
+            }
+        </ul>
+        <div class="checkout-form" style="margin-top: 2rem; border-top: 2px solid #000; padding-top: 1rem;">
+            <h3>Finalizar Pedido</h3>
+            @if (!string.IsNullOrEmpty(mensagemSucesso))
+            {
+                <div class="alert alert-success" style="background-color: #bbffbb; padding: 10px; border: 2px solid #000; font-weight: bold; margin-bottom: 1rem;">
+                    @mensagemSucesso
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(mensagemErro))
+            {
+                <div class="alert alert-danger" style="background-color: #ffbbbb; padding: 10px; border: 2px solid #000; font-weight: bold; margin-bottom: 1rem;">
+                    @mensagemErro
+                </div>
+            }
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin-bottom: 20px;">
+                <input @bind="Carrinho.TempNome" type="text" placeholder="Seu Nome completo" style="padding: 10px; border: 2px solid #000;" />
+                <input value="@Carrinho.TempTelefone" @onchange="OnTelefoneChanged" type="text" placeholder="Seu Telefone/WhatsApp (Ex: 11999999999)" style="padding: 10px; border: 2px solid #000;" />
+
+                @if (saldoCashback > 0)
+                {
+                    <div style="background-color: #fdf5e6; border: 2px solid #f39c12; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; font-weight: bold; color: #d35400;">
+                        <div>
+                            <span>🎁 @mensagemCashback</span>
+                        </div>
+                        <label style="display:flex; align-items:center; cursor:pointer;">
+                            <input type="checkbox" @bind="usarCashback" style="width:18px; height:18px; margin-right:5px;" />
+                            Usar Saldo
+                        </label>
+                    </div>
+                }
+                
+                <input @bind="Carrinho.TempRuaAvenida" type="text" placeholder="Rua / Avenida" style="padding: 10px; border: 2px solid #000;" />
+                
+                <div style="display: flex; gap: 10px;">
+                    <input @bind="Carrinho.TempNumeroLocal" type="text" placeholder="Nº da Casa" style="padding: 10px; border: 2px solid #000; width: 35%;" />
+                    <input @bind="Carrinho.TempComplementoLocal" type="text" placeholder="Ponto de Referência" style="padding: 10px; border: 2px solid #000; flex: 1;" />
+                </div>
+                
+                <select @bind="Carrinho.TempBairro" style="padding: 10px; border: 2px solid #000; color: #000; background-color: #fff;">
+                    <option value="" disabled selected>Bairro de Entrega...</option>
+                    @foreach (var b in bairrosDisponiveis)
+                    {
+                        <option value="@b.Id">@b.Nome (+ R$ @b.TaxaEntrega.ToString("F2"))</option>
+                    }
+                </select>
+
+                <select @bind="Carrinho.TempPagamento" style="padding: 10px; border: 2px solid #000; color: #000; background-color: #fff;">
+                    <option value="" disabled selected>Forma de Pagamento...</option>
+                    <option value="1">Dinheiro</option>
+                    <option value="2">Cartão (Na Maquininha do Motoboy)</option>
+                    <option value="4">PIX (Chave na entrega)</option>
+                    <option value="5">💳 Pagar Agora (Cartão/PIX Online)</option>
+                </select>
+
+                @if (Carrinho.TempPagamento == "1")
+                {
+                    <input @bind="Carrinho.TempTroco" type="text" placeholder="Precisa de troco para quanto? (Ex: 50,00)" style="padding: 10px; border: 2px solid #000;" />
+                }
+            </div>
+
+            <div class="carrinho-total" style="flex-direction: column; align-items: stretch; gap: 5px;">
+                @if (!string.IsNullOrEmpty(Carrinho.TempBairro))
+                {
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1em; color: #555;">
+                        <span>Subtotal:</span>
+                        <span>R$ @Carrinho.Subtotal.ToString("F2")</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1em; color: #555;">
+                        <span>Taxa de Entrega:</span>
+                        <span>R$ @TaxaEntregaAtual.ToString("F2")</span>
+                    </div>
+                }
+                @if (usarCashback && ValorCashbackAplicado > 0)
+                {
+                    <div style="display: flex; justify-content: space-between; font-size: 1.1em; color: #27ae60; font-weight: bold;">
+                        <span>🎁 Desconto Cashback:</span>
+                        <span>- R$ @ValorCashbackAplicado.ToString("F2")</span>
+                    </div>
+                }
+                <div style="display: flex; justify-content: space-between; font-size: 1.4em; font-weight: 900; color: #d9534f; margin-top: 5px; border-top: 2px dashed #000; padding-top: 10px;">
+                    <span>TOTAL:</span>
+                    <span>R$ @ValorTotalPedido.ToString("F2")</span>
+                </div>
+                
+                <button class="btn-finalizar" style="background: #000; color: #fff; border: 2px solid #000; padding: 10px 20px; font-weight: 900; cursor: pointer; text-transform: uppercase; width: 100%; margin-top: 15px;" @onclick="FinalizarPedido" disabled="@isSubmitting">
+                    @(isSubmitting ? "Enviando..." : "Mandar pra Cozinha 🚀")
+                </button>
+            </div>
+        </div>
+    }
+}
+</div>
+
+@if (mostrarModalSugestao)
+{
+    <div class="modal-overlay">
+        <div class="modal-content" style="text-align: center;">
+            <h2>💡 Dica Quente!</h2>
+            @if (sugestaoTipo == "Bebida")
+            {
+                <p style="font-size: 1.1rem;">Que tal uma <b>bebida bem gelada</b> para acompanhar suas Batatas Fritas?</p>
+            }
+            else
+            {
+                <p style="font-size: 1.1rem;">Ninguém toma bebida sozinha! Que tal adicionar nossas <b>Batatas Supremas</b>?</p>
+            }
+            <div class="modal-footer" style="flex-direction: column; gap: 10px; margin-top: 25px;">
+                <button class="btn-confirmar" style="width: 100%; border-radius: 4px; padding: 12px; font-size: 1.1rem;" @onclick="AceitarSugestao">Sim, ver cardápio!</button>
+                <button class="btn-cancelar" style="width: 100%; border-radius: 4px; border: none; background: transparent; text-decoration: underline; padding: 10px;" @onclick="RecusarSugestao">Não, obrigado. Finalizar Pedido</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private NovoPedidoDto pedidoDto = new NovoPedidoDto();
+    
+    private string mensagemSucesso = "";
+    private string mensagemErro = "";
+    private bool isSubmitting = false;
+    private bool mostrarModalSugestao = false;
+    private string sugestaoTipo = "";
+    private List<BairroDto> bairrosDisponiveis = new();
+    private List<ProdutoDto> produtosLoja = new(); // Used for checking "Apples to Apples" stock
+
+    protected override async Task OnInitializedAsync()
+    {
+        Carrinho.OnChange += StateHasChanged;
+        
+        try
+        {
+            var bairros = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
+            if (bairros != null) bairrosDisponiveis = bairros;
+
+            var prods = await Http.GetFromJsonAsync<List<ProdutoDto>>("api/produtos");
+            if (prods != null) produtosLoja = prods;
+        }
+        catch { /* fail silently if API unavailable */ }
+    }
+
+    private decimal TaxaEntregaAtual 
+    {
+        get 
+        {
+            if (!string.IsNullOrEmpty(Carrinho.TempBairro) && int.TryParse(Carrinho.TempBairro, out int bairroId))
+            {
+                var bairro = bairrosDisponiveis.FirstOrDefault(b => b.Id == bairroId);
+                return bairro?.TaxaEntrega ?? 0m;
+            }
+            return 0m;
+        }
+    }
+
+    private decimal saldoCashback = 0;
+    private bool usarCashback = false;
+    private string mensagemCashback = "";
+
+    private decimal ValorCashbackAplicado => usarCashback ? Math.Min(saldoCashback, Carrinho.Subtotal + TaxaEntregaAtual) : 0;
+
+    private decimal ValorTotalPedido => (Carrinho.Subtotal + TaxaEntregaAtual) - ValorCashbackAplicado;
+
+    private async Task OnTelefoneChanged(ChangeEventArgs e)
+    {
+        Carrinho.TempTelefone = e.Value?.ToString() ?? "";
+        
+        saldoCashback = 0;
+        mensagemCashback = "";
+        usarCashback = false;
+        
+        if (string.IsNullOrWhiteSpace(Carrinho.TempTelefone) || Carrinho.TempTelefone.Length < 10) return;
+
+        var telLimpo = new string(Carrinho.TempTelefone.Where(char.IsDigit).ToArray());
+        try
+        {
+            var r = await Http.GetAsync($"api/cashback/saldo/{telLimpo}");
+            if (r.IsSuccessStatusCode)
+            {
+                var dto = await r.Content.ReadFromJsonAsync<SaldoCashbackDto>();
+                if (dto != null && dto.SaldoAtual > 0)
+                {
+                    saldoCashback = dto.SaldoAtual;
+                    mensagemCashback = $"Você tem R$ {dto.SaldoAtual:F2} de cashback disponível!";
+                }
+            }
+        }
+        catch { }
+    }
+
+    public void Dispose()
+    {
+        Carrinho.OnChange -= StateHasChanged;
+    }
+
+    private void Remover(int produtoId)
+    {
+        Carrinho.RemoverItem(produtoId);
+    }
+
+    private async Task FinalizarPedido()
+    {
+        if (string.IsNullOrWhiteSpace(Carrinho.TempNome) || 
+            string.IsNullOrWhiteSpace(Carrinho.TempRuaAvenida) || 
+            string.IsNullOrWhiteSpace(Carrinho.TempNumeroLocal))
+        {
+            mensagemErro = "Por favor, preencha seu nome, a rua e o número da casa!";
+            return;
+        }
+        
+        if (string.IsNullOrEmpty(Carrinho.TempBairro))
+        {
+            mensagemErro = "Por favor, escolha o seu bairro para a entrega!";
+            return;
+        }
+        
+        if (string.IsNullOrEmpty(Carrinho.TempPagamento))
+        {
+            mensagemErro = "Por favor, escolha a forma de pagamento!";
+            return;
+        }
+
+        // Cross-selling logic
+        bool temBatata = Carrinho.Itens.Any(i => i.CategoriaId == CategoriaEnum.Batatas);
+        bool temBebida = Carrinho.Itens.Any(i => i.CategoriaId == CategoriaEnum.Bebidas);
+
+        bool lojaVendeBebida = produtosLoja.Any(p => p.CategoriaId == CategoriaEnum.Bebidas);
+        bool lojaVendeBatata = produtosLoja.Any(p => p.CategoriaId == CategoriaEnum.Batatas);
+
+        if (temBatata && !temBebida && lojaVendeBebida)
+        {
+            sugestaoTipo = "Bebida";
+            mostrarModalSugestao = true;
+            return;
+        }
+        if (!temBatata && temBebida && lojaVendeBatata)
+        {
+            sugestaoTipo = "Batata";
+            mostrarModalSugestao = true;
+            return;
+        }
+
+        await ProcessarPedidoRealmente();
+    }
+
+    private void AceitarSugestao()
+    {
+        mostrarModalSugestao = false;
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task RecusarSugestao()
+    {
+        mostrarModalSugestao = false;
+        await ProcessarPedidoRealmente();
+    }
+
+    private async Task ProcessarPedidoRealmente()
+    {
+        isSubmitting = true;
+        mensagemErro = "";
+        mensagemSucesso = "";
+
+        // Clone items directly from Cart
+        pedidoDto.Itens = Carrinho.Itens.ToList();
+        
+        // Push State properties to Request DTO
+        pedidoDto.NomeCliente = Carrinho.TempNome;
+        pedidoDto.TelefoneCliente = Carrinho.TempTelefone;
+        pedidoDto.EnderecoEntrega = $"{Carrinho.TempRuaAvenida}, Nº {Carrinho.TempNumeroLocal} - {Carrinho.TempComplementoLocal}".TrimEnd(' ', '-');
+        pedidoDto.MetodoPagamento = (MetodoPagamento)int.Parse(Carrinho.TempPagamento);
+        pedidoDto.BairroEntregaId = int.Parse(Carrinho.TempBairro);
+        pedidoDto.ValorCashbackUsado = ValorCashbackAplicado;
+        
+        if (pedidoDto.MetodoPagamento == MetodoPagamento.Dinheiro && !string.IsNullOrWhiteSpace(Carrinho.TempTroco))
+        {
+            var cleaned = Carrinho.TempTroco.Replace("R$", "").Replace(" ", "");
+            
+            // Aceita virgula ou ponto, converte pra cultura Invariant e tenta fazer o Parse
+            var isDecimal = decimal.TryParse(cleaned.Replace(",", "."), 
+                System.Globalization.NumberStyles.Any, 
+                System.Globalization.CultureInfo.InvariantCulture, 
+                out var parsedTroco);
+                
+            if (isDecimal)
+            {
+                if (parsedTroco < ValorTotalPedido && parsedTroco > 0)
+                {
+                    mensagemErro = $"O valor do troco (R$ {parsedTroco.ToString("F2")}) não pode ser inferior ao Valor Total do pedido (R$ {ValorTotalPedido.ToString("F2")})!";
+                    isSubmitting = false;
+                    return;
+                }
+                pedidoDto.TrocoPara = parsedTroco;
+            }
+        }
+        else
+        {
+            pedidoDto.TrocoPara = null;
+        }
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/pedidos", pedidoDto);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                
+                string linkPagamento = "";
+                if (responseContent.TryGetProperty("linkPagamento", out var linkProp))
+                {
+                    linkPagamento = linkProp.GetString() ?? "";
+                }
+
+                if (!string.IsNullOrEmpty(linkPagamento))
+                {
+                    mensagemSucesso = "Pedido recebido! Redirecionando para o pagamento online...";
+                    Carrinho.LimparCarrinho();
+                    pedidoDto = new NovoPedidoDto();
+                    // Redirecionar para o InfinitePay
+                    Navigation.NavigateTo(linkPagamento);
+                }
+                else
+                {
+                    mensagemSucesso = "Pedido recebido com sucesso! A cozinha já está fritando suas batatas! 🍟";
+                    Carrinho.LimparCarrinho();
+                    pedidoDto = new NovoPedidoDto(); // Reset backend ref
+                }
+            }
+            else
+            {
+                mensagemErro = "Ops! Não conseguimos enviar o pedido para a cozinha. Tente novamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = $"Erro de conexão com o restaurante: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

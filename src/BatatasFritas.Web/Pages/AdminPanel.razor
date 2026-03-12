@@ -1,0 +1,1084 @@
+@page "/admin"
+@layout EmptyLayout
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
+@using BatatasFritas.Web.Services
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject KdsAuthService KdsAuth
+@inject NavigationManager Nav
+
+@if (!carregando)
+{
+<div class="admin-page">
+
+    <!-- HEADER -->
+    <div class="admin-header">
+        <div class="admin-header-brand">
+            <span>⚙️</span>
+            <div>
+                <h1>Painel Admin</h1>
+                <p>Batata Palheta Brutal</p>
+            </div>
+        </div>
+        <div class="admin-header-nav">
+            <a href="/totem" class="admin-nav-link" target="_blank">📱 Totem</a>
+            <a href="/admin/estoque" class="admin-nav-link">📦 Estoque</a>
+            <a href="/admin/dashboard" class="admin-nav-link">📊 Dashboard</a>
+            <a href="/kds" class="admin-nav-link">🍳 KDS</a>
+            <button @onclick="Sair" class="admin-btn-sair">🔒 Sair</button>
+        </div>
+    </div>
+
+    <div class="admin-body">
+
+        <!-- TABS -->
+        <div class="admin-tabs">
+            <button class="admin-tab @(abaAtiva == "produtos" ? "active" : "")" @onclick='() => abaAtiva = "produtos"'>
+                🍟 Produtos (@produtos.Count)
+            </button>
+            <button class="admin-tab @(abaAtiva == "complementos" ? "active" : "")" @onclick='() => abaAtiva = "complementos"'>
+                ➕ Adicionais e Molhos (@complementos.Count)
+            </button>
+            <button class="admin-tab @(abaAtiva == "bairros" ? "active" : "")" @onclick='() => abaAtiva = "bairros"'>
+                📍 Bairros e Taxas (@bairros.Count)
+            </button>
+            <button class="admin-tab @(abaAtiva == "configuracoes" ? "active" : "")" @onclick='() => abaAtiva = "configuracoes"'>
+                ⚙️ Configurações
+            </button>
+        </div>
+
+        <!-- MENSAGENS GLOBAIS -->
+        @if (!string.IsNullOrEmpty(msgSucesso))
+        {
+            <div class="admin-alert admin-alert-ok">✅ @msgSucesso</div>
+        }
+        @if (!string.IsNullOrEmpty(msgErro))
+        {
+            <div class="admin-alert admin-alert-erro">❌ @msgErro</div>
+        }
+
+        <!-- ======================== ABA PRODUTOS ======================== -->
+        @if (abaAtiva == "produtos")
+        {
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h2>Produtos do Cardápio</h2>
+                    <button class="admin-btn-novo" @onclick="AbrirNovoProduto">+ Novo Produto</button>
+                </div>
+
+                <!-- FORMULÁRIO de Criar/Editar -->
+                @if (mostrarFormProduto)
+                {
+                    <div class="admin-form-card">
+                        <h3>@(produtoEdit.Id == 0 ? "Novo Produto" : $"Editando: {produtoEdit.Nome}")</h3>
+                        <div class="admin-form-grid">
+                            <div class="admin-field">
+                                <label>Nome *</label>
+                                <input @bind="produtoEdit.Nome" placeholder="Ex: Batata Suprema Grande" />
+                            </div>
+                            <div class="admin-field">
+                                <label>Preço Base (R$) *</label>
+                                <input type="number" step="0.01" min="0" @bind="produtoEdit.PrecoBase" placeholder="0,00" />
+                            </div>
+                            <div class="admin-field">
+                                <label>Categoria *</label>
+                                <select @bind="produtoEdit.CategoriaId">
+                                    @foreach (var cat in Enum.GetValues<CategoriaEnum>())
+                                    {
+                                        <option value="@cat">@cat</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="admin-field">
+                                <label>URL da Imagem</label>
+                                <input @bind="produtoEdit.ImagemUrl" placeholder="https://..." />
+                            </div>
+                            <div class="admin-field admin-field-full">
+                                <label>Descrição</label>
+                                <textarea @bind="produtoEdit.Descricao" rows="2" placeholder="Descrição opcional..."></textarea>
+                            </div>
+                        </div>
+                        <div class="admin-form-actions">
+                            <button class="admin-btn-salvar" @onclick="SalvarProduto" disabled="@salvando">
+                                @(salvando ? "Salvando..." : "💾 Salvar")
+                            </button>
+                            <button class="admin-btn-cancelar" @onclick="FecharFormProduto">Cancelar</button>
+                        </div>
+                    </div>
+                }
+
+                <!-- TABELA de Produtos -->
+                @if (produtos.Any())
+                {
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:60px">Ordem</th>
+                                    <th>Nome</th>
+                                    <th>Categoria</th>
+                                    <th>Preço</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int idx = 0; idx < produtos.Count; idx++)
+                                {
+                                    var p = produtos[idx];
+                                    var posicao = idx; // captura para lambda
+                                    <tr class="@(!p.Ativo ? "admin-row-inativo" : "")">
+                                        <td class="admin-td-id">
+                                            <div class="admin-ordem-ctrl">
+                                                <button class="admin-btn-ordem" @onclick="() => MoverCima(posicao)" disabled="@(posicao == 0 || salvandoOrdem)" title="Mover para cima">▲</button>
+                                                <span>@(posicao + 1)º</span>
+                                                <button class="admin-btn-ordem" @onclick="() => MoverBaixo(posicao)" disabled="@(posicao == produtos.Count - 1 || salvandoOrdem)" title="Mover para baixo">▼</button>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <strong>@p.Nome</strong>
+                                            @if (!string.IsNullOrEmpty(p.Descricao))
+                                            {
+                                                <br /><small style="color:#888">@p.Descricao</small>
+                                            }
+                                        </td>
+                                        <td><span class="admin-badge">@p.CategoriaId</span></td>
+                                        <td class="admin-td-preco">R$ @p.PrecoBase.ToString("F2")</td>
+                                        <td>
+                                            @if (p.Ativo)
+                                            {
+                                                <span class="admin-status-ativo">● Ativo</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="admin-status-inativo">● Inativo</span>
+                                            }
+                                        </td>
+                                        <td class="admin-td-acoes">
+                                            <button class="admin-btn-editar" @onclick="() => EditarProduto(p)" title="Editar">✏️</button>
+                                            <button class="admin-btn-editar" @onclick="() => AbrirModalReceita(p)" title="Receita (Insumos)">👨‍🍳</button>
+                                            @if (p.Ativo)
+                                            {
+                                                <button class="admin-btn-toggle" @onclick="() => ToggleProduto(p, false)" title="Desativar do cardápio">🔴</button>
+                                            }
+                                            else
+                                            {
+                                                <button class="admin-btn-toggle" @onclick="() => ToggleProduto(p, true)" title="Ativar no cardápio">🟢</button>
+                                            }
+                                            <button class="admin-btn-deletar" @onclick="() => DeletarProduto(p)" title="Excluir permanentemente">🗑️</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else if (!carregando)
+                {
+                    <p class="admin-vazio">Nenhum produto cadastrado ainda. Clique em "+ Novo Produto" para começar.</p>
+                }
+
+                <!-- ======================== MODAL RECEITA ======================== -->
+                @if (mostrarModalReceita && receitaProduto != null)
+                {
+                    <div class="modal-overlay">
+                        <div class="modal-content" style="max-width: 600px;">
+                            <button class="modal-close-btn" @onclick="FecharModalReceita">✕</button>
+                            <h2>👨‍🍳 Receita: @receitaProduto.Nome</h2>
+                            <p style="color:#666; font-size: 0.9rem; margin-bottom: 20px;">Adicione quais insumos são consumidos do estoque a cada unidade vendida (Ex: 0.400 kg de Batata).</p>
+
+                            <!-- Adicionar novo Insumo -->
+                            <div style="display:flex; gap:10px; margin-bottom:20px; align-items: flex-end;">
+                                <div style="flex:2">
+                                    <label style="font-size:0.85rem; font-weight:bold; display:block; margin-bottom:4px;">Insumo</label>
+                                    <select @bind="novoInsumoId" style="width:100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px;">
+                                        <option value="0">Selecione...</option>
+                                        @foreach(var insumo in todosInsumos)
+                                        {
+                                            <option value="@insumo.Id">@insumo.Nome (@insumo.Unidade)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div style="flex:1">
+                                    <label style="font-size:0.85rem; font-weight:bold; display:block; margin-bottom:4px;">Quantidade</label>
+                                    <input type="number" step="0.001" @bind="novaQtdeInsumo" style="width:100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px;" placeholder="Ex: 0,400" />
+                                </div>
+                                <button @onclick="AdicionarItemReceita" style="background:#27ae60; color:#fff; border:none; padding:12px 18px; border-radius:6px; font-weight:bold; cursor:pointer;" disabled="@salvandoReceita">
+                                    +(In)
+                                </button>
+                            </div>
+
+                            <!-- Lista atual da receita -->
+                            @if (itensReceita.Any())
+                            {
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Insumo</th>
+                                            <th>Quantidade</th>
+                                            <th>Remover</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach(var item in itensReceita)
+                                        {
+                                            <tr>
+                                                <td>@item.InsumoNome</td>
+                                                <td><strong>@item.QuantidadePorUnidade</strong> <small style="color:#888">@item.InsumoUnidade</small></td>
+                                                <td>
+                                                    <button @onclick="() => RemoverItemReceita(item.Id)" style="background:transparent; border:none; font-size:1.2rem; cursor:pointer;" title="Remover Insumo">🗑️</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <div style="padding:20px; text-align:center; background:#fafafa; border:2px dashed #ddd; border-radius:8px; color:#999; margin-top:10px;">
+                                    Este produto não reduz nada do estoque quando vendido.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+            </div>
+        }
+
+        <!-- ======================== ABA COMPLEMENTOS ======================== -->
+        @if (abaAtiva == "complementos")
+        {
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h2>Adicionais, Molhos e Remoções</h2>
+                    <button class="admin-btn-novo" @onclick="AbrirNovoComplemento">+ Novo Adicional</button>
+                </div>
+
+                <!-- FORMULÁRIO de Criar/Editar Complemento -->
+                @if (mostrarFormComplemento)
+                {
+                    <div class="admin-form-card">
+                        <h3>@(complementoEdit.Id == 0 ? "Novo Adicional" : $"Editando: {complementoEdit.Nome}")</h3>
+                        <div class="admin-form-grid">
+                            <div class="admin-field">
+                                <label>Nome *</label>
+                                <input @bind="complementoEdit.Nome" placeholder="Ex: Bacon, Sem Cebola..." />
+                            </div>
+                            <div class="admin-field">
+                                <label>Preço (R$) *</label>
+                                <input type="number" step="0.01" min="0" @bind="complementoEdit.Preco" placeholder="0,00" />
+                            </div>
+                            <div class="admin-field">
+                                <label>Tipo de Personalização *</label>
+                                <select @bind="complementoEdit.TipoAcao">
+                                    <option value="AdicionalPago">Adicional Pago (+ R$)</option>
+                                    <option value="MolhoGratuito">Molho Gratuito</option>
+                                    <option value="Remocao">Remoção (Ex: Sem cebola)</option>
+                                </select>
+                            </div>
+                            <div class="admin-field">
+                                <label>Sessão/Categoria *</label>
+                                <select @bind="complementoEdit.CategoriaAlvo">
+                                    <option value="Todas">Todas as Categorias</option>
+                                    @foreach (var cat in Enum.GetValues<CategoriaEnum>())
+                                    {
+                                        <option value="@cat.ToString()">Apenas @cat</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="admin-form-actions">
+                            <button class="admin-btn-salvar" @onclick="SalvarComplemento" disabled="@salvando">
+                                @(salvando ? "Salvando..." : "💾 Salvar")
+                            </button>
+                            <button class="admin-btn-cancelar" @onclick="FecharFormComplemento">Cancelar</button>
+                        </div>
+                    </div>
+                }
+
+                <!-- TABELA de Complementos -->
+                @if (complementos.Any())
+                {
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Preço</th>
+                                    <th>Aplica-se a</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in complementos)
+                                {
+                                    <tr class="@(!c.Ativo ? "admin-row-inativo" : "")">
+                                        <td><strong>@c.Nome</strong></td>
+                                        <td><span class="admin-badge">@c.TipoAcao</span></td>
+                                        <td class="admin-td-preco">R$ @c.Preco.ToString("F2")</td>
+                                        <td>@c.CategoriaAlvo</td>
+                                        <td>
+                                            @if (c.Ativo) { <span class="admin-status-ativo">● Ativo</span> }
+                                            else { <span class="admin-status-inativo">● Inativo</span> }
+                                        </td>
+                                        <td class="admin-td-acoes">
+                                            <button class="admin-btn-editar" @onclick="() => EditarComplemento(c)" title="Editar">✏️</button>
+                                            <button class="admin-btn-toggle" @onclick="() => ToggleComplemento(c, !c.Ativo)" title="Ativar/Desativar">
+                                                @(c.Ativo ? "🔴" : "🟢")
+                                            </button>
+                                            <button class="admin-btn-deletar" @onclick="() => DeletarComplemento(c)" title="Excluir">🗑️</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else if (!carregando)
+                {
+                    <p class="admin-vazio">Nenhum complemento cadastrado ainda. Clique em "+ Novo Adicional" para começar.</p>
+                }
+            </div>
+        }
+
+        <!-- ======================== ABA BAIRROS ======================== -->
+        @if (abaAtiva == "bairros")
+        {
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h2>Bairros e Taxas de Entrega</h2>
+                    <button class="admin-btn-novo" @onclick="AbrirNovoBairro">+ Novo Bairro</button>
+                </div>
+
+                <!-- FORMULÁRIO de Criar/Editar Bairro -->
+                @if (mostrarFormBairro)
+                {
+                    <div class="admin-form-card">
+                        <h3>@(bairroEdit.Id == 0 ? "Novo Bairro" : $"Editando: {bairroEdit.Nome}")</h3>
+                        <div class="admin-form-grid">
+                            <div class="admin-field">
+                                <label>Nome do Bairro *</label>
+                                <input @bind="bairroEdit.Nome" placeholder="Ex: Centro" />
+                            </div>
+                            <div class="admin-field">
+                                <label>Taxa de Entrega (R$) *</label>
+                                <input type="number" step="0.01" min="0" @bind="bairroEdit.TaxaEntrega" placeholder="0,00" />
+                            </div>
+                        </div>
+                        <div class="admin-form-actions">
+                            <button class="admin-btn-salvar" @onclick="SalvarBairro" disabled="@salvando">
+                                @(salvando ? "Salvando..." : "💾 Salvar")
+                            </button>
+                            <button class="admin-btn-cancelar" @onclick="FecharFormBairro">Cancelar</button>
+                        </div>
+                    </div>
+                }
+
+                <!-- TABELA de Bairros -->
+                @if (bairros.Any())
+                {
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nome do Bairro</th>
+                                    <th>Taxa de Entrega</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var b in bairros)
+                                {
+                                    <tr>
+                                        <td class="admin-td-id">@b.Id</td>
+                                        <td><strong>@b.Nome</strong></td>
+                                        <td class="admin-td-preco">R$ @b.TaxaEntrega.ToString("F2")</td>
+                                        <td class="admin-td-acoes">
+                                            <button class="admin-btn-editar" @onclick="() => EditarBairro(b)" title="Editar">✏️</button>
+                                            <button class="admin-btn-deletar" @onclick="() => DeletarBairro(b)" title="Excluir">🗑️</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else if (!carregando)
+                {
+                    <p class="admin-vazio">Nenhum bairro cadastrado ainda. Clique em "+ Novo Bairro" para começar.</p>
+                }
+            </div>
+        }
+
+        <!-- ======================== ABA CONFIGURAÇÕES ======================== -->
+        @if (abaAtiva == "configuracoes")
+        {
+            <div class="admin-section">
+                <!-- Seção Cashback -->
+                <div class="admin-section-header">
+                    <h2>Cashback</h2>
+                </div>
+                <div class="admin-form-card" style="margin-bottom: 24px;">
+                    <h3>🎁 Porcentagem de Cashback</h3>
+                    <p style="color:#666; font-size:0.9rem; margin-bottom:16px;">
+                        Defina a porcentagem de cashback que os clientes ganham em cada compra. Coloque 0 para desativar.
+                    </p>
+                    <div class="admin-form-grid" style="grid-template-columns: 1fr;">
+                        <div class="admin-field">
+                            <label>Cashback (%) *</label>
+                            <input type="number" step="0.1" min="0" max="100" @bind="porcentagemCashback" placeholder="Ex: 5" style="max-width: 150px;" />
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(msgCashbackOk))
+                    {
+                        <div class="admin-alert admin-alert-ok" style="margin-top:12px;">✅ @msgCashbackOk</div>
+                    }
+                    @if (!string.IsNullOrEmpty(msgCashbackErro))
+                    {
+                        <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgCashbackErro</div>
+                    }
+                    <div class="admin-form-actions" style="margin-top:16px;">
+                        <button class="admin-btn-salvar" @onclick="SalvarCashback" disabled="@salvandoCashback">
+                            @(salvandoCashback ? "Salvando..." : "💾 Salvar Configuração")
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Seção Segurança -->
+                <div class="admin-section-header">
+                    <h2>Alterar Senha do KDS / Admin</h2>
+                </div>
+
+                <div class="admin-form-card" style="max-width: 480px;">
+                    <h3>🔐 Nova Senha de Acesso</h3>
+                    <p style="color:#666; font-size:0.9rem; margin-bottom:16px;">
+                        Esta senha é usada para acessar o Monitor da Cozinha (KDS) e este Painel Admin.
+                        A senha padrão de fábrica é <strong>palheta2025</strong>.
+                    </p>
+
+                    <div class="admin-form-grid" style="grid-template-columns: 1fr;">
+                        <div class="admin-field">
+                            <label>Senha Atual *</label>
+                            <input type="password" @bind="senhaAtual" placeholder="Digite a senha atual..." />
+                        </div>
+                        <div class="admin-field">
+                            <label>Nova Senha *</label>
+                            <input type="password" @bind="novaSenha" placeholder="Mínimo 4 caracteres..." />
+                        </div>
+                        <div class="admin-field">
+                            <label>Confirmar Nova Senha *</label>
+                            <input type="password" @bind="confirmarSenha" placeholder="Repita a nova senha..." />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(msgSenhaOk))
+                    {
+                        <div class="admin-alert admin-alert-ok" style="margin-top:12px;">✅ @msgSenhaOk</div>
+                    }
+                    @if (!string.IsNullOrEmpty(msgSenhaErro))
+                    {
+                        <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgSenhaErro</div>
+                    }
+
+                    <div class="admin-form-actions" style="margin-top:16px;">
+                        <button class="admin-btn-salvar" @onclick="AlterarSenha" disabled="@alterandoSenha">
+                            @(alterandoSenha ? "Salvando..." : "🔑 Alterar Senha")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+    </div><!-- /admin-body -->
+</div>
+}
+
+@code {
+    private string abaAtiva = "produtos";
+    private bool carregando = true;
+    private bool salvando = false;
+    private string msgSucesso = "";
+    private string msgErro = "";
+
+    private List<ProdutoDto> produtos = new();
+    private List<BairroDto> bairros = new();
+    private List<ComplementoDto> complementos = new();
+    
+    // Modal Receita State
+    private bool mostrarModalReceita = false;
+    private ProdutoDto? receitaProduto = null;
+    private List<ItemReceitaDto> itensReceita = new();
+    private List<InsumoDto> todosInsumos = new();
+    private int novoInsumoId = 0;
+    private decimal novaQtdeInsumo = 0;
+    private bool salvandoReceita = false;
+
+    private bool mostrarFormProduto = false;
+    private bool mostrarFormBairro = false;
+    private bool mostrarFormComplemento = false;
+
+    private ProdutoDto produtoEdit = new();
+    private BairroDto bairroEdit = new();
+    private ComplementoDto complementoEdit = new();
+
+    // ── Aba Configurações (Cashback) ──
+    private decimal porcentagemCashback = 0;
+    private string msgCashbackOk = string.Empty;
+    private string msgCashbackErro = string.Empty;
+    private bool salvandoCashback = false;
+
+    // ── Aba Configurações (Segurança) ──
+    private string senhaAtual     = string.Empty;
+    private string novaSenha      = string.Empty;
+    private string confirmarSenha = string.Empty;
+    private string msgSenhaOk     = string.Empty;
+    private string msgSenhaErro   = string.Empty;
+    private bool   alterandoSenha = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Guard de autenticação
+        if (!await KdsAuth.EstaAutenticadoAsync())
+        {
+            Nav.NavigateTo("/kds/login", replace: true);
+            return;
+        }
+
+        await CarregarTudo();
+        carregando = false;
+    }
+
+    private async Task CarregarTudo()
+    {
+        try
+        {
+            var prods = await Http.GetFromJsonAsync<List<ProdutoDto>>("api/produtos");
+            if (prods != null) produtos = prods;
+
+            var bairrList = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
+            if (bairrList != null) bairros = bairrList;
+
+            var compList = await Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos");
+            if (compList != null) complementos = compList;
+
+            var cbConfig = await Http.GetFromJsonAsync<CashbackConfigDto>("api/cashback/configuracao");
+            if (cbConfig != null) porcentagemCashback = cbConfig.Porcentagem;
+        }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro ao carregar dados da API: {ex.Message}";
+        }
+    }
+
+    private void LimparMensagens()
+    {
+        msgSucesso = "";
+        msgErro = "";
+    }
+
+    private async Task Sair()
+    {
+        await KdsAuth.LogoutAsync();
+        Nav.NavigateTo("/kds/login", replace: true);
+    }
+
+    // ======================== ORDEM DOS PRODUTOS ========================
+
+    private bool salvandoOrdem = false;
+
+    private async Task MoverCima(int indice)
+    {
+        if (indice <= 0) return;
+        // Troca na lista local
+        (produtos[indice], produtos[indice - 1]) = (produtos[indice - 1], produtos[indice]);
+        await SalvarOrdem();
+    }
+
+    private async Task MoverBaixo(int indice)
+    {
+        if (indice >= produtos.Count - 1) return;
+        (produtos[indice], produtos[indice + 1]) = (produtos[indice + 1], produtos[indice]);
+        await SalvarOrdem();
+    }
+
+    private async Task SalvarOrdem()
+    {
+        salvandoOrdem = true;
+        LimparMensagens();
+        try
+        {
+            // Gera a lista com a nova posição de cada produto (0-based)
+            var payload = produtos
+                .Select((p, idx) => new ReordenarProdutoItem(p.Id, idx))
+                .ToList();
+
+            var response = await Http.PatchAsJsonAsync("api/produtos/reordenar", payload);
+            if (!response.IsSuccessStatusCode)
+                msgErro = "Erro ao salvar a nova ordem. Tente novamente.";
+        }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            salvandoOrdem = false;
+        }
+    }
+
+    // ======================== PRODUTOS ========================
+
+    private void AbrirNovoProduto()
+    {
+        LimparMensagens();
+        produtoEdit = new ProdutoDto { Ativo = true };
+        mostrarFormProduto = true;
+        mostrarFormBairro = false;
+    }
+
+    private void EditarProduto(ProdutoDto p)
+    {
+        LimparMensagens();
+        produtoEdit = new ProdutoDto
+        {
+            Id = p.Id,
+            Nome = p.Nome,
+            Descricao = p.Descricao,
+            CategoriaId = p.CategoriaId,
+            PrecoBase = p.PrecoBase,
+            ImagemUrl = p.ImagemUrl,
+            Ativo = p.Ativo
+        };
+        mostrarFormProduto = true;
+        mostrarFormBairro = false;
+    }
+
+    private void FecharFormProduto()
+    {
+        mostrarFormProduto = false;
+        produtoEdit = new();
+    }
+
+    private async Task SalvarProduto()
+    {
+        if (string.IsNullOrWhiteSpace(produtoEdit.Nome) || produtoEdit.PrecoBase <= 0)
+        {
+            msgErro = "Nome e Preço são obrigatórios!";
+            return;
+        }
+
+        LimparMensagens();
+        salvando = true;
+
+        try
+        {
+            HttpResponseMessage response;
+            if (produtoEdit.Id == 0)
+                response = await Http.PostAsJsonAsync("api/produtos", produtoEdit);
+            else
+                response = await Http.PutAsJsonAsync($"api/produtos/{produtoEdit.Id}", produtoEdit);
+
+            if (response.IsSuccessStatusCode)
+            {
+                msgSucesso = produtoEdit.Id == 0 ? "Produto criado com sucesso!" : "Produto atualizado com sucesso!";
+                FecharFormProduto();
+                await CarregarTudo();
+            }
+            else
+            {
+                msgErro = $"Erro ao salvar: {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally { salvando = false; }
+    }
+
+    private async Task ToggleProduto(ProdutoDto p, bool ativar)
+    {
+        LimparMensagens();
+        var endpoint = ativar ? $"api/produtos/{p.Id}/ativar" : $"api/produtos/{p.Id}/desativar";
+        var response = await Http.PatchAsync(endpoint, null);
+        if (response.IsSuccessStatusCode)
+        {
+            msgSucesso = ativar ? $"'{p.Nome}' ativado no cardápio!" : $"'{p.Nome}' removido do cardápio!";
+            await CarregarTudo();
+        }
+        else
+        {
+            msgErro = "Erro ao alterar status do produto.";
+        }
+    }
+
+    private async Task DeletarProduto(ProdutoDto p)
+    {
+        LimparMensagens();
+        var response = await Http.DeleteAsync($"api/produtos/{p.Id}");
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            // Excluído fisicamente
+            msgSucesso = $"Produto '{p.Nome}' excluído permanentemente.";
+            await CarregarTudo();
+        }
+        else if (response.IsSuccessStatusCode)
+        {
+            // Soft-delete: produto tinha pedidos vinculados, foi desativado
+            var resultado = await response.Content.ReadFromJsonAsync<SoftDeleteResponse>();
+            msgSucesso = resultado?.Mensagem ?? $"'{p.Nome}' foi desativado do cardápio (possui pedidos vinculados).";
+            await CarregarTudo();
+        }
+        else
+        {
+            msgErro = $"Erro ao excluir produto: {await response.Content.ReadAsStringAsync()}";
+        }
+    }
+
+    // ======================== COMPLEMENTOS ========================
+
+    private void AbrirNovoComplemento()
+    {
+        LimparMensagens();
+        complementoEdit = new ComplementoDto { Ativo = true, TipoAcao = "AdicionalPago", CategoriaAlvo = "Todas" };
+        mostrarFormComplemento = true;
+        mostrarFormProduto = false;
+        mostrarFormBairro = false;
+    }
+
+    private void EditarComplemento(ComplementoDto c)
+    {
+        LimparMensagens();
+        complementoEdit = new ComplementoDto
+        {
+            Id = c.Id,
+            Nome = c.Nome,
+            Preco = c.Preco,
+            TipoAcao = c.TipoAcao,
+            CategoriaAlvo = c.CategoriaAlvo,
+            Ativo = c.Ativo
+        };
+        mostrarFormComplemento = true;
+        mostrarFormProduto = false;
+        mostrarFormBairro = false;
+    }
+
+    private void FecharFormComplemento()
+    {
+        mostrarFormComplemento = false;
+        complementoEdit = new ComplementoDto();
+    }
+
+    private async Task SalvarComplemento()
+    {
+        if (string.IsNullOrWhiteSpace(complementoEdit.Nome))
+        {
+            msgErro = "Nome é obrigatório!";
+            return;
+        }
+
+        LimparMensagens();
+        salvando = true;
+
+        try
+        {
+            HttpResponseMessage response;
+            if (complementoEdit.Id == 0)
+                response = await Http.PostAsJsonAsync("api/complementos", complementoEdit);
+            else
+                response = await Http.PutAsJsonAsync($"api/complementos/{complementoEdit.Id}", complementoEdit);
+
+            if (response.IsSuccessStatusCode)
+            {
+                msgSucesso = "Adicional salvo com sucesso!";
+                FecharFormComplemento();
+                await CarregarTudo();
+            }
+            else
+            {
+                msgErro = "Erro ao salvar o adicional.";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally { salvando = false; }
+    }
+
+    private async Task ToggleComplemento(ComplementoDto c, bool ativar)
+    {
+        LimparMensagens();
+        var response = await Http.PutAsJsonAsync($"api/complementos/{c.Id}/toggle", ativar);
+        if (response.IsSuccessStatusCode)
+        {
+            msgSucesso = ativar ? $"'{c.Nome}' ativado!" : $"'{c.Nome}' desativado!";
+            await CarregarTudo();
+        }
+    }
+
+    private async Task DeletarComplemento(ComplementoDto c)
+    {
+        LimparMensagens();
+        var response = await Http.DeleteAsync($"api/complementos/{c.Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            msgSucesso = $"'{c.Nome}' excluído permanentemente.";
+            await CarregarTudo();
+        }
+    }
+
+    // ======================== BAIRROS ========================
+
+    private void AbrirNovoBairro()
+    {
+        LimparMensagens();
+        bairroEdit = new BairroDto();
+        mostrarFormBairro = true;
+        mostrarFormProduto = false;
+    }
+
+    private void EditarBairro(BairroDto b)
+    {
+        LimparMensagens();
+        bairroEdit = new BairroDto { Id = b.Id, Nome = b.Nome, TaxaEntrega = b.TaxaEntrega };
+        mostrarFormBairro = true;
+        mostrarFormProduto = false;
+    }
+
+    private void FecharFormBairro()
+    {
+        mostrarFormBairro = false;
+        bairroEdit = new();
+    }
+
+    private async Task SalvarBairro()
+    {
+        if (string.IsNullOrWhiteSpace(bairroEdit.Nome))
+        {
+            msgErro = "Nome do bairro é obrigatório!";
+            return;
+        }
+
+        LimparMensagens();
+        salvando = true;
+
+        try
+        {
+            HttpResponseMessage response;
+            if (bairroEdit.Id == 0)
+                response = await Http.PostAsJsonAsync("api/bairros", bairroEdit);
+            else
+                response = await Http.PutAsJsonAsync($"api/bairros/{bairroEdit.Id}", bairroEdit);
+
+            if (response.IsSuccessStatusCode)
+            {
+                msgSucesso = bairroEdit.Id == 0 ? "Bairro criado com sucesso!" : "Bairro atualizado com sucesso!";
+                FecharFormBairro();
+                await CarregarTudo();
+            }
+            else
+            {
+                msgErro = $"Erro ao salvar bairro: {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally { salvando = false; }
+    }
+
+    private async Task DeletarBairro(BairroDto b)
+    {
+        LimparMensagens();
+        var response = await Http.DeleteAsync($"api/bairros/{b.Id}");
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            msgSucesso = $"Bairro '{b.Nome}' excluído.";
+            await CarregarTudo();
+        }
+        else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            msgErro = await response.Content.ReadAsStringAsync();
+        }
+        else
+        {
+            msgErro = $"Erro ao excluir bairro: {await response.Content.ReadAsStringAsync()}";
+        }
+    }
+
+    // ======================== SEGURANÇA ========================
+
+    private async Task AlterarSenha()
+    {
+        msgSenhaOk  = string.Empty;
+        msgSenhaErro = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(senhaAtual) || string.IsNullOrWhiteSpace(novaSenha) || string.IsNullOrWhiteSpace(confirmarSenha))
+        {
+            msgSenhaErro = "Preencha todos os campos.";
+            return;
+        }
+        if (novaSenha != confirmarSenha)
+        {
+            msgSenhaErro = "A nova senha e a confirmação não coincidem.";
+            return;
+        }
+        if (novaSenha.Length < 4)
+        {
+            msgSenhaErro = "A nova senha deve ter ao menos 4 caracteres.";
+            return;
+        }
+
+        alterandoSenha = true;
+        try
+        {
+            var body = new AlterarSenhaRequest { SenhaAtual = senhaAtual, NovaSenha = novaSenha };
+            var response = await Http.PostAsJsonAsync("api/configuracoes/auth/alterar-senha", body);
+
+            if (response.IsSuccessStatusCode)
+            {
+                msgSenhaOk    = "Senha alterada com sucesso! Use a nova senha no próximo login.";
+                senhaAtual    = string.Empty;
+                novaSenha     = string.Empty;
+                confirmarSenha = string.Empty;
+            }
+            else
+            {
+                msgSenhaErro = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            msgSenhaErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            alterandoSenha = false;
+        }
+    }
+
+    // ======================== CASHBACK ========================
+
+    private async Task SalvarCashback()
+    {
+        msgCashbackOk = string.Empty;
+        msgCashbackErro = string.Empty;
+        salvandoCashback = true;
+        
+        try
+        {
+            var body = new CashbackConfigDto { Porcentagem = porcentagemCashback };
+            var response = await Http.PostAsJsonAsync("api/cashback/configuracao", body);
+
+            if (response.IsSuccessStatusCode)
+            {
+                msgCashbackOk = "Configuração de Cashback salva com sucesso!";
+            }
+            else
+            {
+                msgCashbackErro = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            msgCashbackErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            salvandoCashback = false;
+        }
+    }
+
+    // ======================== MODAL RECEITA ========================
+
+    private async Task AbrirModalReceita(ProdutoDto p)
+    {
+        receitaProduto = p;
+        mostrarModalReceita = true;
+        novoInsumoId = 0;
+        novaQtdeInsumo = 0;
+        
+        // Busca insumos para o combobox
+        try
+        {
+            var rInsumos = await Http.GetFromJsonAsync<List<InsumoDto>>("api/insumos");
+            if (rInsumos != null) todosInsumos = rInsumos;
+        } catch { }
+
+        await CarregarItensReceita(p.Id);
+    }
+
+    private void FecharModalReceita()
+    {
+        mostrarModalReceita = false;
+        receitaProduto = null;
+        itensReceita.Clear();
+    }
+
+    private async Task CarregarItensReceita(int produtoId)
+    {
+        try
+        {
+            var r = await Http.GetFromJsonAsync<List<ItemReceitaDto>>($"api/produtos/{produtoId}/receita");
+            if (r != null) itensReceita = r;
+        }
+        catch { itensReceita.Clear(); }
+    }
+
+    private async Task AdicionarItemReceita()
+    {
+        if (receitaProduto == null || novoInsumoId == 0 || novaQtdeInsumo <= 0) return;
+        salvandoReceita = true;
+
+        try
+        {
+            var dto = new NovoItemReceitaDto
+            {
+                InsumoId = novoInsumoId,
+                QuantidadePorUnidade = novaQtdeInsumo
+            };
+            var res = await Http.PostAsJsonAsync($"api/produtos/{receitaProduto.Id}/receita", dto);
+            
+            if (res.IsSuccessStatusCode)
+            {
+                await CarregarItensReceita(receitaProduto.Id);
+                novoInsumoId = 0;
+                novaQtdeInsumo = 0;
+            }
+            else
+            {
+                msgErro = "Erro ao adicionar insumo à receita.";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally { salvandoReceita = false; }
+    }
+
+    private async Task RemoverItemReceita(int receitaId)
+    {
+        if (receitaProduto == null) return;
+        try
+        {
+            var res = await Http.DeleteAsync($"api/produtos/{receitaProduto.Id}/receita/{receitaId}");
+            if (res.IsSuccessStatusCode)
+            {
+                await CarregarItensReceita(receitaProduto.Id);
+            }
+        }
+        catch { }
+    }
+
+    // DTO para deserializar resposta de soft-delete da API
+    private record SoftDeleteResponse(bool SoftDelete, string Mensagem);
+}
