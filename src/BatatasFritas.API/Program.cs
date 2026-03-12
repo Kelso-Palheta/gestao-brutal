@@ -46,8 +46,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowBlazorClient");
 app.UseRouting();
+app.UseCors("AllowBlazorClient");
 app.UseAuthorization();
 app.MapControllers();
 
