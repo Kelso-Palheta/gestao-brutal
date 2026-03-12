@@ -15,7 +15,7 @@ public class Program
         // Configuração para consultar a API através do domínio que o Coolify gerar (usando o caminho atual /api não funcionou no proxy do Nginx no Coolify)
         var apiUrl = builder.HostEnvironment.BaseAddress.Contains("localhost") 
             ? "http://localhost:5062" 
-            : builder.HostEnvironment.BaseAddress.Replace("xw4owos4wwckck440w4gg48k", "t00skwc00sg0csgw0ck8g4ks"); // Mapeia o frontend (xw4) pro dominio da API (t00) gerado pelo Coolify
+            : builder.HostEnvironment.BaseAddress.Replace("xw4owos4wwckck440w4gg48k", "t00skwc00sg0csgw0ck8g4ks").Replace("http://", "https://"); // Mapeia o frontend pro dominio da API e força HTTPS
         
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
         builder.Services.AddSingleton<CarrinhoState>();
