@@ -47,6 +47,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowBlazorClient");
+app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();
 
