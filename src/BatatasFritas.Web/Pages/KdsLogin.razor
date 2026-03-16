@@ -50,14 +50,18 @@
     private string senha = "";
     private string erroMsg = "";
     private bool carregando = false;
-
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public string? ReturnUrl { get; set; }
+    private string? returnUrl;
 
     protected override async Task OnInitializedAsync()
     {
-        // Se já estiver logado, redireciona para a página de destino ou KDS por padrão
+        // Extrai o ReturnUrl manualmente da Query String
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var url))
+        {
+            returnUrl = url;
+        }
+
+        // Se já estiver logado, redireciona
         if (await KdsAuth.EstaAutenticadoAsync())
         {
             FazerRedirecionamento();
@@ -91,9 +95,9 @@
 
     private void FazerRedirecionamento()
     {
-        if (!string.IsNullOrEmpty(ReturnUrl))
+        if (!string.IsNullOrEmpty(returnUrl))
         {
-            Nav.NavigateTo(ReturnUrl, replace: true);
+            Nav.NavigateTo(returnUrl, replace: true);
         }
         else
         {
