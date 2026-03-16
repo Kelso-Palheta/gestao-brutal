@@ -13,9 +13,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrEmpty(connectionString))
+if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new System.Exception("Connection string 'DefaultConnection' not found.");
+    throw new System.Exception("Connection string 'DefaultConnection' not found or is empty.");
 }
 
 builder.Services.AddInfrastructure(connectionString);
