@@ -12,10 +12,11 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        // Configuração para consultar a API através do domínio que o Coolify gerar (usando o caminho atual /api não funcionou no proxy do Nginx no Coolify)
-        var apiUrl = builder.HostEnvironment.BaseAddress.Contains("localhost") 
-            ? "http://localhost:5062" 
-            : builder.HostEnvironment.BaseAddress.Replace("xw4owos4wwckck440w4gg48k", "t00skwc00sg0csgw0ck8g4ks").Replace("http://", "https://"); // Mapeia o frontend pro dominio da API e força HTTPS
+        // URL da API: usa variável de ambiente API_BASE_URL injetada pelo Resfrie/Coolify,
+        // ou cai para localhost em desenvolvimento.
+        var apiUrl = builder.Configuration["ApiSettings:BaseUrl"] 
+            ?? Environment.GetEnvironmentVariable("API_BASE_URL")
+            ?? (builder.HostEnvironment.IsDevelopment() ? "http://localhost:5062" : builder.HostEnvironment.BaseAddress);
         
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
         builder.Services.AddSingleton<CarrinhoState>();

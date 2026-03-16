@@ -6,11 +6,18 @@ services:
     container_name: batatas_fritas_db_prod
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mysecretpassword # REDEFINA EM PRODUCAO
+      POSTGRES_PASSWORD: mysecretpassword
       POSTGRES_DB: batatasfritasdb
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     restart: unless-stopped
+    # Healthcheck: o DB só fica "ready" quando aceitar conexões
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d batatasfritasdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   api:
     build:
@@ -19,9 +26,13 @@ services:
     container_name: batatas_fritas_api
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Host=db;Database=batatasfritasdb;Username=postgres;Password=mysecretpassword
+    ports:
+      - "8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy   # Só sobe APÓS o banco estar saudável
     restart: unless-stopped
 
   web:
@@ -29,6 +40,12 @@ services:
       context: .
       dockerfile: src/BatatasFritas.Web/Dockerfile
     container_name: batatas_fritas_web
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-}  # URL da API injetada pelo Resfrie
+    ports:
+      - "80"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
