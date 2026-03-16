@@ -1,6 +1,7 @@
 @page "/kds/login"
 @layout EmptyLayout
 @using BatatasFritas.Web.Services
+@using Microsoft.AspNetCore.WebUtilities
 @inject KdsAuthService KdsAuth
 @inject NavigationManager Nav
 
@@ -9,7 +10,7 @@
         <div class="kds-login-logo">
             <h1>🍟</h1>
             <h2>BATATA<br/>PALHETA BRUTAL</h2>
-            <p class="kds-login-subtitle">Monitor da Cozinha (KDS)</p>
+            <p class="kds-login-subtitle">Acesso Restrito</p>
         </div>
 
         <div class="kds-login-form">
@@ -25,7 +26,7 @@
                 <input type="password"
                        @bind="senha"
                        @onkeydown="TeclaPressionada"
-                       placeholder="Digite a senha da cozinha..."
+                       placeholder="Digite a senha de acesso..."
                        class="kds-login-input"
                        id="input-senha-kds"
                        autocomplete="current-password" />
@@ -38,7 +39,7 @@
                 }
                 else
                 {
-                    <span>🔓 Entrar na Cozinha</span>
+                    <span>🔓 Entrar no Sistema</span>
                 }
             </button>
         </div>
@@ -50,12 +51,16 @@
     private string erroMsg = "";
     private bool carregando = false;
 
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
-        // Se já estiver logado, vai direto pro KDS
+        // Se já estiver logado, redireciona para a página de destino ou KDS por padrão
         if (await KdsAuth.EstaAutenticadoAsync())
         {
-            Nav.NavigateTo("/kds", replace: true);
+            FazerRedirecionamento();
         }
     }
 
@@ -63,7 +68,7 @@
     {
         if (string.IsNullOrWhiteSpace(senha))
         {
-            erroMsg = "Por favor, digite a senha da cozinha.";
+            erroMsg = "Por favor, digite a senha de acesso.";
             return;
         }
 
@@ -74,13 +79,25 @@
 
         if (sucesso)
         {
-            Nav.NavigateTo("/kds", replace: true);
+            FazerRedirecionamento();
         }
         else
         {
             erroMsg = "Senha incorreta! Tente novamente.";
             senha = "";
             carregando = false;
+        }
+    }
+
+    private void FazerRedirecionamento()
+    {
+        if (!string.IsNullOrEmpty(ReturnUrl))
+        {
+            Nav.NavigateTo(ReturnUrl, replace: true);
+        }
+        else
+        {
+            Nav.NavigateTo("/kds", replace: true);
         }
     }
 

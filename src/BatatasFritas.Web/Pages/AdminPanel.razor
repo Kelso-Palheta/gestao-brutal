@@ -545,7 +545,8 @@
         // Guard de autenticação
         if (!await KdsAuth.EstaAutenticadoAsync())
         {
-            Nav.NavigateTo("/kds/login", replace: true);
+            var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
+            Nav.NavigateTo($"/kds/login?returnUrl={returnUrl}", replace: true);
             return;
         }
 
