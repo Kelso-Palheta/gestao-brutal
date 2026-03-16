@@ -79,6 +79,20 @@ using (var scope = app.Services.CreateScope())
         await bairroRepo.AddAsync(new BatatasFritas.Domain.Entities.Bairro("Outro Bairro (Exemplo)", 10.0m));
         await uow.CommitAsync();
     }
+
+    var complementoRepo = scope.ServiceProvider.GetRequiredService<IRepository<BatatasFritas.Domain.Entities.Complemento>>();
+    var complementos = await complementoRepo.GetAllAsync();
+    if (!complementos.Any())
+    {
+        uow.BeginTransaction();
+        await complementoRepo.AddAsync(new BatatasFritas.Domain.Entities.Complemento("Molho Billy Jack", 0, "Batatas", "MolhoGratuito"));
+        await complementoRepo.AddAsync(new BatatasFritas.Domain.Entities.Complemento("Molho Verde", 0, "Batatas", "MolhoGratuito"));
+        await complementoRepo.AddAsync(new BatatasFritas.Domain.Entities.Complemento("Maionese da Casa", 0, "Batatas", "MolhoGratuito"));
+        await complementoRepo.AddAsync(new BatatasFritas.Domain.Entities.Complemento("Queijo Extra", 4.50m, "Batatas", "AdicionalPago"));
+        await complementoRepo.AddAsync(new BatatasFritas.Domain.Entities.Complemento("Bacon Extra", 5.00m, "Batatas", "AdicionalPago"));
+        await complementoRepo.AddAsync(new BatatasFritas.Domain.Entities.Complemento("Sem Cebolinha", 0, "Todas", "Remocao"));
+        await uow.CommitAsync();
+    }
 }
 
 app.Run();
