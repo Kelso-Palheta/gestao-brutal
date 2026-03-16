@@ -11,8 +11,13 @@ namespace BatatasFritas.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
         {
+            // Detecta automaticamente se é PostgreSQL (produção) ou SQLite (desenvolvimento)
+            IPersistenceConfigurer dbConfig = connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
+                ? PostgreSQLConfiguration.PostgreSQL83.ConnectionString(connectionString)
+                : (IPersistenceConfigurer)SQLiteConfiguration.Standard.ConnectionString(connectionString);
+
             var sessionFactory = Fluently.Configure()
-                .Database(SQLiteConfiguration.Standard.ConnectionString(connectionString))
+                .Database(dbConfig)
                 .Mappings(m => m.FluentMappings.AddFromAssemblyOf<ProdutoMap>())
                 .ExposeConfiguration(cfg => new NHibernate.Tool.hbm2ddl.SchemaUpdate(cfg).Execute(false, true))
                 .BuildSessionFactory();
