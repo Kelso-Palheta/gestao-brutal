@@ -1,7 +1,6 @@
 @page "/kds/login"
 @layout EmptyLayout
 @using BatatasFritas.Web.Services
-@using Microsoft.AspNetCore.WebUtilities
 @inject KdsAuthService KdsAuth
 @inject NavigationManager Nav
 
@@ -54,11 +53,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Extrai o ReturnUrl manualmente da Query String
-        var uri = Nav.ToAbsoluteUri(Nav.Uri);
-        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var url))
+        // Extrai o ReturnUrl manualmente da Query String sem precisar de pacotes extras
+        var uri = Nav.Uri;
+        if (uri.Contains("returnUrl="))
         {
-            returnUrl = url;
+            returnUrl = uri.Split("returnUrl=")[1].Split("&")[0];
+            returnUrl = System.Net.WebUtility.UrlDecode(returnUrl);
         }
 
         // Se já estiver logado, redireciona
