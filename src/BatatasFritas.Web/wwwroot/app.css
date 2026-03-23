@@ -3738,3 +3738,180 @@ select.est-input option {
     color: #444;
     margin-top: 40px;
 }
+
+/* ================================================================
+   RESPONSIVIDADE MOBILE — max-width: 768px
+   Corrige telas travadas e overflow em celulares para todas as páginas
+   ================================================================ */
+@media (max-width: 768px) {
+
+    /* ── ADMIN PANEL ── */
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .admin-header-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .admin-nav-link,
+    .admin-btn-sair {
+        font-size: 0.8rem !important;
+        padding: 6px 10px !important;
+    }
+
+    .admin-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 10px;
+    }
+
+    .admin-tab {
+        font-size: 0.8rem !important;
+        padding: 8px 12px !important;
+        flex: 1 1 auto;
+        min-width: 120px;
+        text-align: center;
+    }
+
+    .admin-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+
+    .admin-table {
+        min-width: 600px;
+    }
+
+    .admin-form-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .admin-form-card {
+        padding: 16px;
+    }
+
+    .admin-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .admin-body {
+        padding: 10px;
+    }
+
+    /* ── ESTOQUE ── */
+    .estoque-header,
+    .estoque-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .estoque-table-wrap,
+    .estoque-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+
+    .estoque-table {
+        min-width: 620px;
+    }
+
+    /* ── DASHBOARD FINANCEIRO ── */
+    .dash-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .dash-cards {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .dash-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+
+    .dash-table {
+        min-width: 580px;
+    }
+
+    /* ── KDS MONITOR ── */
+    .kds-board {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+
+    .kds-header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .kds-card {
+        min-width: unset;
+        width: 100%;
+    }
+
+    /* ── CARDÁPIO (HOME) ── */
+    .cardapio-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .cardapio-filtros {
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .filtro-btn {
+        font-size: 0.85rem;
+        padding: 8px 14px;
+    }
+
+    .cardapio-hero-inner h1 {
+        font-size: 1.6rem;
+    }
+
+    /* ── CARRINHO / CHECKOUT ── */
+    .carrinho-container {
+        padding: 12px !important;
+    }
+
+    .checkout-form input,
+    .checkout-form select,
+    .checkout-form textarea {
+        font-size: 16px !important; /* evita auto-zoom no iOS */
+    }
+
+    /* ── MODAL GLOBAL ── */
+    .modal-content {
+        max-width: 95vw !important;
+        padding: 20px 16px !important;
+        margin: 10px auto;
+    }
+
+    /* ── TOTEM ── */
+    .totem-checkout-box {
+        padding: 20px 16px;
+    }
+
+    /* ── TABELAS GENÉRICAS ── */
+    table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
