@@ -3915,3 +3915,10 @@ select.est-input option {
         -webkit-overflow-scrolling: touch;
     }
 }
+
+/* ================================================================
+   ESCONDER BARRA DE ERRO PADRÃO DO BLAZOR
+   ================================================================ */
+#blazor-error-ui {
+    display: none !important;
+}
