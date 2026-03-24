@@ -3253,56 +3253,202 @@ select.est-input option {
 @media (max-width: 900px) {
     .totem-grid {
         flex-direction: column;
+        position: relative;
     }
 
     .totem-sidebar {
         width: 100%;
         height: auto;
-        max-height: 50vh;
+        max-height: 35vh;
         border-left: none;
         border-top: 2px solid #222;
         flex-shrink: 0;
     }
 
     .totem-sidebar-header {
-        padding: 15px;
+        padding: 8px 12px;
     }
 
     .totem-sidebar-header h2 {
-        font-size: 1.5rem;
+        font-size: 1.1rem;
+    }
+
+    .totem-btn-clear {
+        font-size: 0.9rem;
+        padding: 5px;
     }
 
     .totem-sidebar-footer {
-        padding: 15px;
+        padding: 10px 12px;
+    }
+
+    .totem-total-line {
+        margin-bottom: 8px;
     }
 
     .totem-total-line span {
-        font-size: 1.2rem;
+        font-size: 0.95rem;
     }
 
     .totem-total-line strong {
-        font-size: 2rem;
+        font-size: 1.3rem;
     }
 
     .totem-btn-checkout {
-        padding: 15px;
-        font-size: 1.4rem;
+        padding: 10px;
+        font-size: 1rem;
     }
 
     .totem-cart-items {
-        padding: 10px 15px;
+        padding: 6px 10px;
+    }
+
+    .totem-cart-item {
+        padding: 8px;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+
+    .totem-item-qnty {
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+        border-radius: 6px;
+    }
+
+    .totem-item-details strong {
+        font-size: 0.9rem;
+    }
+
+    .totem-item-price {
+        font-size: 0.9rem;
+    }
+
+    .totem-btn-remove {
+        width: 28px;
+        height: 28px;
+        font-size: 1rem;
+    }
+
+    .totem-empty-cart {
+        margin-top: 10%;
+        font-size: 1rem;
+    }
+
+    .totem-empty-cart span {
+        font-size: 2rem !important;
     }
 
     .totem-menu-area {
         padding: 10px;
+        flex: 1;
+        min-height: 0;
     }
 
     .totem-logo {
-        font-size: 2rem;
+        font-size: 1.6rem;
+    }
+
+    .totem-header {
+        margin-bottom: 8px;
     }
 
     .totem-header p {
+        font-size: 0.85rem;
+    }
+
+    .totem-filters {
+        gap: 8px;
+        padding: 5px 2px 10px 2px;
+        margin-bottom: 10px;
+    }
+
+    .totem-btn-filter {
+        padding: 8px 14px;
+        font-size: 0.9rem;
+    }
+
+    .totem-products-list {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding-bottom: 20px;
+    }
+
+    .totem-product-card {
+        flex-direction: column;
+        padding: 12px;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .totem-card-img {
+        width: 60px;
+        height: 60px;
+        font-size: 2.2rem;
+        border-radius: 10px;
+    }
+
+    .totem-card-info h3 {
+        font-size: 0.95rem;
+        margin-bottom: 3px;
+    }
+
+    .totem-card-info p {
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+    }
+
+    .totem-price {
         font-size: 1rem;
+    }
+
+    /* Totem Modal */
+    .totem-modal {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .totem-modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .totem-modal-body {
+        padding: 15px;
+    }
+
+    .totem-qty-selector {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Totem Checkout */
+    .totem-flow {
+        padding: 15px;
+    }
+
+    .totem-checkout-box {
+        padding: 15px;
+    }
+
+    .totem-checkout-box h1 {
+        font-size: 1.6rem;
+    }
+
+    .totem-options {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .totem-opt-btn {
+        flex: 1 1 40%;
+        min-width: 120px;
+        padding: 15px 10px;
+    }
+
+    .totem-input-lg {
+        font-size: 16px; /* Prevent iOS auto-zoom */
     }
 }
 
@@ -3907,6 +4053,129 @@ select.est-input option {
     /* ── TOTEM ── */
     .totem-checkout-box {
         padding: 20px 16px;
+    }
+
+    /* ── ESTOQUE ── */
+    .est-container {
+        padding: 12px !important;
+    }
+
+    .est-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .est-header h1 {
+        font-size: 1.3rem !important;
+    }
+
+    .est-header-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .est-btn-nav {
+        font-size: 0.8rem !important;
+        padding: 6px 10px !important;
+    }
+
+    .est-tabs {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        overflow-x: visible !important;
+    }
+
+    .est-tab {
+        font-size: 0.75rem !important;
+        padding: 6px 10px !important;
+        flex: 1 1 auto;
+        min-width: 80px;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .rel-filtro-bar {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .rel-filtro-grupo {
+        width: 100% !important;
+    }
+
+    .rel-filtro-input {
+        width: 100% !important;
+    }
+
+    .rel-filtro-atalhos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .rel-btn-atalho {
+        flex: 1 1 auto;
+        min-width: 60px;
+        text-align: center;
+        font-size: 0.8rem !important;
+    }
+
+    .rel-btn-filtrar {
+        width: 100% !important;
+    }
+
+    .est-form-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .est-kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .est-kpi-valor {
+        font-size: 1.2rem !important;
+    }
+
+    .est-card {
+        padding: 12px !important;
+    }
+
+    .est-modal {
+        width: 95vw !important;
+        max-width: 95vw !important;
+    }
+
+    /* ── KDS ── */
+    .kds-kanban {
+        gap: 10px;
+        padding: 8px;
+    }
+
+    .kds-column {
+        min-width: 260px;
+    }
+
+    .kds-column-header h2 {
+        font-size: 1rem;
+    }
+
+    .kds-card-actions {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .kds-btn {
+        font-size: 0.85rem !important;
+        padding: 8px 10px !important;
+    }
+
+    .kds-cancel-modal {
+        width: 95vw !important;
+        max-width: 95vw !important;
     }
 
     /* ── TABELAS GENÉRICAS ── */
