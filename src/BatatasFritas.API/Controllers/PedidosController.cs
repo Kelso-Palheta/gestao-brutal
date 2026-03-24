@@ -22,7 +22,7 @@ public class PedidosController : ControllerBase
     private readonly IRepository<CarteiraCashback> _carteiraRepository;
     private readonly BatatasFritas.API.Services.IInfinitePayService _infinitePayService;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
-    private readonly ISession _session;
+    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
 
     public PedidosController(
@@ -35,7 +35,7 @@ public class PedidosController : ControllerBase
         IRepository<CarteiraCashback> carteiraRepository,
         BatatasFritas.API.Services.IInfinitePayService infinitePayService,
         Microsoft.Extensions.Configuration.IConfiguration config,
-        ISession session,
+        NHibernate.ISession session,
         IUnitOfWork uow)
     {
         _pedidoRepository  = pedidoRepository;

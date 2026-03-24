@@ -17,13 +17,13 @@ public class CashbackController : ControllerBase
 
     private readonly IRepository<CarteiraCashback> _repoCarteira;
     private readonly IRepository<Configuracao> _repoConfig;
-    private readonly ISession _session;
+    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
 
     public CashbackController(
         IRepository<CarteiraCashback> repoCarteira,
         IRepository<Configuracao> repoConfig,
-        ISession session,
+        NHibernate.ISession session,
         IUnitOfWork uow)
     {
         _repoCarteira = repoCarteira;

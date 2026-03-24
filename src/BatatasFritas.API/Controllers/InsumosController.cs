@@ -15,13 +15,13 @@ public class InsumosController : ControllerBase
 {
     private readonly IRepository<Insumo> _insumoRepo;
     private readonly IRepository<MovimentacaoEstoque> _movRepo;
-    private readonly ISession _session;
+    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
 
     public InsumosController(
         IRepository<Insumo> insumoRepo,
         IRepository<MovimentacaoEstoque> movRepo,
-        ISession session,
+        NHibernate.ISession session,
         IUnitOfWork uow)
     {
         _insumoRepo = insumoRepo;

@@ -14,10 +14,10 @@ namespace BatatasFritas.API.Controllers;
 public class DespesasController : ControllerBase
 {
     private readonly IRepository<Despesa> _repo;
-    private readonly ISession _session;
+    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
 
-    public DespesasController(IRepository<Despesa> repo, ISession session, IUnitOfWork uow)
+    public DespesasController(IRepository<Despesa> repo, NHibernate.ISession session, IUnitOfWork uow)
     {
         _repo = repo;
         _session = session;
