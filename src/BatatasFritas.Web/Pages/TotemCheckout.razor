@@ -27,7 +27,7 @@
         </div>
         <div class="totem-chk-total">
             <div style="font-size:18px; color:#aaa; margin-bottom: 5px;">SUBTOTAL: <span>@Carrinho.Subtotal.ToString("C2")</span></div>
-            @if (usarCashback && saldoDisponivel > 0)
+            @if (_usarCashback && saldoDisponivel > 0)
             {
                 <div style="font-size:18px; color:#ffb347; margin-bottom: 5px;">CASHBACK: <span>-@ValorCashbackAplicado.ToString("C2")</span></div>
             }
