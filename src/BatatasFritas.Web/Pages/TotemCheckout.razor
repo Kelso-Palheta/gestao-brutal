@@ -72,10 +72,22 @@
             {
                 <div class="totem-cashback-box" style="background:#222; border:2px solid #ffb347; border-radius:12px; padding:16px; margin-bottom:20px; text-align:left;">
                     <h3 style="color:#ffb347; margin:0 0 10px 0; font-size:1.2rem;">🎁 Você tem @saldoDisponivel.ToString("C2") de Cashback!</h3>
-                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size: 1.1rem;">
-                        <input type="checkbox" @bind="usarCashback" style="width:24px; height:24px;" />
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size: 1.1rem; margin-bottom: @(_usarCashback ? "15px" : "0");">
+                        <input type="checkbox" checked="@_usarCashback" @onchange="ToggleCashback" style="width:24px; height:24px;" />
                         <span>Usar saldo de cashback neste pedido</span>
                     </label>
+
+                    @if (_usarCashback)
+                    {
+                        <div style="background:#333; padding:15px; border-radius:8px;">
+                            <label style="display:block; font-size:1rem; margin-bottom:8px;">Quanto do saldo quer usar?</label>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <span style="font-size:1.2rem; font-weight:bold;">R$</span>
+                                <input type="number" step="0.01" min="0" max="@MaxCashbackPermitido.ToString(System.Globalization.CultureInfo.InvariantCulture)" @bind="valorCashbackDesejado" style="flex-grow:1; max-width:150px; padding:8px; font-size:1.2rem; font-weight:bold; border:2px solid #ffb347; border-radius:6px; background:#111; color:#fff;" />
+                                <button @onclick="UsarMaximoCashback" style="background:#ffb347; color:#000; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; cursor:pointer;">MÁXIMO (@MaxCashbackPermitido.ToString("C2"))</button>
+                            </div>
+                        </div>
+                    }
                 </div>
             }
 
@@ -110,8 +122,38 @@
     private string telefoneCliente = "";
     private string nomeCliente = "";
     private decimal saldoDisponivel = 0m;
-    private bool usarCashback = false;
-    private decimal ValorCashbackAplicado => usarCashback ? Math.Min(Carrinho.Subtotal, saldoDisponivel) : 0m;
+    
+    private bool _usarCashback = false;
+    private decimal valorCashbackDesejado = 0m;
+    
+    private void ToggleCashback(ChangeEventArgs e)
+    {
+        _usarCashback = (bool)(e.Value ?? false);
+        if (_usarCashback && valorCashbackDesejado == 0)
+        {
+            valorCashbackDesejado = MaxCashbackPermitido;
+        }
+    }
+
+    private void UsarMaximoCashback()
+    {
+        valorCashbackDesejado = MaxCashbackPermitido;
+    }
+
+    private decimal MaxCashbackPermitido => Math.Min(Carrinho.Subtotal, saldoDisponivel);
+    
+    private decimal ValorCashbackAplicado 
+    {
+        get 
+        {
+            if (!_usarCashback) return 0m;
+            var val = valorCashbackDesejado;
+            if (val < 0) val = 0;
+            if (val > MaxCashbackPermitido) val = MaxCashbackPermitido;
+            return val;
+        }
+    }
+    
     private decimal TotalPagar => Math.Max(0, Carrinho.Subtotal - ValorCashbackAplicado);
 
     private string pagamento = "";
