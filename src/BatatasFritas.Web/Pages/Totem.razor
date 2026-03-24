@@ -127,8 +127,8 @@
                         <div class="totem-quick-obs">
                             @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
                             {
-                                <button class="totem-chip @(observacao.Contains(c.Nome) ? "on" : "")" @onclick='() => ToggleObs(c.Nome)'>
-                                    @(observacao.Contains(c.Nome) ? "✅ " : "❌ ")@c.Nome
+                                <button class="totem-chip @(selecionadosIds.Contains(c.Id) ? "on" : "")" @onclick='() => ToggleComplemento(c)'>
+                                    @(selecionadosIds.Contains(c.Id) ? "✅ " : "❌ ")@c.Nome
                                 </button>
                             }
                         </div>
@@ -142,8 +142,8 @@
                         <div class="totem-quick-obs">
                             @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
                             {
-                                <button class="totem-chip @(observacao.Contains(c.Nome) ? "on" : "")" @onclick='() => ToggleObs(c.Nome)'>
-                                    @c.Nome
+                                <button class="totem-chip @(selecionadosIds.Contains(c.Id) ? "on-green" : "")" @onclick='() => ToggleComplemento(c)'>
+                                    @(selecionadosIds.Contains(c.Id) ? "✅ " : "+ ")@c.Nome
                                 </button>
                             }
                         </div>
@@ -157,9 +157,20 @@
                         <div class="totem-quick-obs">
                             @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "AdicionalPago"))
                             {
-                                <button class="totem-chip @(observacao.Contains(c.Nome) ? "on" : "")" @onclick='() => ToggleItemPago(c)'>
-                                    @(observacao.Contains(c.Nome) ? "−" : "+") @c.Nome (@c.Preco.ToString("C2"))
-                                </button>
+                                var qtd = quantidadesAdicionais.ContainsKey(c.Id) ? quantidadesAdicionais[c.Id] : 0;
+                                <div class="totem-chip @(qtd > 0 ? "on-green" : "")" style="display:flex; align-items:center; gap: 15px; cursor: pointer; user-select:none; padding:10px 20px;">
+                                    <div @onclick='() => AlterarQuantidade(c.Id, 1)' style="flex-grow:1; text-align:left;">
+                                        @(qtd > 0 ? "✅ " : "+ ")@c.Nome (@c.Preco.ToString("C2"))
+                                    </div>
+                                    @if(qtd > 0)
+                                    {
+                                        <div style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.1); border-radius:30px; padding:2px 8px;">
+                                            <button @onclick:stopPropagation="true" @onclick='() => AlterarQuantidade(c.Id, -1)' style="background:transparent; color:inherit; border:none; padding:5px 10px; font-size:1.4rem; font-weight:bold;">−</button>
+                                            <span style="font-size:1.2rem; font-weight:bold;">@qtd</span>
+                                            <button @onclick:stopPropagation="true" @onclick='() => AlterarQuantidade(c.Id, 1)' style="background:transparent; color:inherit; border:none; padding:5px 10px; font-size:1.4rem; font-weight:bold;">+</button>
+                                        </div>
+                                    }
+                                </div>
                             }
                         </div>
                     </div>
@@ -190,14 +201,18 @@
     // Modal state
     private ProdutoDto? produtoSelecionado;
     private int quantidade = 1;
-    private string observacao = "";
 
     private List<ComplementoDto> todosComplementos = new();
     private IEnumerable<ComplementoDto> complementosAtivos =>
         todosComplementos.Where(c => c.CategoriaAlvo == "Todas" || c.CategoriaAlvo == produtoSelecionado?.CategoriaId.ToString());
 
     // Auxilia no cálculo do total
-    private decimal precoAdicionais = 0;
+    private HashSet<int> selecionadosIds = new();
+    private Dictionary<int, int> quantidadesAdicionais = new();
+
+    private decimal precoAdicionais => todosComplementos
+        .Where(c => c.TipoAcao == "AdicionalPago" && quantidadesAdicionais.ContainsKey(c.Id))
+        .Sum(c => c.Preco * quantidadesAdicionais[c.Id]);
 
     private decimal PrecoTotalAtual => ((produtoSelecionado?.PrecoBase ?? 0) + precoAdicionais) * quantidade;
 
@@ -238,43 +253,48 @@
         }
         produtoSelecionado = p;
         quantidade = 1;
-        observacao = "";
-        precoAdicionais = 0;
+        selecionadosIds.Clear();
+        quantidadesAdicionais.Clear();
     }
 
     private void FecharModal() => produtoSelecionado = null;
 
-    private void ToggleObs(string obs)
+    private void ToggleComplemento(ComplementoDto c)
     {
-        if (observacao.Contains(obs))
-            observacao = observacao.Replace(obs, "").Replace(" ,", "").Trim(',', ' ');
+        if (selecionadosIds.Contains(c.Id))
+            selecionadosIds.Remove(c.Id);
         else
-            observacao = string.IsNullOrEmpty(observacao) ? obs : observacao + ", " + obs;
+            selecionadosIds.Add(c.Id);
     }
 
-    private void ToggleItemPago(ComplementoDto c)
+    private void AlterarQuantidade(int id, int delta)
     {
-        if (observacao.Contains(c.Nome))
-        {
-            observacao = observacao.Replace(c.Nome, "").Replace(" ,", "").Trim(',', ' ');
-            precoAdicionais -= c.Preco;
-        }
-        else
-        {
-            observacao = string.IsNullOrEmpty(observacao) ? c.Nome : observacao + ", " + c.Nome;
-            precoAdicionais += c.Preco;
-        }
+        if (!quantidadesAdicionais.ContainsKey(id))
+            quantidadesAdicionais[id] = 0;
+            
+        quantidadesAdicionais[id] += delta;
+        if (quantidadesAdicionais[id] <= 0)
+            quantidadesAdicionais.Remove(id);
     }
 
     private void AdicionarAoCarrinho()
     {
         if (produtoSelecionado != null)
         {
+            var selecionados = todosComplementos.Where(c => selecionadosIds.Contains(c.Id)).Select(c => c.Nome).ToList();
+            var pagos = todosComplementos.Where(c => c.TipoAcao == "AdicionalPago" && quantidadesAdicionais.ContainsKey(c.Id))
+                                         .Select(c => $"{quantidadesAdicionais[c.Id]}x {c.Nome}");
+            
+            selecionados.AddRange(pagos);
+            var observacaoFinal = string.Join(", ", selecionados);
+
+            var precoTotalObj = produtoSelecionado.PrecoBase + precoAdicionais;
+
             Carrinho.AdicionarItemComOpcoes(
                 produtoSelecionado,
                 quantidade,
-                (produtoSelecionado.PrecoBase + precoAdicionais),
-                observacao
+                precoTotalObj,
+                observacaoFinal
             );
         }
         FecharModal();
