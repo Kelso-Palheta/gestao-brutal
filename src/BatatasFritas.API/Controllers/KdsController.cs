@@ -60,6 +60,8 @@ public class KdsController : ControllerBase
                     EnderecoEntrega = p.EnderecoEntrega,
                     NomeBairro = p.BairroEntrega != null ? p.BairroEntrega.Nome : "",
                     MetodoPagamento = p.MetodoPagamento,
+                    StatusPagamento = p.StatusPagamento,
+                    TipoAtendimento = p.TipoAtendimento,
                     TrocoPara = p.TrocoPara,
                     ValorTotal = total,
                     Status = p.Status,
@@ -112,6 +114,24 @@ public class KdsController : ControllerBase
         }
 
         pedido.AlterarStatus(novoStatus);
+        await _pedidoRepository.UpdateAsync(pedido);
+        await _uow.CommitAsync();
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// PUT api/kds/{id}/pagar
+    /// Marca um pedido como pago pelo operador KDS.
+    /// </summary>
+    [HttpPut("{id}/pagar")]
+    public async Task<IActionResult> MarcarComoPago(int id)
+    {
+        var pedido = await _pedidoRepository.GetByIdAsync(id);
+        if (pedido == null) return NotFound();
+
+        _uow.BeginTransaction();
+        pedido.StatusPagamento = StatusPagamento.Aprovado;
         await _pedidoRepository.UpdateAsync(pedido);
         await _uow.CommitAsync();
 

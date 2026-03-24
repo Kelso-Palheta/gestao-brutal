@@ -32,6 +32,15 @@
                         <span>#@p.Id — @p.NomeCliente</span>
                         <span class="kds-time">@p.DataHoraPedido.ToString("HH:mm")</span>
                     </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px;">
+                        @{ var badgePag = BadgePagamento(p); }
+                        <span style="@badgePag.estilo">@badgePag.texto</span>
+                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
+                        @if (p.TipoAtendimento == TipoAtendimento.Totem)
+                        {
+                            <span style="background:#7c3aed; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">📱 TOTEM</span>
+                        }
+                    </div>
                     <ul class="kds-card-items">
                         @foreach (var i in p.Itens)
                         {
@@ -48,6 +57,12 @@
                         <button class="kds-btn kds-btn-aceitar" @onclick="() => MoverStatus(p.Id, StatusPedido.Aceito)">
                             Aceitar 👍
                         </button>
+                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
+                        {
+                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
+                                💰
+                            </button>
+                        }
                         <button class="kds-btn kds-btn-cancelar-pedido" @onclick="() => AbrirCancelamento(p)" title="Cancelar pedido">
                             ✕
                         </button>
@@ -75,6 +90,11 @@
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px;">
+                        @{ var badgePag2 = BadgePagamento(p); }
+                        <span style="@badgePag2.estilo">@badgePag2.texto</span>
+                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
+                    </div>
                     <ul class="kds-card-items">
                         @foreach (var i in p.Itens)
                         {
@@ -91,6 +111,12 @@
                         <button class="kds-btn kds-btn-preparo" @onclick="() => MoverStatus(p.Id, StatusPedido.EmPreparo)">
                             Cozinhar 👨‍🍳
                         </button>
+                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
+                        {
+                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
+                                💰 Pago
+                            </button>
+                        }
                         <button class="kds-btn" style="background:#fff; flex: 0 0 44px;" @onclick="() => ImprimirCupom(p)" title="Imprimir">
                             🖨️
                         </button>
@@ -121,6 +147,11 @@
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px;">
+                        @{ var badgePag3 = BadgePagamento(p); }
+                        <span style="@badgePag3.estilo">@badgePag3.texto</span>
+                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
+                    </div>
                     <ul class="kds-card-items">
                         @foreach (var i in p.Itens)
                         {
@@ -137,6 +168,12 @@
                         <button class="kds-btn kds-btn-pronto" @onclick="() => MoverStatus(p.Id, StatusPedido.ProntoParaEntrega)">
                             Pronto ✅
                         </button>
+                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
+                        {
+                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
+                                💰 Pago
+                            </button>
+                        }
                         <button class="kds-btn kds-btn-cancelar-pedido" @onclick="() => AbrirCancelamento(p)" title="Cancelar pedido">
                             ✕
                         </button>
@@ -164,11 +201,19 @@
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px; margin-bottom:4px;">
+                        @{ var badgePag4 = BadgePagamento(p); }
+                        <span style="@badgePag4.estilo">@badgePag4.texto</span>
+                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
+                        @if (p.TipoAtendimento == TipoAtendimento.Totem)
+                        {
+                            <span style="background:#7c3aed; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">📱 TOTEM</span>
+                        }
+                    </div>
                     <div class="kds-delivery-info">
                         📞 @p.TelefoneCliente<br />
                         🏠 <strong>@p.NomeBairro</strong> — @p.EnderecoEntrega<br />
-                        💳 <strong>@(p.MetodoPagamento.ToString())</strong>
-                        <br />💰 <strong>Total: @p.ValorTotal.ToString("C2")</strong>
+                        💰 <strong>Total: @p.ValorTotal.ToString("C2")</strong>
                         @if (p.MetodoPagamento == MetodoPagamento.Dinheiro)
                         {
                             var trocoReal = (p.TrocoPara ?? 0) - p.ValorTotal;
@@ -192,6 +237,12 @@
                         <button class="kds-btn kds-btn-entregue" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
                             Despachar ✅
                         </button>
+                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
+                        {
+                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
+                                💰 Pago
+                            </button>
+                        }
                         <button class="kds-btn" style="background:#fff; flex: 0 0 44px;" @onclick="() => ImprimirCupom(p)" title="Imprimir">
                             🖨️
                         </button>
@@ -280,7 +331,8 @@
             </tbody>
         </table>
         <hr />
-        <p>PAGAMENTO: @pedidoAtualParaImpressao.MetodoPagamento</p>
+        <p>PAGAMENTO: @NomeMetodo(pedidoAtualParaImpressao.MetodoPagamento)</p>
+        <p style="font-weight:900; font-size:14px; border:2px solid #000; padding:4px; text-align:center;">@(pedidoAtualParaImpressao.StatusPagamento == StatusPagamento.Aprovado || pedidoAtualParaImpressao.StatusPagamento == StatusPagamento.Presencial ? "✅ PAGO" : "⚠️ PAGAMENTO PENDENTE")</p>
         <div class="cupom-total">TOTAL: @pedidoAtualParaImpressao.ValorTotal.ToString("C2")</div>
         @if (pedidoAtualParaImpressao.MetodoPagamento == MetodoPagamento.Dinheiro && pedidoAtualParaImpressao.TrocoPara != null)
         {
@@ -466,6 +518,39 @@
         await Task.Delay(50);
         await JS.InvokeVoidAsync("printInterop.printCupom", "cupomFritaria");
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // MARCAR COMO PAGO
+    // ────────────────────────────────────────────────────────────────────
+    private async Task MarcarPago(int id)
+    {
+        try
+        {
+            var response = await Http.PutAsync($"api/kds/{id}/pagar", null);
+            if (response.IsSuccessStatusCode)
+                await LoadPedidos();
+        }
+        catch { }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ────────────────────────────────────────────────────────────────────
+    private static (string texto, string estilo) BadgePagamento(PedidoDetalheDto p)
+    {
+        if (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
+            return ("✅ PAGO", "background:#27ae60; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
+        return ("⏳ PENDENTE", "background:#f39c12; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
+    }
+
+    private static string NomeMetodo(MetodoPagamento m) => m switch
+    {
+        MetodoPagamento.Pix => "PIX",
+        MetodoPagamento.Dinheiro => "DINHEIRO",
+        MetodoPagamento.InfiniteTap => "CARTÃO",
+        MetodoPagamento.InfinitePayOnline => "ONLINE",
+        _ => m.ToString().ToUpper()
+    };
 
     public void Dispose()
     {

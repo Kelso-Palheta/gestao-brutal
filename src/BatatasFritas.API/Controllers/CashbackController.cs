@@ -2,6 +2,7 @@ using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using NHibernate;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
@@ -16,30 +17,27 @@ public class CashbackController : ControllerBase
 
     private readonly IRepository<CarteiraCashback> _repoCarteira;
     private readonly IRepository<Configuracao> _repoConfig;
+    private readonly ISession _session;
     private readonly IUnitOfWork _uow;
 
     public CashbackController(
         IRepository<CarteiraCashback> repoCarteira,
         IRepository<Configuracao> repoConfig,
+        ISession session,
         IUnitOfWork uow)
     {
         _repoCarteira = repoCarteira;
         _repoConfig = repoConfig;
+        _session = session;
         _uow = uow;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // GET api/cashback/saldo/{telefone}
-    // Retorna o saldo da carteira do cliente pelo telefone.
-    // Se a carteira não existir, ela não é criada, apenas retorna 0.
-    // ─────────────────────────────────────────────────────────────
     [HttpGet("saldo/{telefone}")]
     public async Task<ActionResult<SaldoCashbackDto>> GetSaldo(string telefone)
     {
         if (string.IsNullOrWhiteSpace(telefone))
             return BadRequest("Telefone é obrigatório.");
 
-        // Limpa formatação do telefone para garantir busca exata
         var telLimpo = new string(telefone.Where(char.IsDigit).ToArray());
 
         var todas = await _repoCarteira.GetAllAsync();
@@ -58,10 +56,6 @@ public class CashbackController : ControllerBase
         });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // GET api/cashback/configuracao
-    // Retorna a porcentagem de cashback configurada no banco.
-    // ─────────────────────────────────────────────────────────────
     [HttpGet("configuracao")]
     public async Task<ActionResult<CashbackConfigDto>> GetConfiguracao()
     {
@@ -77,10 +71,6 @@ public class CashbackController : ControllerBase
         return Ok(new CashbackConfigDto { Porcentagem = percentual });
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // POST api/cashback/configuracao
-    // Salva a nova porcentagem de cashback no banco.
-    // ─────────────────────────────────────────────────────────────
     [HttpPost("configuracao")]
     public async Task<IActionResult> SetConfiguracao([FromBody] CashbackConfigDto dto)
     {
@@ -104,5 +94,24 @@ public class CashbackController : ControllerBase
         await _uow.CommitAsync();
 
         return Ok(new { mensagem = "Configuração de cashback salva com sucesso!" });
+    }
+
+    // ── DELETE api/cashback/limpar-tudo ────────────────────────────────────
+    [HttpDelete("limpar-tudo")]
+    public async Task<IActionResult> LimparTudo()
+    {
+        try
+        {
+            _uow.BeginTransaction();
+            await _session.CreateSQLQuery("DELETE FROM transacoes_cashback").ExecuteUpdateAsync();
+            await _session.CreateSQLQuery("DELETE FROM carteiras_cashback").ExecuteUpdateAsync();
+            await _uow.CommitAsync();
+            return Ok(new { mensagem = "Carteiras e transações de cashback apagadas." });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest($"Erro: {ex.Message}");
+        }
     }
 }

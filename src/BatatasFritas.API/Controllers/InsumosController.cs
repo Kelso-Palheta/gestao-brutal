@@ -2,6 +2,7 @@ using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using NHibernate;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,15 +15,18 @@ public class InsumosController : ControllerBase
 {
     private readonly IRepository<Insumo> _insumoRepo;
     private readonly IRepository<MovimentacaoEstoque> _movRepo;
+    private readonly ISession _session;
     private readonly IUnitOfWork _uow;
 
     public InsumosController(
         IRepository<Insumo> insumoRepo,
         IRepository<MovimentacaoEstoque> movRepo,
+        ISession session,
         IUnitOfWork uow)
     {
         _insumoRepo = insumoRepo;
         _movRepo    = movRepo;
+        _session    = session;
         _uow        = uow;
     }
 
@@ -106,7 +110,6 @@ public class InsumosController : ControllerBase
         var insumo = await _insumoRepo.GetByIdAsync(id);
         if (insumo == null) return NotFound();
 
-        // Soft-delete
         insumo.Ativo = false;
         _uow.BeginTransaction();
         await _insumoRepo.UpdateAsync(insumo);
@@ -146,10 +149,29 @@ public class InsumosController : ControllerBase
     {
         var todas = (await _movRepo.GetAllAsync()).ToList();
 
-        if (DateTime.TryParse(de,  out var ini)) todas = todas.Where(m => m.DataMovimentacao >= ini).ToList();
-        if (DateTime.TryParse(ate, out var fim)) todas = todas.Where(m => m.DataMovimentacao <= fim.AddDays(1)).ToList();
+        if (DateTime.TryParse(de,  out var ini2)) todas = todas.Where(m => m.DataMovimentacao >= ini2).ToList();
+        if (DateTime.TryParse(ate, out var fim2)) todas = todas.Where(m => m.DataMovimentacao <= fim2.AddDays(1)).ToList();
 
         return Ok(todas.OrderByDescending(m => m.DataMovimentacao).Select(ToMovDto).ToList());
+    }
+
+    // ── DELETE api/insumos/limpar-movimentacoes ───────────────────────────
+    [HttpDelete("limpar-movimentacoes")]
+    public async Task<IActionResult> LimparMovimentacoes()
+    {
+        try
+        {
+            _uow.BeginTransaction();
+            await _session.CreateSQLQuery("DELETE FROM movimentacoes_estoque").ExecuteUpdateAsync();
+            await _session.CreateSQLQuery("UPDATE insumos SET estoque_atual = 0").ExecuteUpdateAsync();
+            await _uow.CommitAsync();
+            return Ok(new { mensagem = "Movimentações apagadas e estoques zerados." });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest($"Erro: {ex.Message}");
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

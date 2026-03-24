@@ -54,16 +54,21 @@
             
             <div style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin-bottom: 20px;">
                 <input @bind="Carrinho.TempNome" type="text" placeholder="Seu Nome completo" style="padding: 10px; border: 2px solid #000;" />
-                <input value="@Carrinho.TempTelefone" @onchange="OnTelefoneChanged" type="text" placeholder="Seu Telefone/WhatsApp (Ex: 11999999999)" style="padding: 10px; border: 2px solid #000;" />
+                
+                <div style="margin-top: 5px;">
+                    <label style="display: block; font-weight: 900; color: #d9534f; margin-bottom: 5px; font-size: 1rem;">Seu WhatsApp (Ganha Cashback! 🎁)</label>
+                    <input value="@Carrinho.TempTelefone" @onchange="OnTelefoneChanged" type="text" placeholder="Ex: 91999999999" style="padding: 10px; border: 2px solid #000; width: 100%;" />
+                </div>
 
                 @if (saldoCashback > 0)
                 {
-                    <div style="background-color: #fdf5e6; border: 2px solid #f39c12; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; font-weight: bold; color: #d35400;">
-                        <div>
-                            <span>🎁 @mensagemCashback</span>
+                    <div style="background-color: #fff8ee; border: 2px solid #ffb347; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; font-weight: bold; color: #e67e22; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.9rem; display: block; color: #888; text-transform: uppercase;">Saldo Disponível</span>
+                            <span style="font-size: 1.2rem;">R$ @saldoCashback.ToString("F2")</span>
                         </div>
-                        <label style="display:flex; align-items:center; cursor:pointer;">
-                            <input type="checkbox" @bind="usarCashback" style="width:18px; height:18px; margin-right:5px;" />
+                        <label style="display:flex; align-items:center; cursor:pointer; background: #ffb347; color: #000; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem;">
+                            <input type="checkbox" @bind="usarCashback" style="width:18px; height:18px; margin-right:8px;" />
                             Usar Saldo
                         </label>
                     </div>

@@ -2,6 +2,7 @@ using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using NHibernate;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -13,11 +14,13 @@ namespace BatatasFritas.API.Controllers;
 public class DespesasController : ControllerBase
 {
     private readonly IRepository<Despesa> _repo;
+    private readonly ISession _session;
     private readonly IUnitOfWork _uow;
 
-    public DespesasController(IRepository<Despesa> repo, IUnitOfWork uow)
+    public DespesasController(IRepository<Despesa> repo, ISession session, IUnitOfWork uow)
     {
         _repo = repo;
+        _session = session;
         _uow = uow;
     }
 
@@ -57,6 +60,24 @@ public class DespesasController : ControllerBase
         await _uow.CommitAsync();
 
         return NoContent();
+    }
+
+    // ── DELETE api/despesas/limpar-tudo ────────────────────────────────────
+    [HttpDelete("limpar-tudo")]
+    public async Task<IActionResult> LimparTudo()
+    {
+        try
+        {
+            _uow.BeginTransaction();
+            await _session.CreateSQLQuery("DELETE FROM despesas").ExecuteUpdateAsync();
+            await _uow.CommitAsync();
+            return Ok(new { mensagem = "Todas as despesas foram apagadas." });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest($"Erro: {ex.Message}");
+        }
     }
 
     private static DespesaDto ToDto(Despesa d) => new()

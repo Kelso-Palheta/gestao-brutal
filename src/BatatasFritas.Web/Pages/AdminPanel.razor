@@ -491,6 +491,51 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Seção Limpeza de Dados -->
+                <div class="admin-section-header" style="margin-top: 40px;">
+                    <h2>🧹 Limpeza de Dados (Reset)</h2>
+                </div>
+
+                <div class="admin-form-card" style="border: 2px solid #ff4444; background: #fffdfd;">
+                    <h3 style="color:#cc0000;">⚠️ Atenção: Área Perigosa</h3>
+                    <p style="color:#666; font-size:0.9rem; margin-bottom:16px;">
+                        Use os botões abaixo para apagar dados e deixar o sistema "zerado". Esta ação NÃO pode ser desfeita.
+                    </p>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Para liberar os botões, digite CONFIRMAR no campo abaixo:</label>
+                        <input type="text" @bind="confirmacaoTexto" placeholder="Digite CONFIRMAR aqui..." style="width:100%; max-width: 300px; padding: 10px; border: 2px solid #ff4444; border-radius: 6px; font-weight: bold; text-align: center; color: #cc0000;" />
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("pedidos")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
+                             🗑️ Zerar Todos Pedidos
+                        </button>
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("estoque")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
+                             📦 Zerar Movim. Estoque
+                        </button>
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("despesas")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
+                             💸 Zerar Despesas
+                        </button>
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("cashback")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
+                             🎁 Zerar Cashback
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(msgLimpezaOk))
+                    {
+                        <div class="admin-alert admin-alert-ok" style="margin-top:12px;">✅ @msgLimpezaOk</div>
+                    }
+                    @if (!string.IsNullOrEmpty(msgLimpezaErro))
+                    {
+                        <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgLimpezaErro</div>
+                    }
+                    @if (limpando)
+                    {
+                        <div style="margin-top:15px; color:#ff4444; font-weight:bold;">⏳ Processando limpeza... aguarde.</div>
+                    }
+                </div>
             </div>
         }
 
@@ -539,6 +584,12 @@
     private string msgSenhaOk     = string.Empty;
     private string msgSenhaErro   = string.Empty;
     private bool   alterandoSenha = false;
+
+    // -- Aba Configurações (Limpeza) --
+    private string confirmacaoTexto = string.Empty;
+    private bool   limpando = false;
+    private string msgLimpezaOk = string.Empty;
+    private string msgLimpezaErro = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -1082,4 +1133,48 @@
 
     // DTO para deserializar resposta de soft-delete da API
     private record SoftDeleteResponse(bool SoftDelete, string Mensagem);
+
+    // ======================== LIMPEZA DE DADOS ========================
+    private async Task LimparDados(string tipo)
+    {
+        if (confirmacaoTexto != "CONFIRMAR") return;
+        
+        limpando = true;
+        msgLimpezaOk = "";
+        msgLimpezaErro = "";
+        
+        try
+        {
+            string endpoint = tipo switch
+            {
+                "pedidos" => "api/pedidos/limpar-tudo",
+                "estoque" => "api/insumos/limpar-movimentacoes",
+                "despesas" => "api/despesas/limpar-tudo",
+                "cashback" => "api/cashback/limpar-tudo",
+                _ => ""
+            };
+
+            if (string.IsNullOrEmpty(endpoint)) return;
+
+            var res = await Http.DeleteAsync(endpoint);
+            if (res.IsSuccessStatusCode)
+            {
+                msgLimpezaOk = $"Limpeza de {tipo} realizada com sucesso!";
+                confirmacaoTexto = "";
+                await CarregarTudo();
+            }
+            else
+            {
+                msgLimpezaErro = $"Erro ao limpar {tipo}: {await res.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgLimpezaErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            limpando = false;
+        }
+    }
 }

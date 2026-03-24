@@ -3,6 +3,7 @@ using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
+using NHibernate;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -21,6 +22,7 @@ public class PedidosController : ControllerBase
     private readonly IRepository<CarteiraCashback> _carteiraRepository;
     private readonly BatatasFritas.API.Services.IInfinitePayService _infinitePayService;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
+    private readonly ISession _session;
     private readonly IUnitOfWork _uow;
 
     public PedidosController(
@@ -33,6 +35,7 @@ public class PedidosController : ControllerBase
         IRepository<CarteiraCashback> carteiraRepository,
         BatatasFritas.API.Services.IInfinitePayService infinitePayService,
         Microsoft.Extensions.Configuration.IConfiguration config,
+        ISession session,
         IUnitOfWork uow)
     {
         _pedidoRepository  = pedidoRepository;
@@ -44,6 +47,7 @@ public class PedidosController : ControllerBase
         _carteiraRepository = carteiraRepository;
         _infinitePayService = infinitePayService;
         _config = config;
+        _session = session;
         _uow = uow;
     }
 
@@ -202,6 +206,25 @@ public class PedidosController : ControllerBase
                     await _insumoRepository.UpdateAsync(insumo);
                 }
             }
+        }
+    }
+
+    // ── DELETE api/pedidos/limpar-tudo ─────────────────────────────────
+    [HttpDelete("limpar-tudo")]
+    public async Task<IActionResult> LimparTudo()
+    {
+        try
+        {
+            _uow.BeginTransaction();
+            await _session.CreateSQLQuery("DELETE FROM itens_pedido").ExecuteUpdateAsync();
+            await _session.CreateSQLQuery("DELETE FROM pedidos").ExecuteUpdateAsync();
+            await _uow.CommitAsync();
+            return Ok(new { mensagem = "Todos os pedidos foram apagados com sucesso." });
+        }
+        catch (System.Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest($"Erro ao limpar pedidos: {ex.Message}");
         }
     }
 }
