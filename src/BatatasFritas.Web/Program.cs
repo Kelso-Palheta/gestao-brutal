@@ -12,10 +12,13 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        // URL da API: usa configuração do appsettings ou variável de ambiente
-        var apiUrl = builder.Configuration["ApiSettings:BaseUrl"]
-            ?? Environment.GetEnvironmentVariable("API_BASE_URL")
-            ?? (builder.HostEnvironment.IsDevelopment() ? "http://localhost:5062" : builder.HostEnvironment.BaseAddress);
+        // URL da API: usa configuração do appsettings (dev) ou herda a origem do app (prod).
+        // Em produção, o nginx faz proxy de /api/ e /hubs/ internamente para o container da API,
+        // portanto basta usar a BaseAddress do host (mesma origem que a página web).
+        var apiUrlConfig = builder.Configuration["ApiSettings:BaseUrl"];
+        var apiUrl = !string.IsNullOrWhiteSpace(apiUrlConfig)
+            ? apiUrlConfig
+            : (builder.HostEnvironment.IsDevelopment() ? "http://localhost:5062" : builder.HostEnvironment.BaseAddress);
 
         // Registra KdsAuthService primeiro (o handler depende dele)
         builder.Services.AddScoped<KdsAuthService>();
