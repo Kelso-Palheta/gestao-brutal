@@ -69,6 +69,17 @@ public class CarrinhoState
         NotifyStateChanged();
     }
 
+    /// <summary>Remove o item na posição exata do carrinho. Correto para produtos repetidos com observações diferentes.</summary>
+    public void RemoverItemPorIndice(int index)
+    {
+        if (index >= 0 && index < _itens.Count)
+        {
+            _itens.RemoveAt(index);
+            NotifyStateChanged();
+        }
+    }
+
+    /// <summary>Remove o primeiro item com aquele ProdutoId. Mantido por compatibilidade.</summary>
     public void RemoverItem(int produtoId)
     {
         var item = _itens.FirstOrDefault(i => i.ProdutoId == produtoId);

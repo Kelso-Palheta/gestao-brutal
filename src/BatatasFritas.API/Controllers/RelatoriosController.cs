@@ -177,14 +177,14 @@ public class RelatoriosController : ControllerBase
 
         var sb = new StringBuilder();
         // Cabeçalho
-        sb.AppendLine("ID;Data;Hora;Cliente;Telefone;Bairro;Endereço;Pagamento;Itens;Subtotal;Taxa Entrega;Total");
+        sb.AppendLine("ID;Data;Hora;Cliente;Telefone;Bairro;Endereço;Pagamento;Itens;Subtotal;Taxa Entrega;Cashback Usado;Total");
 
         foreach (var p in filtrados)
         {
-            var itens     = string.Join(" | ", p.Itens.Select(i => $"{i.Quantidade}x {i.Produto.Nome}"));
-            var subtotal  = p.Itens.Sum(i => i.PrecoUnitario * i.Quantidade);
-            var taxa      = p.BairroEntrega?.TaxaEntrega ?? 0m;
-            var total     = subtotal + taxa;
+            var itens    = string.Join(" | ", p.Itens.Select(i => $"{i.Quantidade}x {i.Produto.Nome}"));
+            var subtotal = p.Itens.Sum(i => i.PrecoUnitario * i.Quantidade);
+            var taxa     = p.BairroEntrega?.TaxaEntrega ?? 0m;
+            var total    = p.ValorTotal; // já desconta cashback corretamente
             var pagamento = p.MetodoPagamento switch
             {
                 MetodoPagamento.Dinheiro      => "Dinheiro",
@@ -204,9 +204,10 @@ public class RelatoriosController : ControllerBase
                 EscapeCsv(p.EnderecoEntrega),
                 pagamento,
                 EscapeCsv(itens),
-                subtotal.ToString("F2", CultureInfo.InvariantCulture),
-                taxa.ToString("F2",     CultureInfo.InvariantCulture),
-                total.ToString("F2",    CultureInfo.InvariantCulture)
+                subtotal.ToString("F2",                  CultureInfo.InvariantCulture),
+                taxa.ToString("F2",                      CultureInfo.InvariantCulture),
+                p.ValorCashbackUsado.ToString("F2",      CultureInfo.InvariantCulture),
+                total.ToString("F2",                     CultureInfo.InvariantCulture)
             ));
         }
 

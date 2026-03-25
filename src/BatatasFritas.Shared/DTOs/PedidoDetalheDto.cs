@@ -18,6 +18,9 @@ public class PedidoDetalheDto
     public TipoAtendimento TipoAtendimento { get; set; }
     public string LinkPagamento { get; set; } = string.Empty;
     public decimal? TrocoPara { get; set; }
+    public decimal SubtotalItens { get; set; }
+    public decimal TaxaEntrega { get; set; }
+    public decimal ValorCashbackUsado { get; set; }
     public decimal ValorTotal { get; set; }
     public List<ItemPedidoDetalheDto> Itens { get; set; } = new();
 }

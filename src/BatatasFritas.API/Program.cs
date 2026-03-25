@@ -80,7 +80,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 if (string.IsNullOrWhiteSpace(connectionString))
     throw new System.Exception("Connection string 'DefaultConnection' não encontrada.");
 
-builder.Services.AddInfrastructure(connectionString);
+var databaseProvider = builder.Configuration["DatabaseProvider"] ?? "sqlite";
+builder.Services.AddInfrastructure(connectionString, databaseProvider);
 
 // ── Serviços de domínio ──────────────────────────────────────────────────────
 builder.Services.AddHttpClient<BatatasFritas.API.Services.IInfinitePayService, BatatasFritas.API.Services.InfinitePayService>(client =>

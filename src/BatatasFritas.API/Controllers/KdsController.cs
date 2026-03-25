@@ -57,20 +57,22 @@ public class KdsController : ControllerBase
 
                 return new PedidoDetalheDto
                 {
-                    Id = p.Id,
-                    NomeCliente = p.NomeCliente,
-                    TelefoneCliente = p.TelefoneCliente,
-                    EnderecoEntrega = p.EnderecoEntrega,
-                    NomeBairro = p.BairroEntrega?.Nome ?? "",
-                    MetodoPagamento = p.MetodoPagamento,
-                    StatusPagamento = p.StatusPagamento,
-                    TipoAtendimento = p.TipoAtendimento,
-                    TrocoPara = p.TrocoPara,
-                    // Usa a propriedade do domínio que já desconta ValorCashbackUsado
-                    ValorTotal = p.ValorTotal,
-                    Status = p.Status,
-                    DataHoraPedido = p.DataHoraPedido,
-                    Itens = itens
+                    Id                 = p.Id,
+                    NomeCliente        = p.NomeCliente,
+                    TelefoneCliente    = p.TelefoneCliente,
+                    EnderecoEntrega    = p.EnderecoEntrega,
+                    NomeBairro         = p.BairroEntrega?.Nome ?? "",
+                    MetodoPagamento    = p.MetodoPagamento,
+                    StatusPagamento    = p.StatusPagamento,
+                    TipoAtendimento    = p.TipoAtendimento,
+                    TrocoPara          = p.TrocoPara,
+                    SubtotalItens      = p.Itens.Sum(i => i.PrecoUnitario * i.Quantidade),
+                    TaxaEntrega        = p.BairroEntrega?.TaxaEntrega ?? 0m,
+                    ValorCashbackUsado = p.ValorCashbackUsado,
+                    ValorTotal         = p.ValorTotal,
+                    Status             = p.Status,
+                    DataHoraPedido     = p.DataHoraPedido,
+                    Itens              = itens
                 };
             }).ToList();
 

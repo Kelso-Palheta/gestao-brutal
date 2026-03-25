@@ -1,4 +1,5 @@
 {
+  "DatabaseProvider": "postgres",
   "ConnectionStrings": {
     "DefaultConnection": "Host=localhost;Port=5432;Database=batatasfritas;Username=SEU_USUARIO;Password=SUA_SENHA"
   },

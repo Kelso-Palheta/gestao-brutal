@@ -10,28 +10,12 @@ namespace BatatasFritas.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, string databaseProvider = "sqlite")
         {
-            Console.WriteLine($"[INFRA] Inicializando Infraestrutura. ConnectionString presente: {!string.IsNullOrEmpty(connectionString)}");
+            Console.WriteLine($"[INFRA] Inicializando Infraestrutura. Provider: {databaseProvider}");
 
-            // Verifica se é PostgreSQL baseado em keywords comuns ou no ambiente de produção
-            bool isPostgres = false;
-            
-            if (!string.IsNullOrEmpty(connectionString))
-            {
-                isPostgres = connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase) || 
-                             connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) || 
-                             connectionString.Contains("Database=", StringComparison.OrdinalIgnoreCase) ||
-                             connectionString.Contains("Port=", StringComparison.OrdinalIgnoreCase);
-            }
-
-            // Se estiver em produção e não houver indicação clara de SQLite, assume Postgres
-            string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
-            if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase) && !isPostgres && !connectionString.Contains("Data Source="))
-            {
-                Console.WriteLine("[INFRA] Ambiente de Produção detectado. Forçando PostgreSQL.");
-                isPostgres = true;
-            }
+            bool isPostgres = databaseProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase)
+                           || databaseProvider.Equals("postgresql", StringComparison.OrdinalIgnoreCase);
 
             IPersistenceConfigurer dbConfig;
 

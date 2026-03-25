@@ -35,8 +35,9 @@ public class FinanceiroController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard()
     {
-        var hoje = DateTime.Today;
-        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
+        // Usa UTC para consistência com DataHoraPedido (salvo em UTC pelo domínio)
+        var hoje      = DateTime.UtcNow.Date;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var pedidos = await _pedidoRepository.GetAllAsync();
         var movimentacoes = await _movRepository.GetAllAsync();

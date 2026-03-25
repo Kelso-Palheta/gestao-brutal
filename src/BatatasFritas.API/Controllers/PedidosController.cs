@@ -157,10 +157,13 @@ public class PedidosController : ControllerBase
             Status          = pedido.Status,
             MetodoPagamento = pedido.MetodoPagamento,
             StatusPagamento = pedido.StatusPagamento,
-            TipoAtendimento = pedido.TipoAtendimento,
-            LinkPagamento   = pedido.LinkPagamento,
-            TrocoPara       = pedido.TrocoPara,
-            ValorTotal      = pedido.ValorTotal,
+            TipoAtendimento    = pedido.TipoAtendimento,
+            LinkPagamento      = pedido.LinkPagamento,
+            TrocoPara          = pedido.TrocoPara,
+            SubtotalItens      = pedido.Itens.Sum(i => i.PrecoUnitario * i.Quantidade),
+            TaxaEntrega        = pedido.BairroEntrega?.TaxaEntrega ?? 0m,
+            ValorCashbackUsado = pedido.ValorCashbackUsado,
+            ValorTotal         = pedido.ValorTotal,
             Itens = pedido.Itens.Select(i => new ItemPedidoDetalheDto
             {
                 Id          = i.Id,
