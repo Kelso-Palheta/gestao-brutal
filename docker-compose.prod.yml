@@ -27,7 +27,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - DatabaseProvider=postgres
       - ConnectionStrings__DefaultConnection=Host=db;Database=batatasfritasdb;Username=postgres;Password=mysecretpassword
+      - Jwt__SecretKey=${Jwt__SecretKey:-CHANGE_ME_SET_IN_COOLIFY}
     ports:
       - "8080"
     depends_on:
