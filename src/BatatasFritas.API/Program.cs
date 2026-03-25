@@ -1,45 +1,105 @@
+using BatatasFritas.API.Hubs;
 using BatatasFritas.Infrastructure;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using BatatasFritas.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ── Controllers ──────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
+// ── Swagger com suporte a JWT ────────────────────────────────────────────────
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "BatatasFritas API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name         = "Authorization",
+        Type         = SecuritySchemeType.Http,
+        Scheme       = "bearer",
+        BearerFormat = "JWT",
+        In           = ParameterLocation.Header,
+        Description  = "Informe o token JWT: Bearer {token}"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
+            System.Array.Empty<string>()
+        }
+    });
+});
+
+// ── JWT Authentication ───────────────────────────────────────────────────────
+var jwtKey = builder.Configuration["Jwt:SecretKey"]
+    ?? throw new InvalidOperationException("Jwt:SecretKey não está configurado no appsettings.json.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
+            ValidAudience            = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+
+        // Suporte para SignalR: o token pode vir via query string "access_token"
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var path  = ctx.HttpContext.Request.Path;
+                var token = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs"))
+                    ctx.Token = token;
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// ── SignalR ──────────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+
+// ── Banco de dados ───────────────────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new System.Exception("Connection string 'DefaultConnection' not found or is empty.");
-}
+    throw new System.Exception("Connection string 'DefaultConnection' não encontrada.");
 
 builder.Services.AddInfrastructure(connectionString);
 
-// Registro de serviços específicos
+// ── Serviços de domínio ──────────────────────────────────────────────────────
 builder.Services.AddHttpClient<BatatasFritas.API.Services.IInfinitePayService, BatatasFritas.API.Services.InfinitePayService>(client =>
 {
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 
+// ── CORS ─────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowBlazorClient",
-        policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("AllowBlazorClient", policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod());
 });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ── Pipeline ─────────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -48,8 +108,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 app.UseCors("AllowBlazorClient");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<PedidosHub>("/hubs/pedidos");
 
 using (var scope = app.Services.CreateScope())
 {

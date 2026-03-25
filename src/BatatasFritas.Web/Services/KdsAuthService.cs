@@ -1,20 +1,23 @@
-using BatatasFritas.Shared.DTOs;
 using Microsoft.JSInterop;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace BatatasFritas.Web.Services;
 
 /// <summary>
-/// Serviço de autenticação do KDS.
-/// A validação da senha é feita pela API (POST api/configuracoes/auth/login),
-/// que compara contra o hash BCrypt armazenado no PostgreSQL.
-/// O estado de sessão continua na sessionStorage do navegador.
+/// Serviço de autenticação do KDS com JWT.
+/// Obtém token em POST /api/auth/login e o armazena em sessionStorage.
+/// O HttpClient do KDS envia o token automaticamente via AuthDelegatingHandler.
 /// </summary>
 public class KdsAuthService
 {
-    private readonly IJSRuntime _js;
-    private readonly HttpClient _http;
-    private const string SessionKey = "kds_autenticado";
+    private readonly IJSRuntime  _js;
+    private readonly HttpClient  _http;
+    private const string TokenKey = "kds_jwt_token";
+
+    // Token em memória para leitura síncrona pelo AuthDelegatingHandler
+    private string? _token;
 
     public KdsAuthService(IJSRuntime js, HttpClient http)
     {
@@ -22,41 +25,54 @@ public class KdsAuthService
         _http = http;
     }
 
-    /// <summary>Verifica se o usuário está autenticado nessa aba/sessão.</summary>
+    /// <summary>Expõe o token atual de forma síncrona (para o DelegatingHandler).</summary>
+    public string? GetToken() => _token;
+
+    /// <summary>
+    /// Tenta restaurar o token da sessionStorage (chamado no startup do app).
+    /// </summary>
+    public async Task RestaurarSessaoAsync()
+    {
+        _token = await _js.InvokeAsync<string?>("sessionStorage.getItem", TokenKey);
+    }
+
+    /// <summary>Verifica se há um token válido em memória.</summary>
     public async Task<bool> EstaAutenticadoAsync()
     {
-        var valor = await _js.InvokeAsync<string?>("sessionStorage.getItem", SessionKey);
-        return valor == "true";
+        if (!string.IsNullOrEmpty(_token)) return true;
+        _token = await _js.InvokeAsync<string?>("sessionStorage.getItem", TokenKey);
+        return !string.IsNullOrEmpty(_token);
     }
 
     /// <summary>
-    /// Autentica contra a API. Se a API confirmar, marca a sessão local como autenticada.
+    /// Autentica via POST /api/auth/login. Armazena o JWT retornado.
     /// </summary>
     public async Task<bool> LoginAsync(string senha)
     {
         try
         {
-            var response = await _http.PostAsJsonAsync(
-                "api/configuracoes/auth/login",
-                new LoginKdsRequest { Senha = senha });
+            var response = await _http.PostAsJsonAsync("api/auth/login", new { senha });
+            if (!response.IsSuccessStatusCode) return false;
 
-            if (response.IsSuccessStatusCode)
-            {
-                await _js.InvokeVoidAsync("sessionStorage.setItem", SessionKey, "true");
-                return true;
-            }
-            return false;
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            var token = doc.RootElement.GetProperty("token").GetString();
+            if (string.IsNullOrEmpty(token)) return false;
+
+            _token = token;
+            await _js.InvokeVoidAsync("sessionStorage.setItem", TokenKey, token);
+            return true;
         }
         catch
         {
-            // Fallback offline — não autentica se a API estiver fora
             return false;
         }
     }
 
-    /// <summary>Encerra a sessão limpando o sessionStorage.</summary>
+    /// <summary>Encerra a sessão removendo o token.</summary>
     public async Task LogoutAsync()
     {
-        await _js.InvokeVoidAsync("sessionStorage.removeItem", SessionKey);
+        _token = null;
+        await _js.InvokeVoidAsync("sessionStorage.removeItem", TokenKey);
     }
 }

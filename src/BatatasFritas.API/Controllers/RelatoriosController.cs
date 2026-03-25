@@ -2,6 +2,7 @@ using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Globalization;
@@ -13,6 +14,7 @@ namespace BatatasFritas.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class RelatoriosController : ControllerBase
 {
     private readonly IRepository<Pedido> _pedidoRepository;
@@ -215,8 +217,8 @@ public class RelatoriosController : ControllerBase
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
-    private static decimal Valor(Pedido p) =>
-        p.Itens.Sum(i => i.PrecoUnitario * i.Quantidade) + (p.BairroEntrega?.TaxaEntrega ?? 0);
+    // Usa a propriedade do domínio que já desconta ValorCashbackUsado corretamente.
+    private static decimal Valor(Pedido p) => p.ValorTotal;
 
     private static DateTime? ParseData(string? val)
     {

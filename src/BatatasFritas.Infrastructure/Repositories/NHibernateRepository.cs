@@ -1,7 +1,10 @@
 using BatatasFritas.Domain.Entities;
 using NHibernate;
 using NHibernate.Linq;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace BatatasFritas.Infrastructure.Repositories
@@ -10,34 +13,19 @@ namespace BatatasFritas.Infrastructure.Repositories
     {
         private readonly ISession _session;
 
-        public NHibernateRepository(ISession session)
-        {
-            _session = session;
-        }
+        public NHibernateRepository(ISession session) => _session = session;
 
-        public async Task<T?> GetByIdAsync(int id)
-        {
-            return await _session.GetAsync<T>(id);
-        }
+        public async Task<T?> GetByIdAsync(int id) =>
+            await _session.GetAsync<T>(id);
 
-        public async Task<IEnumerable<T>> GetAllAsync()
-        {
-            return await _session.Query<T>().ToListAsync();
-        }
+        public async Task<IEnumerable<T>> GetAllAsync() =>
+            await _session.Query<T>().ToListAsync();
 
-        public async Task AddAsync(T entity)
-        {
-            await _session.SaveAsync(entity);
-        }
+        public async Task<T?> FindAsync(Expression<Func<T, bool>> predicate) =>
+            await _session.Query<T>().Where(predicate).FirstOrDefaultAsync();
 
-        public async Task UpdateAsync(T entity)
-        {
-            await _session.UpdateAsync(entity);
-        }
-
-        public async Task DeleteAsync(T entity)
-        {
-            await _session.DeleteAsync(entity);
-        }
+        public async Task AddAsync(T entity)    => await _session.SaveAsync(entity);
+        public async Task UpdateAsync(T entity) => await _session.UpdateAsync(entity);
+        public async Task DeleteAsync(T entity) => await _session.DeleteAsync(entity);
     }
 }

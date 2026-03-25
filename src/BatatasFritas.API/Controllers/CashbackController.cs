@@ -1,14 +1,17 @@
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NHibernate;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 
 namespace BatatasFritas.API.Controllers;
 
+// GET saldo e GET configuracao são públicos (usados no totem pelo cliente)
+// POST configuracao e DELETE são restritos ao operador autenticado
 [ApiController]
 [Route("api/[controller]")]
 public class CashbackController : ControllerBase
@@ -40,8 +43,7 @@ public class CashbackController : ControllerBase
 
         var telLimpo = new string(telefone.Where(char.IsDigit).ToArray());
 
-        var todas = await _repoCarteira.GetAllAsync();
-        var carteira = todas.FirstOrDefault(c => c.Telefone == telLimpo);
+        var carteira = await _repoCarteira.FindAsync(c => c.Telefone == telLimpo);
 
         if (carteira == null)
         {
@@ -59,8 +61,7 @@ public class CashbackController : ControllerBase
     [HttpGet("configuracao")]
     public async Task<ActionResult<CashbackConfigDto>> GetConfiguracao()
     {
-        var configs = await _repoConfig.GetAllAsync();
-        var config = configs.FirstOrDefault(c => c.Chave == ChaveConfigPorcentagem);
+        var config = await _repoConfig.FindAsync(c => c.Chave == ChaveConfigPorcentagem);
 
         decimal percentual = 0;
         if (config != null && decimal.TryParse(config.Valor, out var p))
@@ -71,32 +72,41 @@ public class CashbackController : ControllerBase
         return Ok(new CashbackConfigDto { Porcentagem = percentual });
     }
 
+    [Authorize]
     [HttpPost("configuracao")]
     public async Task<IActionResult> SetConfiguracao([FromBody] CashbackConfigDto dto)
     {
         if (dto.Porcentagem < 0 || dto.Porcentagem > 100)
             return BadRequest("Porcentagem deve estar entre 0 e 100.");
 
-        var configs = await _repoConfig.GetAllAsync();
-        var config = configs.FirstOrDefault(c => c.Chave == ChaveConfigPorcentagem);
-
-        _uow.BeginTransaction();
-        if (config == null)
+        try
         {
-            config = new Configuracao(ChaveConfigPorcentagem, dto.Porcentagem.ToString("G", System.Globalization.CultureInfo.InvariantCulture));
-            await _repoConfig.AddAsync(config);
-        }
-        else
-        {
-            config.Valor = dto.Porcentagem.ToString("G", System.Globalization.CultureInfo.InvariantCulture);
-            await _repoConfig.UpdateAsync(config);
-        }
-        await _uow.CommitAsync();
+            var config = await _repoConfig.FindAsync(c => c.Chave == ChaveConfigPorcentagem);
 
-        return Ok(new { mensagem = "Configuração de cashback salva com sucesso!" });
+            _uow.BeginTransaction();
+            if (config == null)
+            {
+                config = new Configuracao(ChaveConfigPorcentagem, dto.Porcentagem.ToString("G", System.Globalization.CultureInfo.InvariantCulture));
+                await _repoConfig.AddAsync(config);
+            }
+            else
+            {
+                config.Valor = dto.Porcentagem.ToString("G", System.Globalization.CultureInfo.InvariantCulture);
+                await _repoConfig.UpdateAsync(config);
+            }
+            await _uow.CommitAsync();
+
+            return Ok(new { mensagem = "Configuração de cashback salva com sucesso!" });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     // ── DELETE api/cashback/limpar-tudo ────────────────────────────────────
+    [Authorize]
     [HttpDelete("limpar-tudo")]
     public async Task<IActionResult> LimparTudo()
     {

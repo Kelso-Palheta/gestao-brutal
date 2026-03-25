@@ -2,7 +2,9 @@
 @layout KdsLayout
 @using BatatasFritas.Shared.DTOs
 @using BatatasFritas.Shared.Enums
+@using Microsoft.AspNetCore.SignalR.Client
 @using System.Net.Http.Json
+@implements IAsyncDisposable
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject BatatasFritas.Web.Services.KdsAuthService KdsAuth
@@ -367,7 +369,9 @@
 
     // ── Impressão ────────────────────────────────────────────────────────
     private PedidoDetalheDto? pedidoAtualParaImpressao;
-    private Timer? pollingTimer;
+
+    // ── SignalR ───────────────────────────────────────────────────────────
+    private HubConnection? _hubConnection;
 
     // ── Cancelamento ─────────────────────────────────────────────────────
     private PedidoDetalheDto? pedidoParaCancelar;
@@ -386,13 +390,48 @@
         }
 
         await LoadPedidos(primeiraVez: true);
+        await ConectarSignalR();
+    }
 
-        // Polling a cada 3 segundos
-        pollingTimer = new Timer(async _ =>
+    private async Task ConectarSignalR()
+    {
+        // Monta a URL do hub a partir da BaseAddress do HttpClient
+        var apiBase = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        var hubUrl  = $"{apiBase}/hubs/pedidos";
+
+        var token = KdsAuth.GetToken();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl, options =>
+            {
+                if (!string.IsNullOrEmpty(token))
+                    options.AccessTokenProvider = () => Task.FromResult<string?>(token);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Novo pedido: recarrega e toca alerta
+        _hubConnection.On<int>("NovoPedido", async pedidoId =>
         {
             await LoadPedidos(primeiraVez: false);
             await InvokeAsync(StateHasChanged);
-        }, null, 3000, 3000);
+        });
+
+        // Status mudou: recarrega silenciosamente
+        _hubConnection.On<int, string>("StatusAtualizado", async (pedidoId, status) =>
+        {
+            await LoadPedidos(primeiraVez: false);
+            await InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+        }
+        catch
+        {
+            // Falha ao conectar — o KDS continua funcional (sem push em tempo real)
+        }
     }
 
     private async Task LoadPedidos(bool primeiraVez = false)
@@ -552,8 +591,9 @@
         _ => m.ToString().ToUpper()
     };
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        pollingTimer?.Dispose();
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
     }
 }

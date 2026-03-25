@@ -1,0 +1,47 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=batatasfritas;Username=SEU_USUARIO;Password=SUA_SENHA"
+  },
+  "Jwt": {
+    "SecretKey": "GERE_UMA_CHAVE_SEGURA_COM_64_CHARS_OU_MAIS",
+    "Issuer": "BatatasFritasAPI",
+    "Audience": "BatatasFritasKDS",
+    "ExpirationMinutes": 480
+  },
+  "InfinitePay": {
+    "InfiniteTag": "batatapalhetabrutal",
+    "CheckoutApiUrl": "https://api.infinitepay.io/invoices/public/checkout/links",
+    "Handle": "batatapalhetabrutal",
+    "DocNumber": "64016523000109",
+    "RedirectBaseUrl": "https://SEU_DOMINIO.com.br",
+    "WebhookUrl": "https://SEU_DOMINIO.com.br/api/pagamentos/webhook",
+    "WebhookSecret": "SECRET_CONFIGURADO_NO_PAINEL_INFINITEPAY"
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// DEPLOY COM COOLIFY / DOCKER — use variáveis de ambiente em vez deste arquivo
+// O .NET lê automaticamente variáveis de ambiente no formato:
+//   Secao__Chave  →  equivale a  { "Secao": { "Chave": "valor" } }
+//
+// Variáveis obrigatórias na produção:
+//
+//   ConnectionStrings__DefaultConnection
+//       Ex: Host=db;Port=5432;Database=batatasfritas;Username=app;Password=SENHA
+//
+//   Jwt__SecretKey
+//       Ex: 6yxXTcIgAA7CW-0PZ5OKvrUjmcplR90aDt65MeRj6ujGMCZaeWxQRo-yOGkf97AB
+//       (gere uma nova com: python3 -c "import secrets; print(secrets.token_urlsafe(48))")
+//
+//   InfinitePay__RedirectBaseUrl
+//       Ex: https://api.batatapalhetabrutal.com.br
+//
+//   InfinitePay__WebhookUrl
+//       Ex: https://api.batatapalhetabrutal.com.br/api/pagamentos/webhook
+//
+//   InfinitePay__WebhookSecret
+//       Ex: o valor configurado no painel InfinitePay para validação HMAC
+//
+//   ASPNETCORE_ENVIRONMENT
+//       Defina como "Production"
+// ──────────────────────────────────────────────────────────────────────────────

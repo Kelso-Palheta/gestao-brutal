@@ -54,13 +54,19 @@ public class ProdutosController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] ProdutoDto dto)
     {
-        var produto = new Produto(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl);
-        
-        _uow.BeginTransaction();
-        await _produtoRepository.AddAsync(produto);
-        await _uow.CommitAsync();
-
-        return Ok(new { produto.Id, dto.Nome });
+        try
+        {
+            var produto = new Produto(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl);
+            _uow.BeginTransaction();
+            await _produtoRepository.AddAsync(produto);
+            await _uow.CommitAsync();
+            return Ok(new { produto.Id, dto.Nome });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     // PUT api/produtos/{id} — edita produto existente
@@ -70,13 +76,19 @@ public class ProdutosController : ControllerBase
         var produto = await _produtoRepository.GetByIdAsync(id);
         if (produto == null) return NotFound("Produto não encontrado.");
 
-        produto.Atualizar(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl);
-
-        _uow.BeginTransaction();
-        await _produtoRepository.UpdateAsync(produto);
-        await _uow.CommitAsync();
-
-        return Ok(new { produto.Id, produto.Nome });
+        try
+        {
+            produto.Atualizar(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl);
+            _uow.BeginTransaction();
+            await _produtoRepository.UpdateAsync(produto);
+            await _uow.CommitAsync();
+            return Ok(new { produto.Id, produto.Nome });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     // PATCH api/produtos/{id}/ativar — ativa produto no cardápio
@@ -86,12 +98,19 @@ public class ProdutosController : ControllerBase
         var produto = await _produtoRepository.GetByIdAsync(id);
         if (produto == null) return NotFound();
 
-        produto.Ativar();
-        _uow.BeginTransaction();
-        await _produtoRepository.UpdateAsync(produto);
-        await _uow.CommitAsync();
-
-        return Ok(new { produto.Id, produto.Ativo });
+        try
+        {
+            produto.Ativar();
+            _uow.BeginTransaction();
+            await _produtoRepository.UpdateAsync(produto);
+            await _uow.CommitAsync();
+            return Ok(new { produto.Id, produto.Ativo });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     // PATCH api/produtos/{id}/desativar — remove produto do cardápio (sem deletar)
@@ -101,12 +120,19 @@ public class ProdutosController : ControllerBase
         var produto = await _produtoRepository.GetByIdAsync(id);
         if (produto == null) return NotFound();
 
-        produto.Desativar();
-        _uow.BeginTransaction();
-        await _produtoRepository.UpdateAsync(produto);
-        await _uow.CommitAsync();
-
-        return Ok(new { produto.Id, produto.Ativo });
+        try
+        {
+            produto.Desativar();
+            _uow.BeginTransaction();
+            await _produtoRepository.UpdateAsync(produto);
+            await _uow.CommitAsync();
+            return Ok(new { produto.Id, produto.Ativo });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     // PATCH api/produtos/reordenar — salva nova ordem da lista inteira em uma transação
@@ -116,19 +142,26 @@ public class ProdutosController : ControllerBase
         if (itens == null || !itens.Any())
             return BadRequest("Lista de reordenação vazia.");
 
-        _uow.BeginTransaction();
-        foreach (var item in itens)
+        try
         {
-            var produto = await _produtoRepository.GetByIdAsync(item.Id);
-            if (produto != null)
+            _uow.BeginTransaction();
+            foreach (var item in itens)
             {
-                produto.Ordem = item.Ordem;
-                await _produtoRepository.UpdateAsync(produto);
+                var produto = await _produtoRepository.GetByIdAsync(item.Id);
+                if (produto != null)
+                {
+                    produto.Ordem = item.Ordem;
+                    await _produtoRepository.UpdateAsync(produto);
+                }
             }
+            await _uow.CommitAsync();
+            return NoContent();
         }
-        await _uow.CommitAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     // DELETE api/produtos/{id} — tenta remover permanentemente.

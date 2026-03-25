@@ -1,6 +1,7 @@
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NHibernate;
 using System;
@@ -11,6 +12,7 @@ namespace BatatasFritas.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class InsumosController : ControllerBase
 {
     private readonly IRepository<Insumo> _insumoRepo;

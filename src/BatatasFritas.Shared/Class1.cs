@@ -1,6 +1,2 @@
-﻿namespace BatatasFritas.Shared;
+﻿// Artefato de scaffolding — pode ser excluído com segurança.
 
-public class Class1
-{
-
-}

@@ -1,8 +1,12 @@
+using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -10,23 +14,27 @@ namespace BatatasFritas.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class KdsController : ControllerBase
 {
     private readonly IRepository<Pedido> _pedidoRepository;
     private readonly IRepository<CarteiraCashback> _carteiraRepository;
     private readonly IRepository<Configuracao> _configRepository;
     private readonly IUnitOfWork _uow;
+    private readonly IHubContext<PedidosHub> _hub;
 
     public KdsController(
         IRepository<Pedido> pedidoRepository,
         IRepository<CarteiraCashback> carteiraRepository,
         IRepository<Configuracao> configRepository,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IHubContext<PedidosHub> hub)
     {
-        _pedidoRepository = pedidoRepository;
+        _pedidoRepository   = pedidoRepository;
         _carteiraRepository = carteiraRepository;
-        _configRepository = configRepository;
-        _uow = uow;
+        _configRepository   = configRepository;
+        _uow                = uow;
+        _hub                = hub;
     }
 
     [HttpGet("ativos")]
@@ -47,23 +55,19 @@ public class KdsController : ControllerBase
                     Observacao = i.Observacao
                 }).ToList();
 
-                // Forçar a soma matemática acessando a coleção e contornando bugs de proxy nulo do ORM
-                var somaItens = p.Itens.Sum(i => i.PrecoUnitario * i.Quantidade);
-                var somaTaxa = p.BairroEntrega?.TaxaEntrega ?? 0;
-                var total = somaItens + somaTaxa;
-
                 return new PedidoDetalheDto
                 {
                     Id = p.Id,
                     NomeCliente = p.NomeCliente,
                     TelefoneCliente = p.TelefoneCliente,
                     EnderecoEntrega = p.EnderecoEntrega,
-                    NomeBairro = p.BairroEntrega != null ? p.BairroEntrega.Nome : "",
+                    NomeBairro = p.BairroEntrega?.Nome ?? "",
                     MetodoPagamento = p.MetodoPagamento,
                     StatusPagamento = p.StatusPagamento,
                     TipoAtendimento = p.TipoAtendimento,
                     TrocoPara = p.TrocoPara,
-                    ValorTotal = total,
+                    // Usa a propriedade do domínio que já desconta ValorCashbackUsado
+                    ValorTotal = p.ValorTotal,
                     Status = p.Status,
                     DataHoraPedido = p.DataHoraPedido,
                     Itens = itens
@@ -79,45 +83,52 @@ public class KdsController : ControllerBase
         var pedido = await _pedidoRepository.GetByIdAsync(id);
         if (pedido == null) return NotFound();
 
-        _uow.BeginTransaction();
-        
-        // Se mudou para Entregue, vamos dar o Cashback (se configurado)
-        if (novoStatus == StatusPedido.Entregue && pedido.Status != StatusPedido.Entregue)
+        try
         {
-            if (!string.IsNullOrWhiteSpace(pedido.TelefoneCliente))
+            _uow.BeginTransaction();
+
+            // Se mudou para Entregue, credita Cashback (se configurado)
+            if (novoStatus == StatusPedido.Entregue && pedido.Status != StatusPedido.Entregue
+                && !string.IsNullOrWhiteSpace(pedido.TelefoneCliente))
             {
                 var telLimpo = new string(pedido.TelefoneCliente.Where(char.IsDigit).ToArray());
-                
-                var configs = await _configRepository.GetAllAsync();
-                var configCb = configs.FirstOrDefault(c => c.Chave == "cashback_porcentagem");
+
+                // FindAsync → query filtrada direto no banco
+                var configCb = await _configRepository.FindAsync(c => c.Chave == "cashback_porcentagem");
+
                 if (configCb != null && decimal.TryParse(configCb.Valor, out var porcentagem) && porcentagem > 0)
                 {
-                    var carteiras = await _carteiraRepository.GetAllAsync();
-                    var carteira = carteiras.FirstOrDefault(c => c.Telefone == telLimpo);
-                    
+                    var carteira = await _carteiraRepository.FindAsync(c => c.Telefone == telLimpo);
+
                     if (carteira == null)
                     {
                         carteira = new CarteiraCashback(telLimpo, pedido.NomeCliente);
                         await _carteiraRepository.AddAsync(carteira);
                     }
 
-                    // Calcula o ganho em cima do TotalPago (ValorTotal)
-                    var valorGanho = pedido.ValorTotal * (porcentagem / 100m);
-                    
+                    var valorGanho = Math.Round(pedido.ValorTotal * (porcentagem / 100m), 2);
                     if (valorGanho > 0)
                     {
-                        carteira.AdicionarSaldo(Math.Round(valorGanho, 2), $"Ganho de {porcentagem}% no pedido #{pedido.Id}", pedido.Id);
+                        carteira.AdicionarSaldo(valorGanho, $"Ganho de {porcentagem}% no pedido #{pedido.Id}", pedido.Id);
                         await _carteiraRepository.UpdateAsync(carteira);
                     }
                 }
             }
+
+            pedido.AlterarStatus(novoStatus);
+            await _pedidoRepository.UpdateAsync(pedido);
+            await _uow.CommitAsync();
+
+            // Notifica todos os clientes conectados que houve mudança de status
+            await _hub.Clients.All.SendAsync("StatusAtualizado", id, novoStatus.ToString());
+
+            return NoContent();
         }
-
-        pedido.AlterarStatus(novoStatus);
-        await _pedidoRepository.UpdateAsync(pedido);
-        await _uow.CommitAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>

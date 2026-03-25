@@ -77,3 +77,9 @@ bld/
 [Ll]og/
 [Ll]ogs/
 api_log.txt
+
+# Secrets / configurações sensíveis — NÃO commitar
+# Use appsettings.Development.json localmente e variáveis de ambiente na produção
+src/BatatasFritas.API/appsettings.Development.json
+src/BatatasFritas.API/appsettings.Production.json
+src/BatatasFritas.API/appsettings.Staging.json

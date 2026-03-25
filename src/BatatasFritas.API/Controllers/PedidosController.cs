@@ -1,8 +1,10 @@
+using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using NHibernate;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,6 +26,7 @@ public class PedidosController : ControllerBase
     private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
     private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
+    private readonly IHubContext<PedidosHub> _hub;
 
     public PedidosController(
         IRepository<Pedido> pedidoRepository,
@@ -36,19 +39,21 @@ public class PedidosController : ControllerBase
         BatatasFritas.API.Services.IInfinitePayService infinitePayService,
         Microsoft.Extensions.Configuration.IConfiguration config,
         NHibernate.ISession session,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IHubContext<PedidosHub> hub)
     {
-        _pedidoRepository  = pedidoRepository;
-        _bairroRepository  = bairroRepository;
-        _produtoRepository = produtoRepository;
-        _receitaRepository = receitaRepository;
-        _insumoRepository  = insumoRepository;
-        _movRepository     = movRepository;
+        _pedidoRepository   = pedidoRepository;
+        _bairroRepository   = bairroRepository;
+        _produtoRepository  = produtoRepository;
+        _receitaRepository  = receitaRepository;
+        _insumoRepository   = insumoRepository;
+        _movRepository      = movRepository;
         _carteiraRepository = carteiraRepository;
         _infinitePayService = infinitePayService;
-        _config = config;
-        _session = session;
-        _uow = uow;
+        _config             = config;
+        _session            = session;
+        _uow                = uow;
+        _hub                = hub;
     }
 
     // ── POST api/pedidos — cria pedido + dispara baixa de estoque ──────────
@@ -72,37 +77,33 @@ public class PedidosController : ControllerBase
             _uow.BeginTransaction();
 
             // ── Verifica e desconta Cashback se solicitado ───────────────────
+            CarteiraCashback? carteiraCashback = null;
             if (dto.ValorCashbackUsado > 0)
             {
                 if (string.IsNullOrWhiteSpace(dto.TelefoneCliente))
                     throw new System.Exception("Telefone é obrigatório para usar cashback.");
 
                 var telLimpo = new string(dto.TelefoneCliente.Where(char.IsDigit).ToArray());
-                var carteiras = await _carteiraRepository.GetAllAsync();
-                var carteira = carteiras.FirstOrDefault(c => c.Telefone == telLimpo);
+                carteiraCashback = await _carteiraRepository.FindAsync(c => c.Telefone == telLimpo);
 
-                if (carteira == null || carteira.SaldoAtual < dto.ValorCashbackUsado)
+                if (carteiraCashback == null || carteiraCashback.SaldoAtual < dto.ValorCashbackUsado)
                     throw new System.Exception("Saldo de cashback insuficiente.");
 
-                // A carteira cuida de deduzir o saldo e criar a TransacaoCashback de Saída (que é salva em cascade)
-                carteira.UsarSaldo(dto.ValorCashbackUsado, "Uso em novo pedido");
-                await _carteiraRepository.UpdateAsync(carteira);
+                carteiraCashback.UsarSaldo(dto.ValorCashbackUsado, "Uso em novo pedido");
+                await _carteiraRepository.UpdateAsync(carteiraCashback);
             }
 
             // NHibernate gera o ID aqui ao salvar no banco
             await _pedidoRepository.AddAsync(pedido);
 
-            // Atualiza a transação para referenciar o ID do pedido que acabou de ser gerado (se for o caso)
-            if (dto.ValorCashbackUsado > 0)
+            // Atualiza o PedidoReferenciaId na transação de saída (usa a instância já carregada)
+            if (carteiraCashback != null)
             {
-                var telLimpo = new string(dto.TelefoneCliente.Where(char.IsDigit).ToArray());
-                var carteiras = await _carteiraRepository.GetAllAsync();
-                var carteira = carteiras.FirstOrDefault(c => c.Telefone == telLimpo);
-                var transacao = carteira?.Transacoes.LastOrDefault();
+                var transacao = carteiraCashback.Transacoes.LastOrDefault();
                 if (transacao != null)
                 {
                     transacao.PedidoReferenciaId = pedido.Id;
-                    await _carteiraRepository.UpdateAsync(carteira!);
+                    await _carteiraRepository.UpdateAsync(carteiraCashback);
                 }
             }
 
@@ -122,9 +123,12 @@ public class PedidosController : ControllerBase
             }
 
             // ── Baixa automática de estoque ──────────────────────────────
-            await BaixarEstoque(dto.Itens);
+            await BaixarEstoque(dto.Itens, pedido.Id);
 
             await _uow.CommitAsync();
+
+            // Notifica o KDS em tempo real via SignalR
+            await _hub.Clients.All.SendAsync("NovoPedido", pedido.Id);
 
             return Ok(new { PedidoId = pedido.Id, Status = pedido.Status.ToString(), LinkPagamento = pedido.LinkPagamento });
         }
@@ -170,7 +174,7 @@ public class PedidosController : ControllerBase
     }
 
     // ── Baixa automática de estoque por receita ───────────────────────────
-    private async Task BaixarEstoque(List<NovoItemPedidoDto> itens)
+    private async Task BaixarEstoque(List<NovoItemPedidoDto> itens, int pedidoId)
     {
         if (itens == null || !itens.Any()) return;
 
@@ -186,6 +190,7 @@ public class PedidosController : ControllerBase
                 if (insumo == null) continue;
 
                 var qtdConsumida = receita.QuantidadePorUnidade * item.Quantidade;
+
                 if (insumo.EstoqueAtual >= qtdConsumida)
                 {
                     var mov = new MovimentacaoEstoque(
@@ -193,15 +198,14 @@ public class PedidosController : ControllerBase
                         TipoMovimentacao.Saida,
                         qtdConsumida,
                         insumo.CustoPorUnidade,
-                        $"Baixa automática — Pedido #{item.ProdutoId}");
+                        $"Baixa automática — Pedido #{pedidoId}");
 
                     await _movRepository.AddAsync(mov);
                     await _insumoRepository.UpdateAsync(insumo);
                 }
-                // Se não houver estoque suficiente: registra a baixa sem travar o pedido
-                // (estoque vai para negativo, gerando alerta visual)
                 else
                 {
+                    // Estoque insuficiente: ajusta assim mesmo (vai para negativo) e gera alerta visual
                     insumo.AjustarEstoque(-qtdConsumida);
                     await _insumoRepository.UpdateAsync(insumo);
                 }

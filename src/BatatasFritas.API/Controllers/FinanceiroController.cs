@@ -2,6 +2,7 @@ using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace BatatasFritas.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class FinanceiroController : ControllerBase
 {
     private readonly IRepository<Pedido> _pedidoRepository;
@@ -86,22 +88,29 @@ public class FinanceiroController : ControllerBase
     [HttpPost("meta")]
     public async Task<IActionResult> SalvarMetaDiaria([FromBody] decimal novaMeta)
     {
-        var configs = await _configRepository.GetAllAsync();
-        var configMeta = configs.FirstOrDefault(c => c.Chave == "meta_diaria_vendas");
-
-        _uow.BeginTransaction();
-        if (configMeta == null)
+        try
         {
-            configMeta = new Configuracao("meta_diaria_vendas", novaMeta.ToString("F2"));
-            await _configRepository.AddAsync(configMeta);
-        }
-        else
-        {
-            configMeta.Valor = novaMeta.ToString("F2");
-            await _configRepository.UpdateAsync(configMeta);
-        }
+            var configMeta = await _configRepository.FindAsync(c => c.Chave == "meta_diaria_vendas");
 
-        await _uow.CommitAsync();
-        return Ok(new { Mensagem = "Meta salva com sucesso!" });
+            _uow.BeginTransaction();
+            if (configMeta == null)
+            {
+                configMeta = new Configuracao("meta_diaria_vendas", novaMeta.ToString("F2"));
+                await _configRepository.AddAsync(configMeta);
+            }
+            else
+            {
+                configMeta.Valor = novaMeta.ToString("F2");
+                await _configRepository.UpdateAsync(configMeta);
+            }
+
+            await _uow.CommitAsync();
+            return Ok(new { Mensagem = "Meta salva com sucesso!" });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 }

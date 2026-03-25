@@ -1,5 +1,11 @@
 using BatatasFritas.Domain.Entities;
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BatatasFritas.Infrastructure.Repositories
 {
@@ -14,17 +20,23 @@ namespace BatatasFritas.Infrastructure.Repositories
             return Task.FromResult(entity);
         }
 
-        public Task<IEnumerable<T>> GetAllAsync()
+        public Task<IEnumerable<T>> GetAllAsync() =>
+            Task.FromResult(_storage.Values.AsEnumerable());
+
+        public Task<T?> FindAsync(Expression<Func<T, bool>> predicate)
         {
-            return Task.FromResult(_storage.Values.AsEnumerable());
+            var result = _storage.Values.AsQueryable().FirstOrDefault(predicate);
+            return Task.FromResult(result);
         }
 
         public Task AddAsync(T entity)
         {
-            var prop = typeof(EntityBase).GetProperty("Id");
-            if (prop != null && entity.Id == 0)
+            if (entity.Id == 0)
             {
-                prop.DeclaringType?.GetProperty("Id")?.GetSetMethod(true)?.Invoke(entity, new object[] { Interlocked.Increment(ref _idCounter) });
+                var idProp = typeof(EntityBase).GetProperty("Id");
+                idProp?.DeclaringType?.GetProperty("Id")
+                       ?.GetSetMethod(true)
+                       ?.Invoke(entity, new object[] { Interlocked.Increment(ref _idCounter) });
             }
             _storage.TryAdd(entity.Id, entity);
             return Task.CompletedTask;

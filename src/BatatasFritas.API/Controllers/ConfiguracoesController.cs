@@ -1,7 +1,9 @@
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -13,6 +15,7 @@ namespace BatatasFritas.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ConfiguracoesController : ControllerBase
 {
     private const string ChaveSenhaKds = "senha_kds";
@@ -29,9 +32,10 @@ public class ConfiguracoesController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────
-    // POST api/configuracoes/auth/login
-    // Valida a senha enviada pelo frontend na tela de login do KDS.
+    // POST api/configuracoes/auth/login — mantido para compatibilidade
+    // Para obter JWT use: POST /api/auth/login
     // ─────────────────────────────────────────────────────────────
+    [AllowAnonymous]
     [HttpPost("auth/login")]
     public async Task<IActionResult> Login([FromBody] LoginKdsRequest request)
     {
@@ -65,23 +69,30 @@ public class ConfiguracoesController : ControllerBase
 
         var novoHash = BCrypt.Net.BCrypt.HashPassword(request.NovaSenha);
 
-        var todos = await _repo.GetAllAsync();
-        var config = todos.FirstOrDefault(c => c.Chave == ChaveSenhaKds);
-
-        _uow.BeginTransaction();
-        if (config == null)
+        try
         {
-            config = new Configuracao(ChaveSenhaKds, novoHash);
-            await _repo.AddAsync(config);
-        }
-        else
-        {
-            config.Valor = novoHash;
-            await _repo.UpdateAsync(config);
-        }
-        await _uow.CommitAsync();
+            var config = await _repo.FindAsync(c => c.Chave == ChaveSenhaKds);
 
-        return Ok(new { mensagem = "Senha alterada com sucesso!" });
+            _uow.BeginTransaction();
+            if (config == null)
+            {
+                config = new Configuracao(ChaveSenhaKds, novoHash);
+                await _repo.AddAsync(config);
+            }
+            else
+            {
+                config.Valor = novoHash;
+                await _repo.UpdateAsync(config);
+            }
+            await _uow.CommitAsync();
+
+            return Ok(new { mensagem = "Senha alterada com sucesso!" });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -89,8 +100,7 @@ public class ConfiguracoesController : ControllerBase
     // ─────────────────────────────────────────────────────────────
     private async Task<bool> VerificarSenha(string senhaInformada)
     {
-        var todos = await _repo.GetAllAsync();
-        var config = todos.FirstOrDefault(c => c.Chave == ChaveSenhaKds);
+        var config = await _repo.FindAsync(c => c.Chave == ChaveSenhaKds);
 
         if (config == null)
         {

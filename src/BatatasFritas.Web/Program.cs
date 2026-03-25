@@ -1,6 +1,6 @@
+using BatatasFritas.Web.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using BatatasFritas.Web.Services;
 
 namespace BatatasFritas.Web;
 
@@ -12,16 +12,33 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        // URL da API: usa variável de ambiente API_BASE_URL injetada pelo Resfrie/Coolify,
-        // ou cai para localhost em desenvolvimento.
-        var apiUrl = builder.Configuration["ApiSettings:BaseUrl"] 
+        // URL da API: usa configuração do appsettings ou variável de ambiente
+        var apiUrl = builder.Configuration["ApiSettings:BaseUrl"]
             ?? Environment.GetEnvironmentVariable("API_BASE_URL")
             ?? (builder.HostEnvironment.IsDevelopment() ? "http://localhost:5062" : builder.HostEnvironment.BaseAddress);
-        
-        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
-        builder.Services.AddSingleton<CarrinhoState>();
-        builder.Services.AddScoped<BatatasFritas.Web.Services.KdsAuthService>();
 
-        await builder.Build().RunAsync();
+        // Registra KdsAuthService primeiro (o handler depende dele)
+        builder.Services.AddScoped<KdsAuthService>();
+
+        // DelegatingHandler que injeta o JWT em cada request
+        builder.Services.AddScoped<AuthDelegatingHandler>();
+
+        // HttpClient principal com o handler de autenticação
+        builder.Services.AddScoped(sp =>
+        {
+            var handler = sp.GetRequiredService<AuthDelegatingHandler>();
+            handler.InnerHandler = new HttpClientHandler();
+            return new HttpClient(handler) { BaseAddress = new Uri(apiUrl) };
+        });
+
+        builder.Services.AddSingleton<CarrinhoState>();
+
+        var host = builder.Build();
+
+        // Restaura o token JWT da sessionStorage antes de renderizar qualquer página
+        var kdsAuth = host.Services.GetRequiredService<KdsAuthService>();
+        await kdsAuth.RestaurarSessaoAsync();
+
+        await host.RunAsync();
     }
 }
