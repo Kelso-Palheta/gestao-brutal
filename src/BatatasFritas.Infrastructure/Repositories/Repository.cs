@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using BatatasFritas.Domain.Entities;
 using NHibernate;
@@ -23,6 +25,11 @@ public class Repository<T> : IRepository<T> where T : EntityBase
     public async Task<IEnumerable<T>> GetAllAsync()
     {
         return await _session.Query<T>().ToListAsync();
+    }
+
+    public async Task<T?> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _session.Query<T>().Where(predicate).FirstOrDefaultAsync();
     }
 
     public async Task AddAsync(T entity)
