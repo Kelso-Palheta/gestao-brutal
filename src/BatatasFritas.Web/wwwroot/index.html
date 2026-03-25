@@ -19,7 +19,7 @@
             <p style="text-align:center; font-weight:bold; margin-top:10px; color:#555;">Carregando...</p>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" async></script>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
         // =============================================
@@ -27,8 +27,9 @@
         // =============================================
         window.renderQrCode = function (containerId, text) {
             var el = document.getElementById(containerId);
-            if (el) {
-                el.innerHTML = '';
+            if (!el) return;
+            el.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
                 new QRCode(el, {
                     text: text,
                     width: 220,
@@ -37,6 +38,9 @@
                     colorLight: '#ffffff',
                     correctLevel: QRCode.CorrectLevel.M
                 });
+            } else {
+                // Fallback: exibe o link diretamente se a lib QR não carregou
+                el.innerHTML = '<a href="' + text + '" target="_blank" style="word-break:break-all;font-size:12px;">' + text + '</a>';
             }
         };
 
