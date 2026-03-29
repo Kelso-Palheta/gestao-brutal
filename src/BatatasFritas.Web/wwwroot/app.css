@@ -4023,6 +4023,19 @@ select.est-input option {
         gap: 10px;
     }
 
+    .produto-footer {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .btn-adicionar {
+        width: 100%;
+        text-align: center;
+        padding: 8px !important;
+        font-size: 0.8rem !important;
+        border-radius: 6px;
+    }
+
     .cardapio-filtros {
         flex-wrap: wrap;
         gap: 8px;

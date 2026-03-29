@@ -122,21 +122,6 @@
                 <p class="totem-modal-desc">@produtoSelecionado.Descricao</p>
                 <div class="totem-modal-price">@produtoSelecionado.PrecoBase.ToString("C2")</div>
 
-                @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
-                {
-                    <div class="totem-obs-box">
-                        <label>Remoções / Sem</label>
-                        <div class="totem-quick-obs">
-                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
-                            {
-                                <button class="totem-chip @(selecionadosIds.Contains(c.Id) ? "on" : "")" @onclick='() => ToggleComplemento(c)'>
-                                    @(selecionadosIds.Contains(c.Id) ? "✅ " : "❌ ")@c.Nome
-                                </button>
-                            }
-                        </div>
-                    </div>
-                }
-
                 @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
                 {
                     <div class="totem-obs-box">
@@ -146,6 +131,21 @@
                             {
                                 <button class="totem-chip @(selecionadosIds.Contains(c.Id) ? "on-green" : "")" @onclick='() => ToggleComplemento(c)'>
                                     @(selecionadosIds.Contains(c.Id) ? "✅ " : "+ ")@c.Nome
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
+                {
+                    <div class="totem-obs-box">
+                        <label>Remoções / Sem</label>
+                        <div class="totem-quick-obs">
+                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
+                            {
+                                <button class="totem-chip @(selecionadosIds.Contains(c.Id) ? "on" : "")" @onclick='() => ToggleComplemento(c)'>
+                                    @(selecionadosIds.Contains(c.Id) ? "✅ " : "❌ ")@c.Nome
                                 </button>
                             }
                         </div>

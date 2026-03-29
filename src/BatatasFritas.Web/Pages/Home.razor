@@ -110,12 +110,12 @@ else
             <h2>🍟 Personalize seu pedido</h2>
             <p class="modal-nome-produto">@produtoSelecionado.Nome</p>
 
-            @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
+            @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
             {
                 <div class="opcoes-secao">
-                    <h4>Remoções / Sem</h4>
+                    <h4>Complementos Gratuitos (Molhos)</h4>
                     <div class="checkbox-grid">
-                        @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
+                        @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
                         {
                             <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
                                 <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
@@ -125,12 +125,12 @@ else
                 </div>
             }
 
-            @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
+            @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
             {
                 <div class="opcoes-secao">
-                    <h4>Complementos Gratuitos (Molhos)</h4>
+                    <h4>Remoções / Sem</h4>
                     <div class="checkbox-grid">
-                        @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
+                        @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
                         {
                             <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
                                 <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
