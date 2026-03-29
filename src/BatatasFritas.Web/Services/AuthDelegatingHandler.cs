@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BatatasFritas.Web.Services;
 
@@ -8,16 +9,17 @@ namespace BatatasFritas.Web.Services;
 /// </summary>
 public class AuthDelegatingHandler : DelegatingHandler
 {
-    private readonly KdsAuthService _auth;
+    private readonly IServiceProvider _sp;
 
-    public AuthDelegatingHandler(KdsAuthService auth) => _auth = auth;
+    public AuthDelegatingHandler(IServiceProvider sp) => _sp = sp;
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var token = _auth.GetToken();
+        var auth = _sp.GetRequiredService<KdsAuthService>();
+        var token = auth.GetToken();
         if (!string.IsNullOrEmpty(token))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         return base.SendAsync(request, cancellationToken);
     }
