@@ -46,8 +46,6 @@ services:
       - API_BASE_URL=${API_BASE_URL:-}  # URL da API injetada pelo Resfrie
     ports:
       - "80"
-    depends_on:
-      - api
     restart: unless-stopped
 
 volumes:
