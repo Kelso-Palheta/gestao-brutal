@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
     # Healthcheck: o DB só fica "ready" quando aceitar conexões
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d batatasfritasdb"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
