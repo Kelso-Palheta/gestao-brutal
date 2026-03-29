@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "PostgreSQL (Docker)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "db"],
+      "port": 5432
+    },
+    {
+      "name": "BatatasFritas.API",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/BatatasFritas.API/BatatasFritas.API.csproj", "--launch-profile", "http"],
+      "port": 5062
+    },
+    {
+      "name": "BatatasFritas.Web (Blazor WASM)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/BatatasFritas.Web/BatatasFritas.Web.csproj", "--launch-profile", "http"],
+      "port": 5255
+    }
+  ]
+}
