@@ -3270,10 +3270,13 @@ select.est-input option {
     .totem-sidebar {
         width: 100%;
         height: auto;
+        min-height: 200px;
         max-height: 40vh;
         border-left: none;
         border-top: 2px solid #222;
         flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
     }
 
     .totem-sidebar-header {
