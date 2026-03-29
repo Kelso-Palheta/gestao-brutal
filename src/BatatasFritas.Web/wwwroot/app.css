@@ -3251,15 +3251,26 @@ select.est-input option {
 
 /* Responsividade Totem */
 @media (max-width: 900px) {
-    .totem-grid {
-        flex-direction: column;
+    .totem-app-shell {
         position: relative;
+        overflow-y: auto;
+        height: auto;
+        min-height: 100vh;
+        display: block;
+    }
+
+    .totem-grid {
+        position: relative;
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        inset: auto;
     }
 
     .totem-sidebar {
         width: 100%;
         height: auto;
-        max-height: 35vh;
+        max-height: 40vh;
         border-left: none;
         border-top: 2px solid #222;
         flex-shrink: 0;
@@ -3340,9 +3351,10 @@ select.est-input option {
     }
 
     .totem-menu-area {
-        padding: 10px;
-        flex: 1;
-        min-height: 0;
+        padding: 15px;
+        flex: none;
+        height: auto;
+        overflow-y: visible;
     }
 
     .totem-logo {
@@ -3402,25 +3414,85 @@ select.est-input option {
         font-size: 1rem;
     }
 
-    /* Totem Modal */
+    /* Totem Modal Mobile Refinement */
     .totem-modal {
         width: 95vw !important;
         max-width: 95vw !important;
-        max-height: 90vh;
-        overflow-y: auto;
+        max-height: 92vh;
+        border-radius: 20px;
+    }
+
+    .totem-modal-header {
+        padding: 12px 16px;
     }
 
     .totem-modal-header h2 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+    }
+
+    .totem-close-lg {
+        font-size: 1.8rem;
     }
 
     .totem-modal-body {
         padding: 15px;
     }
 
+    .totem-modal-desc {
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+    }
+
+    .totem-modal-price {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+    }
+
+    .totem-obs-box label {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+    }
+
+    .totem-quick-obs {
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .totem-chip {
+        padding: 8px 14px;
+        font-size: 0.9rem;
+    }
+
     .totem-qty-selector {
-        flex-wrap: wrap;
-        justify-content: center;
+        padding: 10px;
+        gap: 10px;
+        border-radius: 12px;
+    }
+
+    .totem-qty-selector span {
+        font-size: 1rem;
+    }
+
+    .totem-qty-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
+        border-radius: 10px;
+    }
+
+    .totem-qty-value {
+        font-size: 1.4rem !important;
+        width: 44px;
+    }
+
+    .totem-modal-footer {
+        padding: 12px 16px;
+    }
+
+    .totem-btn-confirm-add {
+        padding: 15px;
+        font-size: 1.1rem;
+        border-radius: 12px;
     }
 
     /* Totem Checkout */
