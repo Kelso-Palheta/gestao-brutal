@@ -53,11 +53,14 @@
             }
             
             <div style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin-bottom: 20px;">
-                <input @bind="Carrinho.TempNome" type="text" placeholder="Seu Nome completo" style="padding: 10px; border: 2px solid #000;" />
-                
                 <div style="margin-top: 5px;">
                     <label style="display: block; font-weight: 900; color: #d9534f; margin-bottom: 5px; font-size: 1rem;">Seu WhatsApp (Ganha Cashback! 🎁)</label>
-                    <input value="@Carrinho.TempTelefone" @onchange="OnTelefoneChanged" type="text" placeholder="Ex: 91999999999" style="padding: 10px; border: 2px solid #000; width: 100%;" />
+                    <input value="@Carrinho.TempTelefone" @onchange="OnTelefoneChanged" type="tel" placeholder="Ex: 91988887777" style="padding: 10px; border: 2px solid #000; width: 100%;" />
+                </div>
+
+                <div style="margin-top: 5px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;">Seu Nome completo</label>
+                    <input @bind="Carrinho.TempNome" type="text" placeholder="Como devemos te chamar?" style="padding: 10px; border: 2px solid #000; width: 100%;" />
                 </div>
 
 
@@ -345,19 +348,30 @@
         _usarCashback = false;
         valorCashbackDesejado = 0;
         
-        if (string.IsNullOrWhiteSpace(Carrinho.TempTelefone) || Carrinho.TempTelefone.Length < 10) return;
+        if (string.IsNullOrWhiteSpace(Carrinho.TempTelefone)) return;
 
         var telLimpo = new string(Carrinho.TempTelefone.Where(char.IsDigit).ToArray());
+        if (telLimpo.Length < 8) return;
+
         try
         {
             var r = await Http.GetAsync($"api/cashback/saldo/{telLimpo}");
             if (r.IsSuccessStatusCode)
             {
                 var dto = await r.Content.ReadFromJsonAsync<SaldoCashbackDto>();
-                if (dto != null && dto.SaldoAtual > 0)
+                if (dto != null)
                 {
-                    saldoCashback = dto.SaldoAtual;
-                    mensagemCashback = $"Você tem R$ {dto.SaldoAtual:F2} de cashback disponível!";
+                    if (dto.SaldoAtual > 0)
+                    {
+                        saldoCashback = dto.SaldoAtual;
+                        mensagemCashback = $"Você tem R$ {dto.SaldoAtual:F2} de cashback disponível!";
+                    }
+
+                    // Auto-preenche o nome se estiver vazio
+                    if (!string.IsNullOrWhiteSpace(dto.NomeCliente) && string.IsNullOrWhiteSpace(Carrinho.TempNome))
+                    {
+                        Carrinho.TempNome = dto.NomeCliente;
+                    }
                 }
             }
         }
