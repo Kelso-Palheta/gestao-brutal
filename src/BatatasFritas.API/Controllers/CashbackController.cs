@@ -105,6 +105,25 @@ public class CashbackController : ControllerBase
         }
     }
 
+    // ── GET api/cashback/clientes ──────────────────────────────────────────
+    [Authorize]
+    [HttpGet("clientes")]
+    public async Task<ActionResult> GetClientes()
+    {
+        var carteiras = await _repoCarteira.GetAllAsync();
+        var lista = carteiras
+            .OrderByDescending(c => c.SaldoAtual)
+            .Select(c => new SaldoCashbackDto
+            {
+                Telefone = c.Telefone,
+                NomeCliente = c.NomeCliente,
+                SaldoAtual = c.SaldoAtual
+            })
+            .ToList();
+
+        return Ok(lista);
+    }
+
     // ── DELETE api/cashback/limpar-tudo ────────────────────────────────────
     [Authorize]
     [HttpDelete("limpar-tudo")]

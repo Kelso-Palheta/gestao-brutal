@@ -102,6 +102,9 @@
                         }
                     </ul>
                     <div class="kds-card-actions">
+                        <button class="kds-btn" style="background:#444; flex:0 0 44px; font-size:1.2rem;" @onclick="() => MoverStatus(p.Id, StatusPedido.Recebido)" title="Voltar para Novos">
+                            ↩️
+                        </button>
                         <button class="kds-btn kds-btn-preparo" @onclick="() => MoverStatus(p.Id, StatusPedido.EmPreparo)">
                             Cozinhar 👨‍🍳
                         </button>
@@ -152,6 +155,9 @@
                         }
                     </ul>
                     <div class="kds-card-actions">
+                        <button class="kds-btn" style="background:#444; flex:0 0 44px; font-size:1.2rem;" @onclick="() => MoverStatus(p.Id, StatusPedido.Aceito)" title="Voltar para Fila">
+                            ↩️
+                        </button>
                         <button class="kds-btn kds-btn-pronto" @onclick="() => MoverStatus(p.Id, StatusPedido.ProntoParaEntrega)">
                             Pronto ✅
                         </button>
@@ -210,10 +216,20 @@
                         }
                     </ul>
                     <div class="kds-card-actions">
+                        <button class="kds-btn" style="background:#444; flex:0 0 44px; font-size:1.2rem;" @onclick="() => MoverStatus(p.Id, StatusPedido.EmPreparo)" title="Voltar para Fritura">
+                            ↩️
+                        </button>
+                        
                         @if (p.Status == StatusPedido.Entregue)
                         {
                             <button class="kds-btn" style="background:#111; color:#888; border-color:#444; cursor:not-allowed; box-shadow:none;" title="Aguardando retorno do pagamento" disabled>
                                 🛵 Aguarda Motoboy
+                            </button>
+                        }
+                        else if (p.TipoAtendimento == TipoAtendimento.Totem && p.StatusPagamento != StatusPagamento.Aprovado)
+                        {
+                            <button class="kds-btn" style="background:#111; color:#e74c3c; border-color:#c0392b; cursor:not-allowed;" title="Totem exige pagamento confirmado" disabled>
+                                🚫 Aguarda Pagto (Totem)
                             </button>
                         }
                         else if (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)

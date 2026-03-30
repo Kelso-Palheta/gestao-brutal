@@ -46,6 +46,9 @@
             <button class="admin-tab @(abaAtiva == "configuracoes" ? "active" : "")" @onclick='() => abaAtiva = "configuracoes"'>
                 ⚙️ Configurações
             </button>
+            <button class="admin-tab @(abaAtiva == "clientes" ? "active" : "")" @onclick='() => abaAtiva = "clientes"'>
+                👥 Clientes
+            </button>
         </div>
 
         <!-- MENSAGENS GLOBAIS -->
@@ -56,6 +59,50 @@
         @if (!string.IsNullOrEmpty(msgErro))
         {
             <div class="admin-alert admin-alert-erro">❌ @msgErro</div>
+        }
+
+        <!-- ======================== ABA CLIENTES ======================== -->
+        @if (abaAtiva == "clientes")
+        {
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h2>Base de Clientes (Cashback)</h2>
+                    <p style="color: #666; font-size: 0.9rem;">Lista de clientes que já fizeram pedidos e possuem saldo acumulado.</p>
+                </div>
+                
+                <div class="admin-table-container shadow-sm">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Nome Cliente</th>
+                                <th>WhatsApp / Telefone</th>
+                                <th>Saldo Atual</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (clientes.Any())
+                            {
+                                @foreach (var c in clientes)
+                                {
+                                    <tr>
+                                        <td style="font-weight: 700;">@c.NomeCliente</td>
+                                        <td>@c.Telefone</td>
+                                        <td style="color: #27ae60; font-weight: 900;">R$ @c.SaldoAtual.ToString("F2")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3" style="text-align: center; padding: 40px; color: #999;">
+                                        Nenhum cliente com cashback encontrado ainda.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         }
 
         <!-- ======================== ABA PRODUTOS ======================== -->
@@ -578,6 +625,7 @@
 
     private List<ProdutoDto> produtos = new();
     private List<BairroDto> bairros = new();
+    private List<SaldoCashbackDto> clientes = new();
     private List<ComplementoDto> complementos = new();
     
     // Modal Receita State
@@ -651,8 +699,11 @@
             var prods = await Http.GetFromJsonAsync<List<ProdutoDto>>("api/produtos");
             if (prods != null) produtos = prods;
 
-            var bairrList = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
-            if (bairrList != null) bairros = bairrList;
+            var resBairros = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
+            if (resBairros != null) bairros = resBairros;
+
+            var resClientes = await Http.GetFromJsonAsync<List<SaldoCashbackDto>>("api/cashback/clientes");
+            if (resClientes != null) clientes = resClientes;
 
             var compList = await Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos");
             if (compList != null) complementos = compList;

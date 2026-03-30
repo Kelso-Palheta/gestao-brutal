@@ -131,11 +131,27 @@ public class FinanceiroController : ControllerBase
     [HttpPost("limpar-historico")]
     public async Task<IActionResult> LimparHistorico([FromBody] LimparHistoricoDto req)
     {
-        // Validação da senha de administrador
+        // Validação da senha de administrador (Compatível com o hash do ConfiguracoesController)
         var configSenha = await _configRepository.FindAsync(c => c.Chave == "senha_kds");
-        var senhaAdminReal = configSenha?.Valor ?? "palheta2025";
+        bool senhaValida = false;
 
-        if (req.SenhaAdmin != senhaAdminReal)
+        if (configSenha == null)
+        {
+            // Senha padrão se nunca alterado
+            senhaValida = req.SenhaAdmin == "palheta2025";
+        }
+        else
+        {
+            // Verifica contra o hash BCrypt salvo pelo Admin
+            try {
+                senhaValida = BCrypt.Net.BCrypt.Verify(req.SenhaAdmin, configSenha.Valor);
+            } catch {
+                // Caso o valor no banco não seja um hash válido, tenta comparação direta por segurança
+                senhaValida = req.SenhaAdmin == configSenha.Valor;
+            }
+        }
+
+        if (!senhaValida)
         {
             return Unauthorized("Senha administrativa incorreta.");
         }

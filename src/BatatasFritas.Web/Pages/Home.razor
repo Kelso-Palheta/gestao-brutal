@@ -18,9 +18,23 @@
 
 @if (produtos == null)
 {
-    <div class="cardapio-loading">
-        <div class="cardapio-spinner"></div>
-        <p>Carregando o cardápio...</p>
+    <!-- Skeleton Loading Grid -->
+    <div class="skeleton-grid">
+        @for (int i = 0; i < 8; i++)
+        {
+            <div class="skeleton-card">
+                <div class="skeleton-img shimmer"></div>
+                <div class="skeleton-body">
+                    <div class="skeleton-line tag shimmer"></div>
+                    <div class="skeleton-line shimmer"></div>
+                    <div class="skeleton-line short shimmer"></div>
+                    <div class="skeleton-footer">
+                        <div class="skeleton-price shimmer"></div>
+                        <div class="skeleton-btn shimmer"></div>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 }
 else if (!produtos.Any())
@@ -213,10 +227,16 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var plist = await Http.GetFromJsonAsync<ProdutoDto[]>("api/produtos");
+        // Busca produtos e complementos em paralelo para ganhar tempo na primeira carga
+        var produtosTask = Http.GetFromJsonAsync<ProdutoDto[]>("api/produtos");
+        var complementosTask = Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos/ativos");
+
+        await Task.WhenAll(produtosTask, complementosTask);
+
+        var plist = await produtosTask;
         if (plist != null) produtos = plist.Where(p => p.Ativo).OrderBy(x => x.Ordem).ToArray();
 
-        var clist = await Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos/ativos");
+        var clist = await complementosTask;
         if (clist != null) todosComplementos = clist;
     }
 
