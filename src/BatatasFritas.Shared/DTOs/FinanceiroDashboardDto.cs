@@ -23,4 +23,18 @@ public class FinanceiroDashboardDto
     public decimal CartaoHoje { get; set; }
     public decimal DinheiroHoje { get; set; }
     public int TotalPedidosHoje { get; set; }
+
+    // Métricas do Período Selecionado (Filtro)
+    public decimal VendasPeriodo { get; set; }
+    public decimal ComprasPeriodo { get; set; }
+    public decimal DespesasPeriodo { get; set; }
+    public decimal LucroPeriodo => VendasPeriodo - ComprasPeriodo - DespesasPeriodo;
+    
+    public decimal PixPeriodo { get; set; }
+    public decimal CartaoPeriodo { get; set; }
+    public decimal DinheiroPeriodo { get; set; }
+    public int TotalPedidosPeriodo { get; set; }
+
+    public DateTime? DataInicioFiltro { get; set; }
+    public DateTime? DataFimFiltro { get; set; }
 }

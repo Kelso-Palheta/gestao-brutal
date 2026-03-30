@@ -39,7 +39,7 @@ public class FinanceiroController : ControllerBase
     }
 
     [HttpGet("dashboard")]
-    public async Task<IActionResult> GetDashboard()
+    public async Task<IActionResult> GetDashboard([FromQuery] DateTime? inicio = null, [FromQuery] DateTime? fim = null)
     {
         // Usa UTC para consistência com DataHoraPedido (salvo em UTC pelo domínio)
         var hoje      = DateTime.UtcNow.Date;
@@ -48,24 +48,46 @@ public class FinanceiroController : ControllerBase
         var pedidos = await _pedidoRepository.GetAllAsync();
         var movimentacoes = await _movRepository.GetAllAsync();
         var configs = await _configRepository.GetAllAsync();
+        var despesasObj = await _despesaRepository.GetAllAsync();
 
         // Consideramos como faturamento os pedidos efetivamente Pagos.
-        // O dinheiro só entra no sistema se StatusPagamento for Aprovado ou Presencial (entregue no motoqueiro).
         var pedidosValidos = pedidos.Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial).ToList();
 
-        // Filtro por período
+        // --- MÉTRICAS HOJE ---
         var pedidosHoje = pedidosValidos.Where(p => p.DataHoraPedido.Date == hoje).ToList();
-        var pedidosMes = pedidosValidos.Where(p => p.DataHoraPedido.Date >= inicioMes).ToList();
-
-        // Entradas de Estoque (Compras)
-        var compras = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada).ToList();
-        var comprasHoje = compras.Where(m => m.DataMovimentacao.Date == hoje).ToList();
-        var comprasMes = compras.Where(m => m.DataMovimentacao.Date >= inicioMes).ToList();
-
-        // Despesas (Mão de obra, impostos, etc)
-        var despesasObj = await _despesaRepository.GetAllAsync();
+        var comprasHoje = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao.Date == hoje).ToList();
         var despesasHoje = despesasObj.Where(d => d.DataRegistro.Date == hoje).ToList();
+
+        // --- MÉTRICAS MÊS ---
+        var pedidosMes = pedidosValidos.Where(p => p.DataHoraPedido.Date >= inicioMes).ToList();
+        var comprasMes = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao.Date >= inicioMes).ToList();
         var despesasMes = despesasObj.Where(d => d.DataRegistro.Date >= inicioMes).ToList();
+
+        // --- MÉTRICAS PERÍODO (FILTRO) ---
+        var vendasPeriodo = 0m;
+        var comprasPeriodo = 0m;
+        var despesasPeriodo = 0m;
+        var pixPeriodo = 0m;
+        var cartaoPeriodo = 0m;
+        var dinheiroPeriodo = 0m;
+        var totalPedidosPeriodo = 0;
+
+        if (inicio.HasValue && fim.HasValue)
+        {
+            var dataFimInclusiva = fim.Value.Date.AddDays(1).AddTicks(-1);
+            var pPeriodo = pedidosValidos.Where(p => p.DataHoraPedido >= inicio.Value && p.DataHoraPedido <= dataFimInclusiva).ToList();
+            var cPeriodo = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao >= inicio.Value && m.DataMovimentacao <= dataFimInclusiva).ToList();
+            var dPeriodo = despesasObj.Where(d => d.DataRegistro >= inicio.Value && d.DataRegistro <= dataFimInclusiva).ToList();
+
+            vendasPeriodo = pPeriodo.Sum(p => p.ValorTotal);
+            comprasPeriodo = cPeriodo.Sum(m => m.ValorTotal);
+            despesasPeriodo = dPeriodo.Sum(d => d.Valor);
+            totalPedidosPeriodo = pPeriodo.Count;
+
+            pixPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
+            cartaoPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal);
+            dinheiroPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
+        }
 
         // Leitura de Meta Diária
         decimal metaDiaria = 0m;
@@ -93,7 +115,18 @@ public class FinanceiroController : ControllerBase
             CartaoHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal),
             DinheiroHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal),
 
-            MetaDiaria = metaDiaria
+            MetaDiaria = metaDiaria,
+
+            // Métricas Período
+            VendasPeriodo = vendasPeriodo,
+            ComprasPeriodo = comprasPeriodo,
+            DespesasPeriodo = despesasPeriodo,
+            TotalPedidosPeriodo = totalPedidosPeriodo,
+            PixPeriodo = pixPeriodo,
+            CartaoPeriodo = cartaoPeriodo,
+            DinheiroPeriodo = dinheiroPeriodo,
+            DataInicioFiltro = inicio,
+            DataFimFiltro = fim
         };
 
         return Ok(dto);

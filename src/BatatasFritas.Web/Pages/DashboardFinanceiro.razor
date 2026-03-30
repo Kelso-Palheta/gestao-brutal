@@ -41,6 +41,70 @@
         @if (!string.IsNullOrEmpty(msgSucesso)) { <div class="dash-msg-ok no-print">✅ @msgSucesso</div> }
         @if (!string.IsNullOrEmpty(msgErro))    { <div class="dash-msg-err no-print">❌ @msgErro</div> }
 
+        <!-- FILTRO DE PERÍODO -->
+        <div class="dash-filter-bar no-print">
+            <div class="dash-filter-item">
+                <label>De:</label>
+                <input type="date" @bind="filtroInicio" />
+            </div>
+            <div class="dash-filter-item">
+                <label>Até:</label>
+                <input type="date" @bind="filtroFim" />
+            </div>
+            <button class="dash-btn-filtrar" @onclick="CarregarDados" disabled="@carregando">
+                @(carregando ? "⌛" : "🔍 Filtrar Período")
+            </button>
+            @if (filtroAtivo)
+            {
+                <button class="dash-btn-limpar-filtro" @onclick="LimparFiltro">✕ Limpar</button>
+            }
+        </div>
+
+        <!-- BLOCO 0: RESUMO DO PERÍODO SELECIONADO (Se houver filtro) -->
+        @if (filtroAtivo && dados.DataInicioFiltro.HasValue)
+        {
+            <div class="dash-section dash-period-result">
+                <h2 class="dash-section-title">📅 Resultado do Período (@dados.DataInicioFiltro.Value.ToString("dd/MM/yyyy") - @dados.DataFimFiltro?.ToString("dd/MM/yyyy"))</h2>
+                
+                <div class="dash-kpi-grid">
+                    <div class="dash-kpi-card period-card">
+                        <div class="dash-kpi-title">Vendas (Período)</div>
+                        <div class="dash-kpi-value cor-receita">@dados.VendasPeriodo.ToString("C2")</div>
+                        <div class="dash-kpi-sub">@dados.TotalPedidosPeriodo pedidos</div>
+                    </div>
+                    <div class="dash-kpi-card period-card">
+                        <div class="dash-kpi-title">Compras (Período)</div>
+                        <div class="dash-kpi-value cor-despesa">@dados.ComprasPeriodo.ToString("C2")</div>
+                    </div>
+                    <div class="dash-kpi-card period-card">
+                        <div class="dash-kpi-title">Despesas (Período)</div>
+                        <div class="dash-kpi-value cor-despesa" style="color:#d94bd9;">@dados.DespesasPeriodo.ToString("C2")</div>
+                    </div>
+                    <div class="dash-kpi-card period-card @(dados.LucroPeriodo >= 0 ? "lucro-positivo" : "lucro-negativo")">
+                        <div class="dash-kpi-title">Lucro do Período</div>
+                        <div class="dash-kpi-value text-shadow">@dados.LucroPeriodo.ToString("C2")</div>
+                    </div>
+                </div>
+
+                <div class="dash-card no-print" style="margin-top: -10px; margin-bottom: 30px;">
+                   <div style="display:flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                        <div class="dash-pagamento-row" style="border:none; padding:0;">
+                            <span style="margin-right:10px;">📱 PIX:</span>
+                            <strong>@dados.PixPeriodo.ToString("C2")</strong>
+                        </div>
+                        <div class="dash-pagamento-row" style="border:none; padding:0;">
+                            <span style="margin-right:10px;">💳 Cartão:</span>
+                            <strong>@dados.CartaoPeriodo.ToString("C2")</strong>
+                        </div>
+                        <div class="dash-pagamento-row" style="border:none; padding:0;">
+                            <span style="margin-right:10px;">💵 Dinheiro:</span>
+                            <strong>@dados.DinheiroPeriodo.ToString("C2")</strong>
+                        </div>
+                   </div>
+                </div>
+            </div>
+        }
+
         <!-- CABEÇALHO DE IMPRESSÃO (Oculto na tela normal) -->
         <div class="print-only print-header">
             <h2>Fechamento de Caixa - Batatas Fritas</h2>
@@ -460,6 +524,49 @@
     .dash-card { padding: 16px; }
     .dash-section-title { font-size: 1.1rem; }
 }
+
+/* Novos estilos para filtro */
+.dash-filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    background: #1a1a1a;
+    padding: 15px 20px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+.dash-filter-item { display: flex; flex-direction: column; gap: 5px; }
+.dash-filter-item label { font-size: 0.8rem; color: #888; font-weight: bold; }
+.dash-filter-item input { background: #000; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 6px; }
+
+.dash-btn-filtrar {
+    background: #ffb347;
+    color: #000;
+    border: none;
+    padding: 9px 20px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.dash-btn-filtrar:hover { background: #e09e3f; }
+.dash-btn-limpar-filtro {
+    background: transparent;
+    color: #888;
+    border: 1px solid #444;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.dash-period-result {
+    border-left: 4px solid #ffb347;
+    padding-left: 20px;
+    margin-bottom: 40px;
+}
+.period-card { background: rgba(255, 179, 71, 0.05) !important; border: 1px solid rgba(255, 179, 71, 0.2) !important; }
 </style>
 
 @code {
@@ -562,7 +669,13 @@
         msgErro = "";
         try
         {
-            dados = await Http.GetFromJsonAsync<FinanceiroDashboardDto>("api/financeiro/dashboard");
+            string url = "api/financeiro/dashboard";
+            if (filtroInicio.HasValue && filtroFim.HasValue)
+            {
+                url += $"?inicio={filtroInicio.Value:yyyy-MM-dd}&fim={filtroFim.Value:yyyy-MM-dd}";
+                filtroAtivo = true;
+            }
+            dados = await Http.GetFromJsonAsync<FinanceiroDashboardDto>(url);
         }
         catch (Exception ex)
         {
@@ -572,6 +685,18 @@
         {
             carregando = false;
         }
+    }
+
+    private DateTime? filtroInicio = DateTime.Today.AddDays(-7);
+    private DateTime? filtroFim = DateTime.Today;
+    private bool filtroAtivo = false;
+
+    private async Task LimparFiltro()
+    {
+        filtroInicio = DateTime.Today.AddDays(-7);
+        filtroFim = DateTime.Today;
+        filtroAtivo = false;
+        await CarregarDados();
     }
 
     private void HabilitarEdicaoMeta()
