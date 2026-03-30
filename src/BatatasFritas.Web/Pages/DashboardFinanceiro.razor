@@ -670,10 +670,9 @@
         try
         {
             string url = "api/financeiro/dashboard";
-            if (filtroInicio.HasValue && filtroFim.HasValue)
+            if (filtroAtivo)
             {
-                url += $"?inicio={filtroInicio.Value:yyyy-MM-dd}&fim={filtroFim.Value:yyyy-MM-dd}";
-                filtroAtivo = true;
+                url += $"?inicio={filtroInicio:yyyy-MM-dd}&fim={filtroFim:yyyy-MM-dd}";
             }
             dados = await Http.GetFromJsonAsync<FinanceiroDashboardDto>(url);
         }
@@ -687,8 +686,8 @@
         }
     }
 
-    private DateTime? filtroInicio = DateTime.Today.AddDays(-7);
-    private DateTime? filtroFim = DateTime.Today;
+    private DateTime filtroInicio = DateTime.Today.AddDays(-7);
+    private DateTime filtroFim = DateTime.Today;
     private bool filtroAtivo = false;
 
     private async Task LimparFiltro()
