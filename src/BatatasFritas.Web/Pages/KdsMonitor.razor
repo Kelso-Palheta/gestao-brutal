@@ -254,7 +254,13 @@
                         }
                     </ul>
                     <div class="kds-card-actions">
-                        @if (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
+                        @if (p.Status == StatusPedido.Entregue)
+                        {
+                            <button class="kds-btn" style="background:#111; color:#888; border-color:#444; cursor:not-allowed; box-shadow:none;" title="Aguardando retorno do pagamento" disabled>
+                                🛵 Aguarda Motoboy
+                            </button>
+                        }
+                        else if (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
                         {
                             <button class="kds-btn kds-btn-entregue" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
                                 Despachar ✅
@@ -262,13 +268,13 @@
                         }
                         else if (p.MetodoPagamento == MetodoPagamento.Dinheiro || p.MetodoPagamento == MetodoPagamento.InfiniteTap)
                         {
-                            <button class="kds-btn kds-btn-entregue" style="background: #e67e22;" title="Pagamento será realizado na entrega" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
-                                Despachar c/ Pagto Motoqueiro 🛵
+                            <button class="kds-btn kds-btn-entregue" style="border-color: #ff9800; color: #ff9800;" title="Pagamento será realizado na entrega" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
+                                Despachar no Motoboy 🛵
                             </button>
                         }
                         else
                         {
-                            <button class="kds-btn" style="background:#eee; color:#aaa; cursor:not-allowed;" title="Aguardando Pagamento Online" disabled>
+                            <button class="kds-btn" style="background:#111; color:#555; border-color:#333; cursor:not-allowed;" title="Aguardando Pagamento Online" disabled>
                                 🚫 Aguarda Pagto
                             </button>
                         }
@@ -437,7 +443,11 @@
     {
         // Monta a URL do hub a partir da BaseAddress do HttpClient
         var apiBase = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        var hubUrl  = $"{apiBase}/hubs/pedidos";
+        string hubUrl;
+        if (apiBase.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+            hubUrl = apiBase.Substring(0, apiBase.Length - 4) + "/hubs/pedidos";
+        else
+            hubUrl = $"{apiBase}/hubs/pedidos";
 
         var token = KdsAuth.GetToken();
 

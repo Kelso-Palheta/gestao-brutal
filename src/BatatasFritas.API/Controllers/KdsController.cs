@@ -43,7 +43,9 @@ public class KdsController : ControllerBase
         var pedidos = await _pedidoRepository.GetAllAsync();
         
         var ativos = pedidos
-            .Where(p => p.Status != StatusPedido.Cancelado && p.Status != StatusPedido.Entregue)
+            .Where(p => p.Status != StatusPedido.Cancelado && 
+                        (p.Status != StatusPedido.Entregue || 
+                        (p.Status == StatusPedido.Entregue && p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)))
             .OrderBy(p => p.DataHoraPedido)
             .Select(p => 
             {

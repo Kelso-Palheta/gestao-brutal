@@ -494,7 +494,11 @@
     private async Task ConectarSignalR()
     {
         var apiBase = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        var hubUrl  = $"{apiBase}/hubs/pedidos";
+        string hubUrl;
+        if (apiBase.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+            hubUrl = apiBase.Substring(0, apiBase.Length - 4) + "/hubs/pedidos";
+        else
+            hubUrl = $"{apiBase}/hubs/pedidos";
 
         var token = KdsAuth.GetToken();
 
