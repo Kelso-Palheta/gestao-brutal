@@ -7,6 +7,7 @@
 @inject HttpClient Http
 @inject KdsAuthService KdsAuth
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @if (!carregando)
 {
@@ -109,9 +110,6 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        }
-
             </div>
         }
 
@@ -601,22 +599,6 @@
                     </div>
                 </div>
 
-                <!-- Seção Limpeza de Dados REMOVIDA conforme solicitado -->
-
-
-                    @if (!string.IsNullOrEmpty(msgLimpezaOk))
-                    {
-                        <div class="admin-alert admin-alert-ok" style="margin-top:12px;">✅ @msgLimpezaOk</div>
-                    }
-                    @if (!string.IsNullOrEmpty(msgLimpezaErro))
-                    {
-                        <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgLimpezaErro</div>
-                    }
-                    @if (limpando)
-                    {
-                        <div style="margin-top:15px; color:#ff4444; font-weight:bold;">⏳ Processando limpeza... aguarde.</div>
-                    }
-                </div>
             </div>
         }
 
