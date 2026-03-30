@@ -1197,10 +1197,6 @@
     private DateTime dataInicioLimpeza = DateTime.Today.AddDays(-30);
     private DateTime dataFimLimpeza = DateTime.Today;
     private string senhaAdminLimpeza = "";
-    private string msgLimpezaOk = "";
-    private string msgLimpezaErro = "";
-    private bool limpando = false;
-
     private async Task LimparDados(string tipo)
     {
         if (string.IsNullOrWhiteSpace(senhaAdminLimpeza)) return;
