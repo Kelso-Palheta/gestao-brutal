@@ -191,14 +191,30 @@
         <div class="modal-content" style="max-width: 450px; padding: 30px; border-radius: 12px; background: #222; border: 2px solid #e74c3c; color: #fff; text-align: center;">
             <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
             <h3 style="color: #e74c3c; margin-bottom: 10px;">Zerar Dados do Sistema</h3>
-            <p style="color: #ccc; margin-bottom: 25px;">Escolha o que você deseja limpar. Essa ação não pode ser desfeita e os dados apagados afetam os relatórios passados e presentes.</p>
+            <p style="color: #ccc; margin-bottom: 25px;">Escolha o período que deseja limpar e insira a senha. Essa ação não pode ser desfeita.</p>
 
-            <button style="width: 100%; margin-bottom: 15px; padding: 15px; background: #ff9800; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("pedidos")' disabled="@processandoAcao">
-                🧨 ZERAR TODOS OS PEDIDOS (Teste)
+            <div style="display: flex; gap: 15px; text-align: left; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px; color:#aaa; font-size:0.8rem;">Data Inicial</label>
+                    <input type="date" @bind="dataInicioLimpeza" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
+                </div>
+                <div style="flex: 1;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px; color:#aaa; font-size:0.8rem;">Data Final</label>
+                    <input type="date" @bind="dataFimLimpeza" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
+                </div>
+            </div>
+
+            <div style="text-align: left; margin-bottom: 25px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px; color:#e74c3c; font-size:0.8rem;">Senha de Administrador</label>
+                <input type="password" @bind="senhaAdminLimpeza" placeholder="Digite a senha..." style="width:100%; padding: 10px; border: 2px solid #e74c3c; background: #111; color: #fff; border-radius: 6px;" />
+            </div>
+
+            <button style="width: 100%; margin-bottom: 15px; padding: 15px; background: #ff9800; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("pedidos")' disabled="@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || processandoAcao)">
+                🧨 APAGAR PEDIDOS DO PERÍODO
             </button>
             
-            <button style="width: 100%; margin-bottom: 25px; padding: 15px; background: #d32f2f; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("financeiro")' disabled="@processandoAcao">
-                🔥 ZERAR FINANCEIRO (Caixa / Despesas)
+            <button style="width: 100%; margin-bottom: 25px; padding: 15px; background: #d32f2f; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("financeiro")' disabled="@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || processandoAcao)">
+                🔥 APAGAR CAIXA/DESPESAS DO PERÍODO
             </button>
 
             <button style="width: 100%; padding: 10px; background: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="() => mostrarModalLimpar = false" disabled="@processandoAcao">Cancelar / Voltar</button>
@@ -570,23 +586,37 @@
         }
     }
 
+    private DateTime dataInicioLimpeza = DateTime.Today.AddDays(-30);
+    private DateTime dataFimLimpeza = DateTime.Today;
+    private string senhaAdminLimpeza = "";
+
     private async Task LimparDados(string tipo)
     {
+        if (string.IsNullOrWhiteSpace(senhaAdminLimpeza)) return;
         processandoAcao = true;
         msgErro = ""; msgSucesso = "";
 
         try
         {
-            var r = await Http.DeleteAsync($"api/financeiro/limpar-historico/{tipo}");
+            var dto = new LimparHistoricoDto
+            {
+                Tipo = tipo,
+                DataInicio = dataInicioLimpeza,
+                DataFim = dataFimLimpeza,
+                SenhaAdmin = senhaAdminLimpeza
+            };
+
+            var r = await Http.PostAsJsonAsync("api/financeiro/limpar-historico", dto);
             if (r.IsSuccessStatusCode)
             {
                 mostrarModalLimpar = false;
-                msgSucesso = "Histórico apagado com sucesso!";
+                msgSucesso = "Histórico do período apagado com sucesso!";
+                senhaAdminLimpeza = "";
                 await CarregarDados();
             }
             else
             {
-                msgErro = $"Falha ao apagar dados do tipo '{tipo}'.";
+                msgErro = $"Falha ao apagar dados: {await r.Content.ReadAsStringAsync()}";
             }
         }
         catch (Exception ex)

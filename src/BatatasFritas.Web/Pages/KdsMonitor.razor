@@ -260,9 +260,15 @@
                                 Despachar ✅
                             </button>
                         }
+                        else if (p.MetodoPagamento == MetodoPagamento.Dinheiro || p.MetodoPagamento == MetodoPagamento.InfiniteTap)
+                        {
+                            <button class="kds-btn kds-btn-entregue" style="background: #e67e22;" title="Pagamento será realizado na entrega" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
+                                Despachar c/ Pagto Motoqueiro 🛵
+                            </button>
+                        }
                         else
                         {
-                            <button class="kds-btn" style="background:#eee; color:#aaa; cursor:not-allowed;" title="Aguardando Pagamento" disabled>
+                            <button class="kds-btn" style="background:#eee; color:#aaa; cursor:not-allowed;" title="Aguardando Pagamento Online" disabled>
                                 🚫 Aguarda Pagto
                             </button>
                         }

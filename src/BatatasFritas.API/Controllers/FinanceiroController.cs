@@ -19,6 +19,7 @@ public class FinanceiroController : ControllerBase
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
     private readonly IRepository<Configuracao> _configRepository;
     private readonly IRepository<Despesa> _despesaRepository;
+    private readonly IRepository<TransacaoCashback> _cashbackRepository;
     private readonly IUnitOfWork _uow;
 
     public FinanceiroController(
@@ -26,12 +27,14 @@ public class FinanceiroController : ControllerBase
         IRepository<MovimentacaoEstoque> movRepository,
         IRepository<Configuracao> configRepository,
         IRepository<Despesa> despesaRepository,
+        IRepository<TransacaoCashback> cashbackRepository,
         IUnitOfWork uow)
     {
         _pedidoRepository = pedidoRepository;
         _movRepository = movRepository;
         _configRepository = configRepository;
         _despesaRepository = despesaRepository;
+        _cashbackRepository = cashbackRepository;
         _uow = uow;
     }
 
@@ -125,41 +128,73 @@ public class FinanceiroController : ControllerBase
         }
     }
 
-    [HttpDelete("limpar-historico/{tipo}")]
-    public async Task<IActionResult> LimparHistorico(string tipo)
+    [HttpPost("limpar-historico")]
+    public async Task<IActionResult> LimparHistorico([FromBody] LimparHistoricoDto req)
     {
+        // Validação da senha de administrador
+        var configSenha = await _configRepository.FindAsync(c => c.Chave == "senha_kds");
+        var senhaAdminReal = configSenha?.Valor ?? "palheta2025";
+
+        if (req.SenhaAdmin != senhaAdminReal)
+        {
+            return Unauthorized("Senha administrativa incorreta.");
+        }
+
+        if (req.DataFim < req.DataInicio)
+        {
+            return BadRequest("A data final não pode ser anterior à data inicial.");
+        }
+
         _uow.BeginTransaction();
         try
         {
-            if (tipo == "pedidos")
+            // O componente de Time picker pode mandar com a hora 00:00:00, vamos garantir os limites do dia
+            var dataFimInclusiva = req.DataFim.Date.AddDays(1).AddTicks(-1);
+
+            switch (req.Tipo.ToLower())
             {
-                var pedidos = await _pedidoRepository.GetAllAsync();
-                foreach (var p in pedidos.ToList())
-                {
-                    await _pedidoRepository.DeleteAsync(p);
-                }
-            }
-            else if (tipo == "financeiro")
-            {
-                var movs = await _movRepository.GetAllAsync();
-                foreach (var m in movs.ToList())
-                {
-                    await _movRepository.DeleteAsync(m);
-                }
-                var desps = await _despesaRepository.GetAllAsync();
-                foreach (var d in desps.ToList())
-                {
-                    await _despesaRepository.DeleteAsync(d);
-                }
-            }
-            else
-            {
-                await _uow.RollbackAsync();
-                return BadRequest("Tipo de limpeza inválido.");
+                case "pedidos":
+                    var pedidos = await _pedidoRepository.GetAllAsync();
+                    var pedidosNoPeriodo = pedidos.Where(p => p.DataHoraPedido >= req.DataInicio && p.DataHoraPedido <= dataFimInclusiva).ToList();
+                    foreach (var p in pedidosNoPeriodo) await _pedidoRepository.DeleteAsync(p);
+                    break;
+                
+                case "estoque":
+                    var movsEstoque = await _movRepository.GetAllAsync();
+                    var movsNoPeriodo = movsEstoque.Where(m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva).ToList();
+                    foreach (var m in movsNoPeriodo) await _movRepository.DeleteAsync(m);
+                    break;
+
+                case "despesas":
+                    var desps = await _despesaRepository.GetAllAsync();
+                    var despsNoPeriodo = desps.Where(d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva).ToList();
+                    foreach (var d in despsNoPeriodo) await _despesaRepository.DeleteAsync(d);
+                    break;
+
+                case "cashback":
+                    var cbs = await _cashbackRepository.GetAllAsync();
+                    var cbNoPeriodo = cbs.Where(c => c.DataHora >= req.DataInicio && c.DataHora <= dataFimInclusiva).ToList();
+                    foreach (var c in cbNoPeriodo) await _cashbackRepository.DeleteAsync(c);
+                    break;
+
+                case "financeiro":
+                    // DashboardFinanceiro usa essa chave combinada (Caixa/Estoque e Despesas)
+                    var mf = await _movRepository.GetAllAsync();
+                    foreach (var m in mf.Where(m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva).ToList())
+                        await _movRepository.DeleteAsync(m);
+
+                    var df = await _despesaRepository.GetAllAsync();
+                    foreach (var d in df.Where(d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva).ToList())
+                        await _despesaRepository.DeleteAsync(d);
+                    break;
+
+                default:
+                    await _uow.RollbackAsync();
+                    return BadRequest("Tipo de limpeza inválido.");
             }
 
             await _uow.CommitAsync();
-            return Ok(new { Mensagem = "Histórico limpo com sucesso!" });
+            return Ok(new { Mensagem = $"Histórico de '{req.Tipo}' do período solicitado foi limpo com sucesso!" });
         }
         catch (Exception ex)
         {

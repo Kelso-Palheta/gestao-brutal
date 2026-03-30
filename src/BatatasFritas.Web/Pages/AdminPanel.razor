@@ -516,26 +516,36 @@
                 <div class="admin-form-card" style="border: 2px solid #ff4444; background: #fffdfd;">
                     <h3 style="color:#cc0000;">⚠️ Atenção: Área Perigosa</h3>
                     <p style="color:#666; font-size:0.9rem; margin-bottom:16px;">
-                        Use os botões abaixo para apagar dados e deixar o sistema "zerado". Esta ação NÃO pode ser desfeita.
+                        Escolha o período que deseja apagar. Você precisa da <strong>Senha do Administrador</strong> para confirmar. Esta ação NÃO pode ser desfeita.
                     </p>
 
-                    <div style="margin-bottom: 20px;">
-                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Para liberar os botões, digite CONFIRMAR no campo abaixo:</label>
-                        <input type="text" @bind="confirmacaoTexto" placeholder="Digite CONFIRMAR aqui..." style="width:100%; max-width: 300px; padding: 10px; border: 2px solid #ff4444; border-radius: 6px; font-weight: bold; text-align: center; color: #cc0000;" />
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div>
+                            <label style="display:block; font-weight:bold; margin-bottom:5px;">Data Inicial</label>
+                            <input type="date" @bind="dataInicioLimpeza" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px;" />
+                        </div>
+                        <div>
+                            <label style="display:block; font-weight:bold; margin-bottom:5px;">Data Final</label>
+                            <input type="date" @bind="dataFimLimpeza" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px;" />
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#cc0000;">Senha de Administrador</label>
+                            <input type="password" @bind="senhaAdminLimpeza" placeholder="Digite a senha..." style="width:100%; padding: 10px; border: 2px solid #ff4444; border-radius: 6px;" />
+                        </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("pedidos")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             🗑️ Zerar Todos Pedidos
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("pedidos")' disabled='@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || limpando)'>
+                             🗑️ Apagar Pedidos
                         </button>
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("estoque")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             📦 Zerar Movim. Estoque
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("estoque")' disabled='@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || limpando)'>
+                             📦 Apagar Movim. Estoque
                         </button>
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("despesas")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             💸 Zerar Despesas
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("despesas")' disabled='@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || limpando)'>
+                             💸 Apagar Despesas
                         </button>
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("cashback")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             🎁 Zerar Cashback
+                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("cashback")' disabled='@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || limpando)'>
+                             🎁 Apagar Cashback
                         </button>
                     </div>
 
@@ -1184,9 +1194,16 @@
     private record SoftDeleteResponse(bool SoftDelete, string Mensagem);
 
     // ======================== LIMPEZA DE DADOS ========================
+    private DateTime dataInicioLimpeza = DateTime.Today.AddDays(-30);
+    private DateTime dataFimLimpeza = DateTime.Today;
+    private string senhaAdminLimpeza = "";
+    private string msgLimpezaOk = "";
+    private string msgLimpezaErro = "";
+    private bool limpando = false;
+
     private async Task LimparDados(string tipo)
     {
-        if (confirmacaoTexto != "CONFIRMAR") return;
+        if (string.IsNullOrWhiteSpace(senhaAdminLimpeza)) return;
         
         limpando = true;
         msgLimpezaOk = "";
@@ -1194,22 +1211,20 @@
         
         try
         {
-            string endpoint = tipo switch
+            var dto = new LimparHistoricoDto
             {
-                "pedidos" => "api/pedidos/limpar-tudo",
-                "estoque" => "api/insumos/limpar-movimentacoes",
-                "despesas" => "api/despesas/limpar-tudo",
-                "cashback" => "api/cashback/limpar-tudo",
-                _ => ""
+                Tipo = tipo,
+                DataInicio = dataInicioLimpeza,
+                DataFim = dataFimLimpeza,
+                SenhaAdmin = senhaAdminLimpeza
             };
 
-            if (string.IsNullOrEmpty(endpoint)) return;
-
-            var res = await Http.DeleteAsync(endpoint);
+            var res = await Http.PostAsJsonAsync("api/financeiro/limpar-historico", dto);
+            
             if (res.IsSuccessStatusCode)
             {
-                msgLimpezaOk = $"Limpeza de {tipo} realizada com sucesso!";
-                confirmacaoTexto = "";
+                msgLimpezaOk = $"Registros de {tipo} no período selecionado foram apagados!";
+                senhaAdminLimpeza = "";
                 await CarregarTudo();
             }
             else
