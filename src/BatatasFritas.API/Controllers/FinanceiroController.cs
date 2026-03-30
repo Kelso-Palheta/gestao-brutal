@@ -18,22 +18,28 @@ public class FinanceiroController : ControllerBase
     private readonly IRepository<Pedido> _pedidoRepository;
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
     private readonly IRepository<Configuracao> _configRepository;
+    private readonly IRepository<Despesa> _despesaRepository;
+    private readonly IRepository<TransacaoCashback> _cashbackRepository;
     private readonly IUnitOfWork _uow;
 
     public FinanceiroController(
         IRepository<Pedido> pedidoRepository,
         IRepository<MovimentacaoEstoque> movRepository,
         IRepository<Configuracao> configRepository,
+        IRepository<Despesa> despesaRepository,
+        IRepository<TransacaoCashback> cashbackRepository,
         IUnitOfWork uow)
     {
         _pedidoRepository = pedidoRepository;
         _movRepository = movRepository;
         _configRepository = configRepository;
+        _despesaRepository = despesaRepository;
+        _cashbackRepository = cashbackRepository;
         _uow = uow;
     }
 
     [HttpGet("dashboard")]
-    public async Task<IActionResult> GetDashboard()
+    public async Task<IActionResult> GetDashboard([FromQuery] DateTime? inicio, [FromQuery] DateTime? fim)
     {
         // Usa UTC para consistência com DataHoraPedido (salvo em UTC pelo domínio)
         var hoje      = DateTime.UtcNow.Date;
@@ -42,19 +48,46 @@ public class FinanceiroController : ControllerBase
         var pedidos = await _pedidoRepository.GetAllAsync();
         var movimentacoes = await _movRepository.GetAllAsync();
         var configs = await _configRepository.GetAllAsync();
+        var despesasObj = await _despesaRepository.GetAllAsync();
 
-        // Consideramos como faturamento os pedidos Entregues (que de fato ocorreram e geraram receita local)
-        // Pedidos cancelados não entram na conta financeira.
-        var pedidosValidos = pedidos.Where(p => p.Status == StatusPedido.Entregue).ToList();
+        // Consideramos como faturamento os pedidos efetivamente Pagos.
+        var pedidosValidos = pedidos.Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial).ToList();
 
-        // Filtro por período
+        // --- MÉTRICAS HOJE ---
         var pedidosHoje = pedidosValidos.Where(p => p.DataHoraPedido.Date == hoje).ToList();
-        var pedidosMes = pedidosValidos.Where(p => p.DataHoraPedido.Date >= inicioMes).ToList();
+        var comprasHoje = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao.Date == hoje).ToList();
+        var despesasHoje = despesasObj.Where(d => d.DataRegistro.Date == hoje).ToList();
 
-        // Entradas de Estoque (Compras)
-        var compras = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada).ToList();
-        var comprasHoje = compras.Where(m => m.DataMovimentacao.Date == hoje).ToList();
-        var comprasMes = compras.Where(m => m.DataMovimentacao.Date >= inicioMes).ToList();
+        // --- MÉTRICAS MÊS ---
+        var pedidosMes = pedidosValidos.Where(p => p.DataHoraPedido.Date >= inicioMes).ToList();
+        var comprasMes = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao.Date >= inicioMes).ToList();
+        var despesasMes = despesasObj.Where(d => d.DataRegistro.Date >= inicioMes).ToList();
+
+        // --- MÉTRICAS PERÍODO (FILTRO) ---
+        var vendasPeriodo = 0m;
+        var comprasPeriodo = 0m;
+        var despesasPeriodo = 0m;
+        var pixPeriodo = 0m;
+        var cartaoPeriodo = 0m;
+        var dinheiroPeriodo = 0m;
+        var totalPedidosPeriodo = 0;
+
+        if (inicio.HasValue && fim.HasValue)
+        {
+            var dataFimInclusiva = fim.Value.Date.AddDays(1).AddTicks(-1);
+            var pPeriodo = pedidosValidos.Where(p => p.DataHoraPedido >= inicio.Value && p.DataHoraPedido <= dataFimInclusiva).ToList();
+            var cPeriodo = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao >= inicio.Value && m.DataMovimentacao <= dataFimInclusiva).ToList();
+            var dPeriodo = despesasObj.Where(d => d.DataRegistro >= inicio.Value && d.DataRegistro <= dataFimInclusiva).ToList();
+
+            vendasPeriodo = pPeriodo.Sum(p => p.ValorTotal);
+            comprasPeriodo = cPeriodo.Sum(m => m.ValorTotal);
+            despesasPeriodo = dPeriodo.Sum(d => d.Valor);
+            totalPedidosPeriodo = pPeriodo.Count;
+
+            pixPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
+            cartaoPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal);
+            dinheiroPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
+        }
 
         // Leitura de Meta Diária
         decimal metaDiaria = 0m;
@@ -69,18 +102,31 @@ public class FinanceiroController : ControllerBase
             // Métricas Hoje
             VendasHoje = pedidosHoje.Sum(p => p.ValorTotal),
             ComprasHoje = comprasHoje.Sum(m => m.ValorTotal),
+            DespesasHoje = despesasHoje.Sum(d => d.Valor),
             TotalPedidosHoje = pedidosHoje.Count,
 
             // Métricas Mês
             VendasMes = pedidosMes.Sum(p => p.ValorTotal),
             ComprasMes = comprasMes.Sum(m => m.ValorTotal),
+            DespesasMes = despesasMes.Sum(d => d.Valor),
 
             // Métodos Hoje
             PixHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal),
             CartaoHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal),
             DinheiroHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal),
 
-            MetaDiaria = metaDiaria
+            MetaDiaria = metaDiaria,
+
+            // Métricas Período
+            VendasPeriodo = vendasPeriodo,
+            ComprasPeriodo = comprasPeriodo,
+            DespesasPeriodo = despesasPeriodo,
+            TotalPedidosPeriodo = totalPedidosPeriodo,
+            PixPeriodo = pixPeriodo,
+            CartaoPeriodo = cartaoPeriodo,
+            DinheiroPeriodo = dinheiroPeriodo,
+            DataInicioFiltro = inicio,
+            DataFimFiltro = fim
         };
 
         return Ok(dto);
@@ -107,6 +153,97 @@ public class FinanceiroController : ControllerBase
 
             await _uow.CommitAsync();
             return Ok(new { Mensagem = "Meta salva com sucesso!" });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("limpar-historico")]
+    public async Task<IActionResult> LimparHistorico([FromBody] LimparHistoricoDto req)
+    {
+        // Validação da senha de administrador (Compatível com o hash do ConfiguracoesController)
+        var configSenha = await _configRepository.FindAsync(c => c.Chave == "senha_kds");
+        bool senhaValida = false;
+
+        if (configSenha == null)
+        {
+            // Senha padrão se nunca alterado
+            senhaValida = req.SenhaAdmin == "palheta2025";
+        }
+        else
+        {
+            // Verifica contra o hash BCrypt salvo pelo Admin
+            try {
+                senhaValida = BCrypt.Net.BCrypt.Verify(req.SenhaAdmin, configSenha.Valor);
+            } catch {
+                // Caso o valor no banco não seja um hash válido, tenta comparação direta por segurança
+                senhaValida = req.SenhaAdmin == configSenha.Valor;
+            }
+        }
+
+        if (!senhaValida)
+        {
+            return Unauthorized("Senha administrativa incorreta.");
+        }
+
+        if (req.DataFim < req.DataInicio)
+        {
+            return BadRequest("A data final não pode ser anterior à data inicial.");
+        }
+
+        _uow.BeginTransaction();
+        try
+        {
+            // O componente de Time picker pode mandar com a hora 00:00:00, vamos garantir os limites do dia
+            var dataFimInclusiva = req.DataFim.Date.AddDays(1).AddTicks(-1);
+
+            switch (req.Tipo.ToLower())
+            {
+                case "pedidos":
+                    var pedidos = await _pedidoRepository.GetAllAsync();
+                    var pedidosNoPeriodo = pedidos.Where(p => p.DataHoraPedido >= req.DataInicio && p.DataHoraPedido <= dataFimInclusiva).ToList();
+                    foreach (var p in pedidosNoPeriodo) await _pedidoRepository.DeleteAsync(p);
+                    break;
+                
+                case "estoque":
+                    var movsEstoque = await _movRepository.GetAllAsync();
+                    var movsNoPeriodo = movsEstoque.Where(m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva).ToList();
+                    foreach (var m in movsNoPeriodo) await _movRepository.DeleteAsync(m);
+                    break;
+
+                case "despesas":
+                    var desps = await _despesaRepository.GetAllAsync();
+                    var despsNoPeriodo = desps.Where(d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva).ToList();
+                    foreach (var d in despsNoPeriodo) await _despesaRepository.DeleteAsync(d);
+                    break;
+
+                case "cashback":
+                    var cbs = await _cashbackRepository.GetAllAsync();
+                    var cbNoPeriodo = cbs.Where(c => c.DataHora >= req.DataInicio && c.DataHora <= dataFimInclusiva).ToList();
+                    foreach (var c in cbNoPeriodo) await _cashbackRepository.DeleteAsync(c);
+                    break;
+
+                case "financeiro":
+                    // DashboardFinanceiro usa essa chave combinada (Caixa/Estoque e Despesas)
+                    var mf = await _movRepository.GetAllAsync();
+                    foreach (var m in mf.Where(m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva).ToList())
+                        await _movRepository.DeleteAsync(m);
+
+                    var df = await _despesaRepository.GetAllAsync();
+                    foreach (var d in df.Where(d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva).ToList())
+                        await _despesaRepository.DeleteAsync(d);
+                    break;
+
+                default:
+                    await _uow.RollbackAsync();
+                    return BadRequest("Tipo de limpeza inválido.");
+            }
+
+            await _uow.CommitAsync();
+            return Ok(new { Mensagem = $"Histórico de '{req.Tipo}' do período solicitado foi limpo com sucesso!" });
         }
         catch (Exception ex)
         {

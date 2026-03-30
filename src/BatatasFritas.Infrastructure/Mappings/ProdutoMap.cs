@@ -18,5 +18,6 @@ public class ProdutoMap : ClassMap<Produto>
         Map(x => x.ImagemUrl).Length(255).Column("imagem_url");
         Map(x => x.Ativo).Not.Nullable().Column("ativo").Default("true");
         Map(x => x.Ordem).Not.Nullable().Column("ordem").Default("0");
+        Map(x => x.ComplementosPermitidos).Nullable().Length(500).Column("complementos_permitidos").Default("''");
     }
 }

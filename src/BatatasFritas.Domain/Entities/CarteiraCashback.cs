@@ -47,4 +47,17 @@ public class CarteiraCashback : EntityBase
         SaldoAtual -= valor;
         Transacoes.Add(new TransacaoCashback(this, valor, TipoTransacaoCashback.Saida, motivo, pedidoId));
     }
+
+    /// <summary>
+    /// Força um novo valor de saldo (ajuste manual do admin).
+    /// </summary>
+    public virtual void SetSaldoManual(decimal novoValor, string motivo)
+    {
+        var diferenca = novoValor - SaldoAtual;
+        if (diferenca == 0) return;
+
+        var tipo = diferenca > 0 ? TipoTransacaoCashback.Entrada : TipoTransacaoCashback.Saida;
+        SaldoAtual = novoValor;
+        Transacoes.Add(new TransacaoCashback(this, Math.Abs(diferenca), tipo, motivo));
+    }
 }

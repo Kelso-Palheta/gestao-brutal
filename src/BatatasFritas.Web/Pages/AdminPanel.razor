@@ -7,6 +7,7 @@
 @inject HttpClient Http
 @inject KdsAuthService KdsAuth
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @if (!carregando)
 {
@@ -26,7 +27,7 @@
             <a href="/admin/estoque" class="admin-nav-link">📦 Estoque</a>
             <a href="/admin/dashboard" class="admin-nav-link">📊 Dashboard</a>
             <a href="/kds" class="admin-nav-link">🍳 KDS</a>
-            <button @onclick="Sair" class="admin-btn-sair">🔒 Sair</button>
+            <button @onclick="@Sair" class="admin-btn-sair">🔒 Sair</button>
         </div>
     </div>
 
@@ -34,17 +35,20 @@
 
         <!-- TABS -->
         <div class="admin-tabs">
-            <button class="admin-tab @(abaAtiva == "produtos" ? "active" : "")" @onclick='() => abaAtiva = "produtos"'>
+            <button class="admin-tab @(abaAtiva == "produtos" ? "active" : "")" @onclick="@(() => abaAtiva = "produtos")">
                 🍟 Produtos (@produtos.Count)
             </button>
-            <button class="admin-tab @(abaAtiva == "complementos" ? "active" : "")" @onclick='() => abaAtiva = "complementos"'>
+            <button class="admin-tab @(abaAtiva == "complementos" ? "active" : "")" @onclick="@(() => abaAtiva = "complementos")">
                 ➕ Adicionais e Molhos (@complementos.Count)
             </button>
-            <button class="admin-tab @(abaAtiva == "bairros" ? "active" : "")" @onclick='() => abaAtiva = "bairros"'>
+            <button class="admin-tab @(abaAtiva == "bairros" ? "active" : "")" @onclick="@(() => abaAtiva = "bairros")">
                 📍 Bairros e Taxas (@bairros.Count)
             </button>
-            <button class="admin-tab @(abaAtiva == "configuracoes" ? "active" : "")" @onclick='() => abaAtiva = "configuracoes"'>
+            <button class="admin-tab @(abaAtiva == "configuracoes" ? "active" : "")" @onclick="@(() => abaAtiva = "configuracoes")">
                 ⚙️ Configurações
+            </button>
+            <button class="admin-tab @(abaAtiva == "clientes" ? "active" : "")" @onclick="@(() => abaAtiva = "clientes")">
+                👥 Clientes
             </button>
         </div>
 
@@ -56,6 +60,93 @@
         @if (!string.IsNullOrEmpty(msgErro))
         {
             <div class="admin-alert admin-alert-erro">❌ @msgErro</div>
+        }
+
+        <!-- ======================== ABA CLIENTES ======================== -->
+        @if (abaAtiva == "clientes")
+        {
+            <div class="admin-section">
+                <div class="admin-section-header">
+                    <h2>Base de Clientes (Cashback)</h2>
+                    <p style="color: #666; font-size: 0.9rem;">Lista de clientes que já fizeram pedidos e possuem saldo acumulado.</p>
+                </div>
+                
+                <div class="admin-table-container shadow-sm">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Nome Cliente</th>
+                                <th>WhatsApp / Telefone</th>
+                                <th>Saldo Atual</th>
+                                <th style="width: 120px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (clientes.Any())
+                            {
+                                @foreach (var c in clientes)
+                                {
+                                    <tr>
+                                        <td style="font-weight: 700;">@c.NomeCliente</td>
+                                        <td>@c.Telefone</td>
+                                        <td style="color: #27ae60; font-weight: 900;">R$ @c.SaldoAtual.ToString("F2")</td>
+                                        <td>
+                                            <div style="display: flex; gap: 5px;">
+                                                <button class="admin-btn-editar" @onclick="() => EditarCliente(c)" title="Editar">✏️</button>
+                                                <button class="admin-btn-deletar" @onclick="() => ConfirmarExclusaoCliente(c)" title="Excluir">🗑️</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3" style="text-align: center; padding: 40px; color: #999;">
+                                        Nenhum cliente com cashback encontrado ainda.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- MODAL EDIÇÃO CLIENTE -->
+        @if (mostrarModalCliente && clienteEdit != null)
+        {
+            <div class="admin-modal-overlay">
+                <div class="admin-modal-content">
+                    <h3>Editar Cliente</h3>
+                    <p style="color:#888; font-size:0.9rem; margin-bottom:15px;">Telefone: <strong>@clienteEdit.Telefone</strong></p>
+                    
+                    <div class="admin-form-grid">
+                        <div class="admin-field admin-field-full">
+                            <label>Nome do Cliente</label>
+                            <input @bind="clienteEdit.NomeCliente" placeholder="Ex: João da Silva" />
+                        </div>
+                        <div class="admin-field admin-field-full">
+                            <label>Saldo de Cashback (R$)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="number" step="0.01" @bind="clienteEdit.SaldoAtual" placeholder="0.00" />
+                                <div style="display: flex; gap: 5px;">
+                                    <button class="admin-btn-toggle" style="padding: 5px 10px;" @onclick="() => clienteEdit.SaldoAtual += 5">+R$5</button>
+                                    <button class="admin-btn-toggle" style="padding: 5px 10px;" @onclick="() => clienteEdit.SaldoAtual += 10">+R$10</button>
+                                </div>
+                            </div>
+                            <small style="color: #666;">Ajuste manual do saldo de cashback (entrada/saída automática no histórico).</small>
+                        </div>
+                    </div>
+
+                    <div class="admin-modal-footer">
+                        <button class="admin-btn-cancelar" @onclick="() => mostrarModalCliente = false">Cancelar</button>
+                        <button class="admin-btn-salvar" @onclick="SalvarEdicaoCliente" disabled="@salvando">
+                            @(salvando ? "Salvando..." : "✅ Salvar Alterações")
+                        </button>
+                    </div>
+                </div>
+            </div>
         }
 
         <!-- ======================== ABA PRODUTOS ======================== -->
@@ -97,6 +188,22 @@
                             <div class="admin-field admin-field-full">
                                 <label>Descrição</label>
                                 <textarea @bind="produtoEdit.Descricao" rows="2" placeholder="Descrição opcional..."></textarea>
+                            </div>
+                            <div class="admin-field admin-field-full">
+                                <label>Complementos Específicos (Molhos, Adicionais, Remoções)</label>
+                                <p style="font-size:0.85rem; color:#888; margin-top:-5px; margin-bottom:10px;">
+                                    Se <b>NENHUM</b> for marcado, o produto aceitará todos os complementos que estejam vinculados à sua categoria (regra antiga). 
+                                    Se você marcar itens aqui, <b>APENAS ESTES</b> itens aparecerão no cardápio/totem.
+                                </p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 15px; background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333; max-height: 200px; overflow-y: auto;">
+                                    @foreach (var c in complementos)
+                                    {
+                                        <label style="display: flex; align-items: center; gap: 8px; color: #ccc; font-weight: normal; font-size: 0.9rem; background: #222; padding: 8px 12px; border-radius: 6px; border: 1px solid #444; cursor: pointer;">
+                                            <input type="checkbox" checked="@IsComplementoSelecionado(c.Id)" @onchange="@(e => ToggleSelecaoComplemento(c.Id, e.Value))" style="width:16px; height:16px; cursor: pointer; accent-color:#ffb347;" />
+                                            @c.Nome <small style="color:#ffb347">(@c.TipoAcao.ToString().Substring(0, 3)...)</small>
+                                        </label>
+                                    }
+                                </div>
                             </div>
                         </div>
                         <div class="admin-form-actions">
@@ -492,50 +599,6 @@
                     </div>
                 </div>
 
-                <!-- Seção Limpeza de Dados -->
-                <div class="admin-section-header" style="margin-top: 40px;">
-                    <h2>🧹 Limpeza de Dados (Reset)</h2>
-                </div>
-
-                <div class="admin-form-card" style="border: 2px solid #ff4444; background: #fffdfd;">
-                    <h3 style="color:#cc0000;">⚠️ Atenção: Área Perigosa</h3>
-                    <p style="color:#666; font-size:0.9rem; margin-bottom:16px;">
-                        Use os botões abaixo para apagar dados e deixar o sistema "zerado". Esta ação NÃO pode ser desfeita.
-                    </p>
-
-                    <div style="margin-bottom: 20px;">
-                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Para liberar os botões, digite CONFIRMAR no campo abaixo:</label>
-                        <input type="text" @bind="confirmacaoTexto" placeholder="Digite CONFIRMAR aqui..." style="width:100%; max-width: 300px; padding: 10px; border: 2px solid #ff4444; border-radius: 6px; font-weight: bold; text-align: center; color: #cc0000;" />
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("pedidos")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             🗑️ Zerar Todos Pedidos
-                        </button>
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("estoque")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             📦 Zerar Movim. Estoque
-                        </button>
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("despesas")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             💸 Zerar Despesas
-                        </button>
-                        <button class="admin-btn-deletar" style="width: 100%; padding: 15px; height: auto; text-transform: uppercase; font-size: 0.8rem;" @onclick='() => LimparDados("cashback")' disabled='@(confirmacaoTexto != "CONFIRMAR" || limpando)'>
-                             🎁 Zerar Cashback
-                        </button>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(msgLimpezaOk))
-                    {
-                        <div class="admin-alert admin-alert-ok" style="margin-top:12px;">✅ @msgLimpezaOk</div>
-                    }
-                    @if (!string.IsNullOrEmpty(msgLimpezaErro))
-                    {
-                        <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgLimpezaErro</div>
-                    }
-                    @if (limpando)
-                    {
-                        <div style="margin-top:15px; color:#ff4444; font-weight:bold;">⏳ Processando limpeza... aguarde.</div>
-                    }
-                </div>
             </div>
         }
 
@@ -552,6 +615,7 @@
 
     private List<ProdutoDto> produtos = new();
     private List<BairroDto> bairros = new();
+    private List<SaldoCashbackDto> clientes = new();
     private List<ComplementoDto> complementos = new();
     
     // Modal Receita State
@@ -585,6 +649,19 @@
     private string msgSenhaErro   = string.Empty;
     private bool   alterandoSenha = false;
 
+    // ── Complementos Selecionados ──
+    private HashSet<int> complementosSelecionadosEdit = new();
+
+    private bool IsComplementoSelecionado(int id) => complementosSelecionadosEdit.Contains(id);
+
+    private void ToggleSelecaoComplemento(int id, object? isChecked)
+    {
+        if (isChecked is bool b && b)
+            complementosSelecionadosEdit.Add(id);
+        else
+            complementosSelecionadosEdit.Remove(id);
+    }
+
     // -- Aba Configurações (Limpeza) --
     private string confirmacaoTexto = string.Empty;
     private bool   limpando = false;
@@ -612,8 +689,11 @@
             var prods = await Http.GetFromJsonAsync<List<ProdutoDto>>("api/produtos");
             if (prods != null) produtos = prods;
 
-            var bairrList = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
-            if (bairrList != null) bairros = bairrList;
+            var resBairros = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
+            if (resBairros != null) bairros = resBairros;
+
+            var resClientes = await Http.GetFromJsonAsync<List<SaldoCashbackDto>>("api/cashback/clientes");
+            if (resClientes != null) clientes = resClientes;
 
             var compList = await Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos");
             if (compList != null) complementos = compList;
@@ -689,6 +769,7 @@
     {
         LimparMensagens();
         produtoEdit = new ProdutoDto { Ativo = true };
+        complementosSelecionadosEdit.Clear();
         mostrarFormProduto = true;
         mostrarFormBairro = false;
     }
@@ -704,8 +785,23 @@
             CategoriaId = p.CategoriaId,
             PrecoBase = p.PrecoBase,
             ImagemUrl = p.ImagemUrl,
-            Ativo = p.Ativo
+            Ativo = p.Ativo,
+            ComplementosPermitidos = p.ComplementosPermitidos
         };
+        
+        complementosSelecionadosEdit.Clear();
+        if (!string.IsNullOrWhiteSpace(p.ComplementosPermitidos))
+        {
+            var ids = p.ComplementosPermitidos.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var idStr in ids)
+            {
+                if (int.TryParse(idStr.Trim(), out int idInt))
+                {
+                    complementosSelecionadosEdit.Add(idInt);
+                }
+            }
+        }
+
         mostrarFormProduto = true;
         mostrarFormBairro = false;
     }
@@ -723,6 +819,10 @@
             msgErro = "Nome e Preço são obrigatórios!";
             return;
         }
+
+        produtoEdit.ComplementosPermitidos = complementosSelecionadosEdit.Any() 
+            ? string.Join(",", complementosSelecionadosEdit) 
+            : "";
 
         LimparMensagens();
         salvando = true;
@@ -1134,47 +1234,79 @@
     // DTO para deserializar resposta de soft-delete da API
     private record SoftDeleteResponse(bool SoftDelete, string Mensagem);
 
-    // ======================== LIMPEZA DE DADOS ========================
-    private async Task LimparDados(string tipo)
+    // ======================== GESTÃO DE CLIENTES ========================
+    private bool mostrarModalCliente = false;
+    private SaldoCashbackDto? clienteEdit;
+
+    private void EditarCliente(SaldoCashbackDto c)
     {
-        if (confirmacaoTexto != "CONFIRMAR") return;
-        
-        limpando = true;
-        msgLimpezaOk = "";
-        msgLimpezaErro = "";
-        
+        clienteEdit = new SaldoCashbackDto 
+        { 
+            Telefone = c.Telefone, 
+            NomeCliente = c.NomeCliente, 
+            SaldoAtual = c.SaldoAtual 
+        };
+        mostrarModalCliente = true;
+    }
+
+    private async Task SalvarEdicaoCliente()
+    {
+        if (clienteEdit == null) return;
+        salvando = true;
         try
         {
-            string endpoint = tipo switch
-            {
-                "pedidos" => "api/pedidos/limpar-tudo",
-                "estoque" => "api/insumos/limpar-movimentacoes",
-                "despesas" => "api/despesas/limpar-tudo",
-                "cashback" => "api/cashback/limpar-tudo",
-                _ => ""
+            var dto = new UpdateClienteCashbackDto 
+            { 
+                NomeCliente = clienteEdit.NomeCliente, 
+                SaldoAtual = clienteEdit.SaldoAtual 
             };
-
-            if (string.IsNullOrEmpty(endpoint)) return;
-
-            var res = await Http.DeleteAsync(endpoint);
+            var res = await Http.PutAsJsonAsync($"api/cashback/clientes/{clienteEdit.Telefone}", dto);
             if (res.IsSuccessStatusCode)
             {
-                msgLimpezaOk = $"Limpeza de {tipo} realizada com sucesso!";
-                confirmacaoTexto = "";
+                mostrarModalCliente = false;
                 await CarregarTudo();
+                msgSucesso = "Cliente atualizado com sucesso!";
             }
             else
             {
-                msgLimpezaErro = $"Erro ao limpar {tipo}: {await res.Content.ReadAsStringAsync()}";
+                msgErro = "Erro ao salvar: " + await res.Content.ReadAsStringAsync();
             }
         }
         catch (Exception ex)
         {
-            msgLimpezaErro = $"Erro de conexão: {ex.Message}";
+            msgErro = "Erro de conexão: " + ex.Message;
         }
-        finally
+        finally { salvando = false; }
+    }
+
+    private async Task ConfirmarExclusaoCliente(SaldoCashbackDto c)
+    {
+        var confirm = await JS.InvokeAsync<bool>("kdsInterop.confirmar", $"Tem certeza que deseja apagar permanentemente o cliente {c.NomeCliente} ({c.Telefone}) e todo o histórico de cashback dele?");
+        if (!confirm) return;
+
+        try
         {
-            limpando = false;
+            var res = await Http.DeleteAsync($"api/cashback/clientes/{c.Telefone}");
+            if (res.IsSuccessStatusCode)
+            {
+                await CarregarTudo();
+                msgSucesso = "Cliente removido com sucesso.";
+            }
+            else
+            {
+                msgErro = "Erro ao excluir: " + await res.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = "Erro de conexão: " + ex.Message;
         }
     }
+
+    // ======================== LIMPEZA DE DADOS ========================
+    // Seção desativada conforme solicitação
+    private DateTime dataInicioLimpeza = DateTime.Today.AddDays(-30);
+    private DateTime dataFimLimpeza = DateTime.Today;
+    private string senhaAdminLimpeza = "";
+    private async Task LimparDados(string tipo) { }
 }

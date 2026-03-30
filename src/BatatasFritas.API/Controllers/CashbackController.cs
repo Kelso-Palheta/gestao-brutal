@@ -105,6 +105,81 @@ public class CashbackController : ControllerBase
         }
     }
 
+    // ── GET api/cashback/clientes ──────────────────────────────────────────
+    [Authorize]
+    [HttpGet("clientes")]
+    public async Task<ActionResult> GetClientes()
+    {
+        var carteiras = await _repoCarteira.GetAllAsync();
+        var lista = carteiras
+            .OrderByDescending(c => c.SaldoAtual)
+            .Select(c => new SaldoCashbackDto
+            {
+                Telefone = c.Telefone,
+                NomeCliente = c.NomeCliente,
+                SaldoAtual = c.SaldoAtual
+            })
+            .ToList();
+
+        return Ok(lista);
+    }
+
+    [Authorize]
+    [HttpPut("clientes/{telefone}")]
+    public async Task<IActionResult> UpdateCliente(string telefone, [FromBody] UpdateClienteCashbackDto dto)
+    {
+        try
+        {
+            var cleanTel = new string(telefone.Where(char.IsDigit).ToArray());
+            var carteira = await _repoCarteira.FindAsync(c => c.Telefone == cleanTel);
+            if (carteira == null) return NotFound("Carteira não encontrada.");
+
+            _uow.BeginTransaction();
+            
+            carteira.NomeCliente = dto.NomeCliente;
+            carteira.SetSaldoManual(dto.SaldoAtual, "Ajuste manual administrativo");
+
+            await _repoCarteira.UpdateAsync(carteira);
+            await _uow.CommitAsync();
+
+            return Ok(new { mensagem = "Cadastro atualizado com sucesso!" });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [Authorize]
+    [HttpDelete("clientes/{telefone}")]
+    public async Task<IActionResult> DeleteCliente(string telefone)
+    {
+        try
+        {
+            var cleanTel = new string(telefone.Where(char.IsDigit).ToArray());
+            var carteira = await _repoCarteira.FindAsync(c => c.Telefone == cleanTel);
+            if (carteira == null) return NotFound("Carteira não encontrada.");
+
+            _uow.BeginTransaction();
+            
+            // Apaga transações relacionadas primeiro (se necessário por FK)
+            await _session.CreateSQLQuery("DELETE FROM transacoes_cashback WHERE CarteiraId = ?")
+                .SetInt32(0, carteira.Id)
+                .ExecuteUpdateAsync();
+
+            await _repoCarteira.DeleteAsync(carteira);
+            await _uow.CommitAsync();
+
+            return Ok(new { mensagem = "Cliente e histórico de cashback removidos." });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
+    }
+
     // ── DELETE api/cashback/limpar-tudo ────────────────────────────────────
     [Authorize]
     [HttpDelete("limpar-tudo")]

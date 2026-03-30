@@ -12,3 +12,9 @@ public class CashbackConfigDto
     // A porcentagem que o cliente ganha de volta em cada compra (ex: 5 para 5%)
     public decimal Porcentagem { get; set; }
 }
+
+public class UpdateClienteCashbackDto
+{
+    public string NomeCliente { get; set; } = string.Empty;
+    public decimal SaldoAtual { get; set; }
+}

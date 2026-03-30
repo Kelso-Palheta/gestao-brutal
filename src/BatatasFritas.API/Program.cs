@@ -93,7 +93,8 @@ builder.Services.AddHttpClient<BatatasFritas.API.Services.IInfinitePayService, B
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorClient", policy =>
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(origin => true)
+              .AllowCredentials()
               .AllowAnyHeader()
               .AllowAnyMethod());
 });

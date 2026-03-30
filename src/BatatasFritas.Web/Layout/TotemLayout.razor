@@ -1,5 +1,26 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
 
 <div class="totem-app-shell">
     @Body
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // Scroll to top on page change
+        _ = JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+    }
+
+    public void Dispose()
+    {
+        NavManager.LocationChanged -= OnLocationChanged;
+    }
+}

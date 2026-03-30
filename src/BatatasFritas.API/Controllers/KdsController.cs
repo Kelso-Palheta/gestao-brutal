@@ -43,7 +43,9 @@ public class KdsController : ControllerBase
         var pedidos = await _pedidoRepository.GetAllAsync();
         
         var ativos = pedidos
-            .Where(p => p.Status != StatusPedido.Cancelado && p.Status != StatusPedido.Entregue)
+            .Where(p => p.Status != StatusPedido.Cancelado && 
+                        (p.Status != StatusPedido.Entregue || 
+                        (p.Status == StatusPedido.Entregue && p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)))
             .OrderBy(p => p.DataHoraPedido)
             .Select(p => 
             {
@@ -147,6 +149,28 @@ public class KdsController : ControllerBase
         pedido.StatusPagamento = StatusPagamento.Aprovado;
         await _pedidoRepository.UpdateAsync(pedido);
         await _uow.CommitAsync();
+
+        await _hub.Clients.All.SendAsync("StatusAtualizado", id, "Pago");
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// PUT api/kds/{id}/desfazer-pagamento
+    /// Desfaz o pagamento, voltando o pedido para pendente.
+    /// </summary>
+    [HttpPut("{id}/desfazer-pagamento")]
+    public async Task<IActionResult> DesfazerPagamento(int id)
+    {
+        var pedido = await _pedidoRepository.GetByIdAsync(id);
+        if (pedido == null) return NotFound();
+
+        _uow.BeginTransaction();
+        pedido.StatusPagamento = StatusPagamento.Pendente;
+        await _pedidoRepository.UpdateAsync(pedido);
+        await _uow.CommitAsync();
+
+        await _hub.Clients.All.SendAsync("StatusAtualizado", id, "PagamentoPendente");
 
         return NoContent();
     }
