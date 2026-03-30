@@ -12,26 +12,30 @@ public class Produto : EntityBase
     public virtual bool Ativo { get; protected set; } = true;
     /// <summary>Posição no cardápio. Menor = aparece primeiro.</summary>
     public virtual int Ordem { get; set; } = 0;
+    /// <summary>Lista de IDs de complementos delimitados por vírgula. Se vazio, aceita comportamento padrão por categoria.</summary>
+    public virtual string ComplementosPermitidos { get; protected set; } = string.Empty;
 
     protected Produto() { } // NHibernate
 
-    public Produto(string nome, string descricao, CategoriaEnum categoria, decimal precoBase, string imagemUrl = "")
+    public Produto(string nome, string descricao, CategoriaEnum categoria, decimal precoBase, string imagemUrl = "", string complementosPermitidos = "")
     {
         Nome = nome;
         Descricao = descricao;
         CategoriaId = categoria;
         PrecoBase = precoBase;
         ImagemUrl = imagemUrl;
+        ComplementosPermitidos = complementosPermitidos;
         Ativo = true;
     }
 
-    public virtual void Atualizar(string nome, string descricao, CategoriaEnum categoria, decimal precoBase, string imagemUrl)
+    public virtual void Atualizar(string nome, string descricao, CategoriaEnum categoria, decimal precoBase, string imagemUrl, string complementosPermitidos = "")
     {
         Nome = nome;
         Descricao = descricao;
         CategoriaId = categoria;
         PrecoBase = precoBase;
         ImagemUrl = imagemUrl;
+        ComplementosPermitidos = complementosPermitidos;
     }
 
     public virtual void Ativar() => Ativo = true;

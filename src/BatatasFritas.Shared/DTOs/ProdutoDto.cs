@@ -12,6 +12,7 @@ public class ProdutoDto
     public string ImagemUrl { get; set; } = string.Empty;
     public bool Ativo { get; set; } = true;
     public int Ordem { get; set; } = 0;
+    public string ComplementosPermitidos { get; set; } = string.Empty;
 }
 
 /// <summary>Item para reordenação batch de produtos.</summary>

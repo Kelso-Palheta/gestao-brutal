@@ -182,8 +182,21 @@ else
     private ProdutoDto? produtoSelecionado;
 
     private List<ComplementoDto> todosComplementos = new();
-    private IEnumerable<ComplementoDto> complementosAtivos =>
-        todosComplementos.Where(c => c.CategoriaAlvo == "Todas" || c.CategoriaAlvo == produtoSelecionado?.CategoriaId.ToString());
+    private IEnumerable<ComplementoDto> complementosAtivos 
+    {
+        get
+        {
+            if (produtoSelecionado == null) return Array.Empty<ComplementoDto>();
+            
+            if (!string.IsNullOrWhiteSpace(produtoSelecionado.ComplementosPermitidos))
+            {
+                var ids = produtoSelecionado.ComplementosPermitidos.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse);
+                return todosComplementos.Where(c => ids.Contains(c.Id) && c.Ativo);
+            }
+            
+            return todosComplementos.Where(c => c.Ativo && (c.CategoriaAlvo == "Todas" || c.CategoriaAlvo == produtoSelecionado.CategoriaId.ToString()));
+        }
+    }
 
     private HashSet<int> ativosGratuitosERemocao = new();
     private Dictionary<int, int> quantidadesAdicionais = new();

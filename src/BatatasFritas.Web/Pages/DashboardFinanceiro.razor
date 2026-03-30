@@ -24,6 +24,8 @@
             <div class="dash-header-right">
                 <a href="/admin" class="dash-btn-nav">⚙️ Admin</a>
                 <a href="/admin/estoque" class="dash-btn-nav">📦 Estoque</a>
+                <button class="dash-btn-print" style="background:#8e44ad; color:#fff;" @onclick="() => mostrarModalDespesa = true">💸 Lançar Despesa</button>
+                <button class="dash-btn-print" style="background:#e74c3c; color:#fff;" @onclick="() => mostrarModalLimpar = true">🗑️ Zerar</button>
                 <button class="dash-btn-print" @onclick="ImprimirRelatorio">🖨️ Fechar Caixa</button>
             </div>
         </div>
@@ -52,13 +54,19 @@
                 <div class="dash-kpi-card">
                     <div class="dash-kpi-title">Compras (Estoque)</div>
                     <div class="dash-kpi-value cor-despesa">@dados.ComprasHoje.ToString("C2")</div>
-                    <div class="dash-kpi-sub">Dinheiro que saiu hoje</div>
+                    <div class="dash-kpi-sub">Itens para produção</div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-title">Despesas (Equipe/Op)</div>
+                    <div class="dash-kpi-value cor-despesa" style="color:#d94bd9;">@dados.DespesasHoje.ToString("C2")</div>
+                    <div class="dash-kpi-sub">Pagamento de funcionários </div>
                 </div>
 
                 <div class="dash-kpi-card @(dados.LucroHoje >= 0 ? "lucro-positivo" : "lucro-negativo")">
-                    <div class="dash-kpi-title">Lucro Estimado</div>
+                    <div class="dash-kpi-title">Lucro Líquido</div>
                     <div class="dash-kpi-value text-shadow">@dados.LucroHoje.ToString("C2")</div>
-                    <div class="dash-kpi-sub">Receitas - Despesas de Estoque</div>
+                    <div class="dash-kpi-sub">Rec - Est - Desp</div>
                 </div>
             </div>
         </div>
@@ -126,6 +134,10 @@
                         <span>Gastos com Estoque:</span>
                         <strong class="cor-despesa">@dados.ComprasMes.ToString("C2")</strong>
                     </div>
+                    <div class="dash-mes-row">
+                        <span>Despesas Operacionais:</span>
+                        <strong class="cor-despesa" style="color:#d94bd9;">@dados.DespesasMes.ToString("C2")</strong>
+                    </div>
                     <div class="dash-mes-row destaque">
                         <span>Lucro Acumulado:</span>
                         <strong class="@(dados.LucroMes >= 0 ? "cor-receita" : "cor-despesa")">@dados.LucroMes.ToString("C2")</strong>
@@ -139,6 +151,60 @@
         </div>
     }
 </div>
+
+<!-- ============================
+     MODAIS ADICIONAIS
+     ============================ -->
+
+@if (mostrarModalDespesa)
+{
+    <div class="modal-overlay" style="align-items: center; padding: 20px; background: rgba(0,0,0,0.8);">
+        <div class="modal-content" style="max-width: 400px; padding: 30px; border-radius: 12px; background: #222; border: 1px solid #444; color: #fff;">
+            <h3>Lançar Despesa (Funcionários etc)</h3>
+            <p style="color: #aaa; margin-bottom: 20px;">Isso deduzirá do seu lucro no relatório de fechamento.</p>
+
+            <label>Descrição</label>
+            <input type="text" @bind="novaDespesaDescricao" placeholder="Ex: Diária Chapeiro Marcos" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+            
+            <label>Categoria</label>
+            <select @bind="novaDespesaCategoria" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;">
+                <option value="Funcionario">Funcionário / Mão de Obra</option>
+                <option value="Energia/Agua">Energia / Água / Net</option>
+                <option value="Imposto">Imposto / Taxa</option>
+                <option value="Outros">Outras Despesas</option>
+            </select>
+            
+            <label>Valor (R$)</label>
+            <input type="number" step="0.01" min="0" @bind="novaDespesaValor" style="width: 100%; margin-bottom: 20px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+
+            <div style="display: flex; gap: 10px;">
+                <button style="flex: 1; padding: 10px; background: #555; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="() => mostrarModalDespesa = false">Cancelar</button>
+                <button style="flex: 1; padding: 10px; background: #8e44ad; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;" @onclick="LancarDespesa" disabled="@processandoAcao">Lançar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalLimpar)
+{
+    <div class="modal-overlay" style="align-items: center; padding: 20px; background: rgba(0,0,0,0.8);">
+        <div class="modal-content" style="max-width: 450px; padding: 30px; border-radius: 12px; background: #222; border: 2px solid #e74c3c; color: #fff; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+            <h3 style="color: #e74c3c; margin-bottom: 10px;">Zerar Dados do Sistema</h3>
+            <p style="color: #ccc; margin-bottom: 25px;">Escolha o que você deseja limpar. Essa ação não pode ser desfeita e os dados apagados afetam os relatórios passados e presentes.</p>
+
+            <button style="width: 100%; margin-bottom: 15px; padding: 15px; background: #ff9800; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("pedidos")' disabled="@processandoAcao">
+                🧨 ZERAR TODOS OS PEDIDOS (Teste)
+            </button>
+            
+            <button style="width: 100%; margin-bottom: 25px; padding: 15px; background: #d32f2f; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("financeiro")' disabled="@processandoAcao">
+                🔥 ZERAR FINANCEIRO (Caixa / Despesas)
+            </button>
+
+            <button style="width: 100%; padding: 10px; background: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="() => mostrarModalLimpar = false" disabled="@processandoAcao">Cancelar / Voltar</button>
+        </div>
+    </div>
+}
 
 <style>
 /* ========================================================= 
@@ -191,7 +257,7 @@
 /* Grid de KPIs (Top) */
 .dash-kpi-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
     margin-bottom: 30px;
 }
@@ -375,6 +441,7 @@
 
 @code {
     private bool carregando = true;
+    private bool processandoAcao = false;
     private FinanceiroDashboardDto? dados;
     private string msgSucesso = "";
     private string msgErro = "";
@@ -382,6 +449,15 @@
     // Edição de Meta Dinâmica
     private bool editandoMeta = false;
     private decimal novaMetaInput = 0;
+    
+    // Modal e inputs Despesa
+    private bool mostrarModalDespesa = false;
+    private string novaDespesaDescricao = "";
+    private string novaDespesaCategoria = "Funcionario";
+    private decimal novaDespesaValor = 0;
+    
+    // Modal Limpeza
+    private bool mostrarModalLimpar = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -447,5 +523,79 @@
     private async Task ImprimirRelatorio()
     {
         await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task LancarDespesa()
+    {
+        if (string.IsNullOrWhiteSpace(novaDespesaDescricao) || novaDespesaValor <= 0)
+        {
+            msgErro = "Preencha a descrição e valor válidos!";
+            return;
+        }
+
+        processandoAcao = true;
+        msgErro = ""; msgSucesso = "";
+
+        try
+        {
+            var despesa = new DespesaDto
+            {
+                Descricao = novaDespesaDescricao,
+                Categoria = novaDespesaCategoria,
+                Valor = novaDespesaValor,
+                DataRegistro = DateTime.Now
+            };
+
+            var r = await Http.PostAsJsonAsync("api/despesas", despesa);
+            if (r.IsSuccessStatusCode)
+            {
+                mostrarModalDespesa = false;
+                msgSucesso = "Despesa lançada com sucesso!";
+                novaDespesaDescricao = "";
+                novaDespesaValor = 0;
+                await CarregarDados();
+            }
+            else
+            {
+                msgErro = "Erro ao registrar despesa.";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = "Erro: " + ex.Message;
+        }
+        finally
+        {
+            processandoAcao = false;
+        }
+    }
+
+    private async Task LimparDados(string tipo)
+    {
+        processandoAcao = true;
+        msgErro = ""; msgSucesso = "";
+
+        try
+        {
+            var r = await Http.DeleteAsync($"api/financeiro/limpar-historico/{tipo}");
+            if (r.IsSuccessStatusCode)
+            {
+                mostrarModalLimpar = false;
+                msgSucesso = "Histórico apagado com sucesso!";
+                await CarregarDados();
+            }
+            else
+            {
+                msgErro = $"Falha ao apagar dados do tipo '{tipo}'.";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = "Erro: " + ex.Message;
+        }
+        finally
+        {
+            processandoAcao = false;
+        }
     }
 }

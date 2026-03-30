@@ -98,6 +98,22 @@
                                 <label>Descrição</label>
                                 <textarea @bind="produtoEdit.Descricao" rows="2" placeholder="Descrição opcional..."></textarea>
                             </div>
+                            <div class="admin-field admin-field-full">
+                                <label>Complementos Específicos (Molhos, Adicionais, Remoções)</label>
+                                <p style="font-size:0.85rem; color:#888; margin-top:-5px; margin-bottom:10px;">
+                                    Se <b>NENHUM</b> for marcado, o produto aceitará todos os complementos que estejam vinculados à sua categoria (regra antiga). 
+                                    Se você marcar itens aqui, <b>APENAS ESTES</b> itens aparecerão no cardápio/totem.
+                                </p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 15px; background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333; max-height: 200px; overflow-y: auto;">
+                                    @foreach (var c in complementos)
+                                    {
+                                        <label style="display: flex; align-items: center; gap: 8px; color: #ccc; font-weight: normal; font-size: 0.9rem; background: #222; padding: 8px 12px; border-radius: 6px; border: 1px solid #444; cursor: pointer;">
+                                            <input type="checkbox" checked="@IsComplementoSelecionado(c.Id)" @onchange="@(e => ToggleSelecaoComplemento(c.Id, e.Value))" style="width:16px; height:16px; cursor: pointer; accent-color:#ffb347;" />
+                                            @c.Nome <small style="color:#ffb347">(@c.TipoAcao.ToString().Substring(0, 3)...)</small>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
                         </div>
                         <div class="admin-form-actions">
                             <button class="admin-btn-salvar" @onclick="SalvarProduto" disabled="@salvando">
@@ -585,6 +601,19 @@
     private string msgSenhaErro   = string.Empty;
     private bool   alterandoSenha = false;
 
+    // ── Complementos Selecionados ──
+    private HashSet<int> complementosSelecionadosEdit = new();
+
+    private bool IsComplementoSelecionado(int id) => complementosSelecionadosEdit.Contains(id);
+
+    private void ToggleSelecaoComplemento(int id, object? isChecked)
+    {
+        if (isChecked is bool b && b)
+            complementosSelecionadosEdit.Add(id);
+        else
+            complementosSelecionadosEdit.Remove(id);
+    }
+
     // -- Aba Configurações (Limpeza) --
     private string confirmacaoTexto = string.Empty;
     private bool   limpando = false;
@@ -689,6 +718,7 @@
     {
         LimparMensagens();
         produtoEdit = new ProdutoDto { Ativo = true };
+        complementosSelecionadosEdit.Clear();
         mostrarFormProduto = true;
         mostrarFormBairro = false;
     }
@@ -704,8 +734,23 @@
             CategoriaId = p.CategoriaId,
             PrecoBase = p.PrecoBase,
             ImagemUrl = p.ImagemUrl,
-            Ativo = p.Ativo
+            Ativo = p.Ativo,
+            ComplementosPermitidos = p.ComplementosPermitidos
         };
+        
+        complementosSelecionadosEdit.Clear();
+        if (!string.IsNullOrWhiteSpace(p.ComplementosPermitidos))
+        {
+            var ids = p.ComplementosPermitidos.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var idStr in ids)
+            {
+                if (int.TryParse(idStr.Trim(), out int idInt))
+                {
+                    complementosSelecionadosEdit.Add(idInt);
+                }
+            }
+        }
+
         mostrarFormProduto = true;
         mostrarFormBairro = false;
     }
@@ -723,6 +768,10 @@
             msgErro = "Nome e Preço são obrigatórios!";
             return;
         }
+
+        produtoEdit.ComplementosPermitidos = complementosSelecionadosEdit.Any() 
+            ? string.Join(",", complementosSelecionadosEdit) 
+            : "";
 
         LimparMensagens();
         salvando = true;

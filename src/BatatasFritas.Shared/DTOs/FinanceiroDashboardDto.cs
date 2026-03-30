@@ -5,12 +5,14 @@ public class FinanceiroDashboardDto
     // Métricas do Dia Atual
     public decimal VendasHoje { get; set; }
     public decimal ComprasHoje { get; set; }
-    public decimal LucroHoje => VendasHoje - ComprasHoje;
+    public decimal DespesasHoje { get; set; }
+    public decimal LucroHoje => VendasHoje - ComprasHoje - DespesasHoje;
     
     // Métricas do Mês Atual
     public decimal VendasMes { get; set; }
     public decimal ComprasMes { get; set; }
-    public decimal LucroMes => VendasMes - ComprasMes;
+    public decimal DespesasMes { get; set; }
+    public decimal LucroMes => VendasMes - ComprasMes - DespesasMes;
 
     // Métricas de Meta
     public decimal MetaDiaria { get; set; }

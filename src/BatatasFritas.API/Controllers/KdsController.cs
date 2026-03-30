@@ -152,6 +152,24 @@ public class KdsController : ControllerBase
     }
 
     /// <summary>
+    /// PUT api/kds/{id}/desfazer-pagamento
+    /// Desfaz o pagamento, voltando o pedido para pendente.
+    /// </summary>
+    [HttpPut("{id}/desfazer-pagamento")]
+    public async Task<IActionResult> DesfazerPagamento(int id)
+    {
+        var pedido = await _pedidoRepository.GetByIdAsync(id);
+        if (pedido == null) return NotFound();
+
+        _uow.BeginTransaction();
+        pedido.StatusPagamento = StatusPagamento.Pendente;
+        await _pedidoRepository.UpdateAsync(pedido);
+        await _uow.CommitAsync();
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// POST api/kds/{id}/cancelar
     /// Cancela um pedido e grava o motivo informado pelo operador KDS.
     /// Body: { "motivo": "Cliente desistiu" }

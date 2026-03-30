@@ -948,8 +948,9 @@ body {
 /* Grupo de ações no rodapé do card KDS */
 .kds-card-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 10px;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 15px;
 }
 
 .kds-card-actions .kds-btn {

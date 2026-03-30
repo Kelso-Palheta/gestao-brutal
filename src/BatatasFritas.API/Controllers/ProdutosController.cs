@@ -44,7 +44,8 @@ public class ProdutosController : ControllerBase
             PrecoBase = p.PrecoBase,
             ImagemUrl = p.ImagemUrl,
             Ativo = p.Ativo,
-            Ordem = p.Ordem
+            Ordem = p.Ordem,
+            ComplementosPermitidos = p.ComplementosPermitidos
         }).OrderBy(p => p.Ordem).ThenBy(p => p.CategoriaId).ThenBy(p => p.Nome).ToList();
 
         return Ok(dtos);
@@ -56,7 +57,7 @@ public class ProdutosController : ControllerBase
     {
         try
         {
-            var produto = new Produto(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl);
+            var produto = new Produto(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl, dto.ComplementosPermitidos);
             _uow.BeginTransaction();
             await _produtoRepository.AddAsync(produto);
             await _uow.CommitAsync();
@@ -78,7 +79,7 @@ public class ProdutosController : ControllerBase
 
         try
         {
-            produto.Atualizar(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl);
+            produto.Atualizar(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl, dto.ComplementosPermitidos);
             _uow.BeginTransaction();
             await _produtoRepository.UpdateAsync(produto);
             await _uow.CommitAsync();

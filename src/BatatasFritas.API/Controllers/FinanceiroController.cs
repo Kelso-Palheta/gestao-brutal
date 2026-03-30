@@ -18,17 +18,20 @@ public class FinanceiroController : ControllerBase
     private readonly IRepository<Pedido> _pedidoRepository;
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
     private readonly IRepository<Configuracao> _configRepository;
+    private readonly IRepository<Despesa> _despesaRepository;
     private readonly IUnitOfWork _uow;
 
     public FinanceiroController(
         IRepository<Pedido> pedidoRepository,
         IRepository<MovimentacaoEstoque> movRepository,
         IRepository<Configuracao> configRepository,
+        IRepository<Despesa> despesaRepository,
         IUnitOfWork uow)
     {
         _pedidoRepository = pedidoRepository;
         _movRepository = movRepository;
         _configRepository = configRepository;
+        _despesaRepository = despesaRepository;
         _uow = uow;
     }
 
@@ -56,6 +59,11 @@ public class FinanceiroController : ControllerBase
         var comprasHoje = compras.Where(m => m.DataMovimentacao.Date == hoje).ToList();
         var comprasMes = compras.Where(m => m.DataMovimentacao.Date >= inicioMes).ToList();
 
+        // Despesas (Mão de obra, impostos, etc)
+        var despesasObj = await _despesaRepository.GetAllAsync();
+        var despesasHoje = despesasObj.Where(d => d.DataRegistro.Date == hoje).ToList();
+        var despesasMes = despesasObj.Where(d => d.DataRegistro.Date >= inicioMes).ToList();
+
         // Leitura de Meta Diária
         decimal metaDiaria = 0m;
         var configMeta = configs.FirstOrDefault(c => c.Chave == "meta_diaria_vendas");
@@ -69,11 +77,13 @@ public class FinanceiroController : ControllerBase
             // Métricas Hoje
             VendasHoje = pedidosHoje.Sum(p => p.ValorTotal),
             ComprasHoje = comprasHoje.Sum(m => m.ValorTotal),
+            DespesasHoje = despesasHoje.Sum(d => d.Valor),
             TotalPedidosHoje = pedidosHoje.Count,
 
             // Métricas Mês
             VendasMes = pedidosMes.Sum(p => p.ValorTotal),
             ComprasMes = comprasMes.Sum(m => m.ValorTotal),
+            DespesasMes = despesasMes.Sum(d => d.Valor),
 
             // Métodos Hoje
             PixHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal),
@@ -107,6 +117,49 @@ public class FinanceiroController : ControllerBase
 
             await _uow.CommitAsync();
             return Ok(new { Mensagem = "Meta salva com sucesso!" });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("limpar-historico/{tipo}")]
+    public async Task<IActionResult> LimparHistorico(string tipo)
+    {
+        _uow.BeginTransaction();
+        try
+        {
+            if (tipo == "pedidos")
+            {
+                var pedidos = await _pedidoRepository.GetAllAsync();
+                foreach (var p in pedidos.ToList())
+                {
+                    await _pedidoRepository.DeleteAsync(p);
+                }
+            }
+            else if (tipo == "financeiro")
+            {
+                var movs = await _movRepository.GetAllAsync();
+                foreach (var m in movs.ToList())
+                {
+                    await _movRepository.DeleteAsync(m);
+                }
+                var desps = await _despesaRepository.GetAllAsync();
+                foreach (var d in desps.ToList())
+                {
+                    await _despesaRepository.DeleteAsync(d);
+                }
+            }
+            else
+            {
+                await _uow.RollbackAsync();
+                return BadRequest("Tipo de limpeza inválido.");
+            }
+
+            await _uow.CommitAsync();
+            return Ok(new { Mensagem = "Histórico limpo com sucesso!" });
         }
         catch (Exception ex)
         {
