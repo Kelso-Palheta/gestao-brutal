@@ -1,7 +1,9 @@
 @page "/admin/dashboard"
 @layout EmptyLayout
+@implements IAsyncDisposable
 @using BatatasFritas.Shared.DTOs
 @using BatatasFritas.Web.Services
+@using Microsoft.AspNetCore.SignalR.Client
 @using System.Net.Http.Json
 @inject HttpClient Http
 @inject KdsAuthService KdsAuth
@@ -474,6 +476,8 @@
     
     // Modal Limpeza
     private bool mostrarModalLimpar = false;
+    
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
@@ -484,6 +488,42 @@
             return;
         }
         await CarregarDados();
+        await ConectarSignalR();
+    }
+
+    private async Task ConectarSignalR()
+    {
+        var apiBase = Http.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        var hubUrl  = $"{apiBase}/hubs/pedidos";
+
+        var token = KdsAuth.GetToken();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl, options =>
+            {
+                if (!string.IsNullOrEmpty(token))
+                    options.AccessTokenProvider = () => Task.FromResult<string?>(token);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<int>("NovoPedido", async pedidoId =>
+        {
+            await CarregarDados();
+            await InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<int, string>("StatusAtualizado", async (pedidoId, status) =>
+        {
+            await CarregarDados();
+            await InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+        }
+        catch { }
     }
 
     private async Task CarregarDados()
@@ -627,5 +667,11 @@
         {
             processandoAcao = false;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
     }
 }

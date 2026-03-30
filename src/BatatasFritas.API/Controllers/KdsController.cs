@@ -148,6 +148,8 @@ public class KdsController : ControllerBase
         await _pedidoRepository.UpdateAsync(pedido);
         await _uow.CommitAsync();
 
+        await _hub.Clients.All.SendAsync("StatusAtualizado", id, "Pago");
+
         return NoContent();
     }
 
@@ -165,6 +167,8 @@ public class KdsController : ControllerBase
         pedido.StatusPagamento = StatusPagamento.Pendente;
         await _pedidoRepository.UpdateAsync(pedido);
         await _uow.CommitAsync();
+
+        await _hub.Clients.All.SendAsync("StatusAtualizado", id, "PagamentoPendente");
 
         return NoContent();
     }

@@ -49,9 +49,9 @@ public class FinanceiroController : ControllerBase
         var movimentacoes = await _movRepository.GetAllAsync();
         var configs = await _configRepository.GetAllAsync();
 
-        // Consideramos como faturamento os pedidos Entregues (que de fato ocorreram e geraram receita local)
-        // Pedidos cancelados não entram na conta financeira.
-        var pedidosValidos = pedidos.Where(p => p.Status == StatusPedido.Entregue).ToList();
+        // Consideramos como faturamento os pedidos efetivamente Pagos.
+        // O dinheiro só entra no sistema se StatusPagamento for Aprovado ou Presencial (entregue no motoqueiro).
+        var pedidosValidos = pedidos.Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial).ToList();
 
         // Filtro por período
         var pedidosHoje = pedidosValidos.Where(p => p.DataHoraPedido.Date == hoje).ToList();
