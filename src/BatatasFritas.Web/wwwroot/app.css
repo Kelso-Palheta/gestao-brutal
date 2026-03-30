@@ -772,6 +772,8 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    background-color: #0d0d0d;
+    color: #fff;
 }
 
 .kds-kanban {
@@ -781,25 +783,26 @@ body {
     padding: 10px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    /* Smooth horizontal scroll */
 }
 
 .kds-column {
     flex: 1;
     min-width: 320px;
     min-height: 0;
-    /* Ensures flex container shrinks to allow inner scroll */
-    background: #fff;
-    border: 3px solid #000;
+    background: #111;
+    border: 1px solid #333;
     display: flex;
     flex-direction: column;
-    box-shadow: 4px 4px 0px #000;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    overflow: hidden;
 }
 
 .kds-column-header {
     padding: 15px;
-    border-bottom: 3px solid #000;
+    border-bottom: 2px solid #222;
     text-align: center;
+    background: #000;
 }
 
 .kds-column-header h2 {
@@ -807,64 +810,65 @@ body {
     font-size: 1.4rem;
     font-weight: 900;
     text-transform: uppercase;
+    color: #fff;
 }
 
-.bg-recebido {
-    background-color: #fff5ba;
-    /* Amarelo Pastel */
-    color: #555;
-}
+.bg-recebido { border-top: 4px solid #ff4444; }
+.bg-recebido h2 { color: #ff4444; text-shadow: 0 0 10px rgba(255, 68, 68, 0.4); }
 
-.bg-aceito {
-    background-color: #bae1ff;
-    /* Azul Pastel */
-    color: #555;
-}
+.bg-aceito { border-top: 4px solid #a200ff; }
+.bg-aceito h2 { color: #a200ff; text-shadow: 0 0 10px rgba(162, 0, 255, 0.4); }
 
-.bg-preparo {
-    background-color: #ffdac1;
-    /* Laranja Pastel / Pêssego */
-    color: #555;
-}
+.bg-preparo { border-top: 4px solid #ff9800; }
+.bg-preparo h2 { color: #ff9800; text-shadow: 0 0 10px rgba(255, 152, 0, 0.4); }
 
-.bg-pronto {
-    background-color: #c1e1c1;
-    /* Verde Pastel */
-    color: #555;
-}
+.bg-pronto { border-top: 4px solid #e6ff00; }
+.bg-pronto h2 { color: #e6ff00; text-shadow: 0 0 10px rgba(230, 255, 0, 0.4); }
 
 .kds-column-body {
     padding: 15px;
     flex-grow: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    /* Smooth vertical scroll */
-    background: #f0f0f0;
+    background: transparent;
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
 .kds-card {
-    background: #fff;
-    border: 2px solid #000;
+    background: rgba(30, 30, 30, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid #333;
+    color: #fff;
     padding: 15px;
-    box-shadow: 3px 3px 0px #000;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.kds-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.8);
+    border-color: #555;
 }
 
 .kds-card-header {
     font-weight: 900;
     font-size: 1.2rem;
-    border-bottom: 2px solid #eee;
+    border-bottom: 1px solid #333;
     padding-bottom: 10px;
     margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
+    color: #fff;
 }
 
 .kds-time {
-    color: #e74c3c;
+    color: #ff4444;
     font-family: monospace;
+    text-shadow: 0 0 8px rgba(255, 68, 68, 0.5);
 }
 
 .kds-card-items {
@@ -872,84 +876,80 @@ body {
     padding: 0;
     margin: 0 0 15px 0;
     font-size: 1.1rem;
+    color: #ddd;
 }
 
 .kds-card-items li {
     padding: 5px 0;
-    border-bottom: 1px dashed #ccc;
+    border-bottom: 1px dashed #333;
 }
 
 .kds-btn {
     width: 100%;
     padding: 12px;
-    border: 2px solid #000;
+    background: #000;
+    color: #aaa;
+    border: 1px solid #444;
+    border-radius: 6px;
     font-weight: 900;
     text-transform: uppercase;
     cursor: pointer;
-    transition: transform 0.1s;
+    transition: all 0.2s ease-in-out;
 }
 
 .kds-btn:active {
-    transform: translate(2px, 2px);
+    transform: scale(0.98);
 }
 
-.kds-btn-aceitar {
-    background: #bae1ff;
-    color: #555;
-}
+.kds-btn-aceitar { border-color: #a200ff; color: #a200ff; }
+.kds-btn-aceitar:hover { background: #a200ff; color: #fff; box-shadow: 0 0 15px rgba(162, 0, 255, 0.6); }
 
-.kds-btn-preparo {
-    background: #ffdac1;
-    color: #555;
-}
+.kds-btn-preparo { border-color: #ff9800; color: #ff9800; }
+.kds-btn-preparo:hover { background: #ff9800; color: #fff; box-shadow: 0 0 15px rgba(255, 152, 0, 0.6); }
 
-.kds-btn-pronto {
-    background: #c1e1c1;
-    color: #555;
-}
+.kds-btn-pronto { border-color: #e6ff00; color: #e6ff00; }
+.kds-btn-pronto:hover { background: #e6ff00; color: #000; box-shadow: 0 0 15px rgba(230, 255, 0, 0.6); }
 
-.kds-btn-entregue {
-    background: #cccccc;
-    color: #555;
-}
+.kds-btn-entregue { border-color: #e6ff00; color: #e6ff00; }
+.kds-btn-entregue:hover { background: #e6ff00; color: #000; box-shadow: 0 0 15px rgba(230, 255, 0, 0.6); }
 
-/* Botão de cancelar pedido no card (X compacto) */
 .kds-btn-cancelar-pedido {
-    background: #fff0f0;
-    color: #c0392b;
-    border: 2px solid #c0392b;
+    background: transparent;
+    color: #ff4444;
+    border-color: #ff4444;
     flex: 0 0 44px;
     font-size: 1.1rem;
-    font-weight: 900;
 }
-
 .kds-btn-cancelar-pedido:hover {
-    background: #c0392b;
+    background: #ff4444;
     color: #fff;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.6);
 }
 
-/* Botão de confirmar cancelamento no modal */
 .kds-btn-confirmar-cancelar {
-    background: #c0392b;
-    color: #fff;
+    background: transparent;
+    color: #ff4444;
     flex: 2;
+    border-color: #ff4444;
     font-weight: 900;
 }
-
 .kds-btn-confirmar-cancelar:hover:not(:disabled) {
-    background: #96281b;
+    background: #ff4444;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.6);
 }
 
 .kds-btn-confirmar-cancelar:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
+    border-color: #555;
+    color: #555;
 }
 
-/* Grupo de ações no rodapé do card KDS */
 .kds-card-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 8px;
     margin-top: 15px;
 }
 
@@ -957,79 +957,72 @@ body {
     flex: 1;
 }
 
-/* Observação inline dos itens */
 .kds-obs {
     font-size: 0.85em;
-    color: #666;
+    color: #aaa;
     padding-left: 10px;
-    border-left: 2px solid #ddd;
+    border-left: 2px solid #555;
     margin-top: 3px;
 }
 
-/* Troco em destaque vermelho no card de despacho */
 .kds-troco {
-    color: #c0392b;
+    color: #ff4444;
     font-weight: bold;
 }
 
-/* Info de entrega no card de despacho */
 .kds-delivery-info {
     font-size: 0.9em;
     margin-bottom: 8px;
     padding: 7px 10px;
-    background: #f9f9f9;
-    border: 1px solid #ccc;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #444;
     line-height: 1.7;
+    color: #fff;
+    border-radius: 4px;
 }
 
-/* Badge de contagem nas colunas */
 .kds-badge-count {
     display: inline-block;
-    background: #000;
-    color: #e6ff00;
+    background: #222;
+    color: #fff;
     font-size: 0.75rem;
     font-weight: 900;
     padding: 2px 8px;
     border-radius: 20px;
     margin-left: 8px;
     vertical-align: middle;
+    border: 1px solid #444;
 }
 
-/* Card pulsante — destaque para pedido recém chegado */
-@keyframes kds-pulso-novo {
-    0% {
-        box-shadow: 3px 3px 0px #000, 0 0 0 0 rgba(255, 200, 0, 0.6);
-    }
-
-    50% {
-        box-shadow: 3px 3px 0px #000, 0 0 0 12px rgba(255, 200, 0, 0);
-    }
-
-    100% {
-        box-shadow: 3px 3px 0px #000, 0 0 0 0 rgba(255, 200, 0, 0);
-    }
+@keyframes kds-pulso-novo-neon {
+    0% { box-shadow: 0 0 20px rgba(230, 255, 0, 0.8), inset 0 0 10px rgba(230, 255, 0, 0.2); border-color: #e6ff00; }
+    50% { box-shadow: 0 0 5px rgba(230, 255, 0, 0), inset 0 0 0 rgba(230, 255, 0, 0); border-color: #555; }
+    100% { box-shadow: 0 0 0 rgba(230, 255, 0, 0); border-color: #333; }
 }
 
 .kds-card-novo {
-    border-color: #f1c40f !important;
-    animation: kds-pulso-novo 0.8s ease-out 4;
+    border-color: #e6ff00 !important;
+    animation: kds-pulso-novo-neon 1s ease-out 4;
 }
 
 /* =============================================
    MODAL DE CANCELAMENTO DO KDS
    ============================================= */
 .kds-cancel-modal {
-    background: #fff;
-    border: 4px solid #c0392b;
-    box-shadow: 8px 8px 0px #c0392b;
+    background: #111;
+    border: 2px solid #ff4444;
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
     width: 90%;
     max-width: 440px;
+    border-radius: 12px;
+    overflow: hidden;
     font-family: 'Courier New', monospace;
 }
 
 .kds-cancel-modal-header {
-    background: #c0392b;
-    color: #fff;
+    background: #000;
+    color: #ff4444;
+    border-bottom: 1px solid #ff4444;
     padding: 14px 20px;
     font-size: 1.1rem;
     font-weight: 900;
@@ -1039,6 +1032,7 @@ body {
 
 .kds-cancel-modal-body {
     padding: 20px;
+    color: #fff;
 }
 
 .kds-cancel-modal-body p {
@@ -1046,7 +1040,7 @@ body {
 }
 
 .kds-cancel-aviso {
-    color: #c0392b;
+    color: #ff4444;
     font-weight: bold;
     font-size: 0.9rem;
 }
@@ -1062,39 +1056,45 @@ body {
     font-weight: 700;
     font-size: 0.85rem;
     text-transform: uppercase;
-    color: #333;
+    color: #aaa;
 }
 
 .kds-cancel-textarea {
     width: 100%;
-    border: 2px solid #333;
+    border: 1px solid #444;
+    background: #000;
+    color: #fff;
     padding: 8px;
     font-family: inherit;
     font-size: 0.95rem;
     resize: vertical;
     outline: none;
     transition: border-color 0.2s;
+    border-radius: 6px;
 }
 
 .kds-cancel-textarea:focus {
-    border-color: #c0392b;
+    border-color: #ff4444;
+    box-shadow: 0 0 8px rgba(255,68,68,0.3);
 }
 
 .kds-cancel-erro {
     margin-top: 10px;
     padding: 8px;
-    background: #fff0f0;
-    border: 2px solid #c0392b;
-    color: #c0392b;
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid #ff4444;
+    color: #ff4444;
     font-weight: bold;
     font-size: 0.9rem;
+    border-radius: 4px;
 }
 
 .kds-cancel-modal-footer {
     display: flex;
     gap: 10px;
     padding: 14px 20px;
-    border-top: 2px solid #eee;
+    border-top: 1px solid #333;
+    background: #000;
 }
 
 /* Modals */
