@@ -31,9 +31,9 @@
             <div class="dash-header-right">
                 <a href="/admin" class="dash-btn-nav">⚙️ Admin</a>
                 <a href="/admin/estoque" class="dash-btn-nav">📦 Estoque</a>
-                <button class="dash-btn-print" style="background:#8e44ad; color:#fff;" @onclick="() => mostrarModalDespesa = true">💸 Lançar Despesa</button>
-                <button class="dash-btn-print" style="background:#e74c3c; color:#fff;" @onclick="() => mostrarModalLimpar = true">🗑️ Zerar</button>
-                <button class="dash-btn-print" @onclick="ImprimirRelatorio">🖨️ Fechar Caixa</button>
+                <button class="dash-btn-print" style="background:#8e44ad; color:#fff;" @onclick="@(() => mostrarModalDespesa = true)">💸 Lançar Despesa</button>
+                <button class="dash-btn-print" style="background:#e74c3c; color:#fff;" @onclick="@(() => mostrarModalLimpar = true)">🗑️ Zerar</button>
+                <button class="dash-btn-print" @onclick="@ImprimirRelatorio">🖨️ Fechar Caixa</button>
             </div>
         </div>
 
@@ -51,12 +51,12 @@
                 <label>Até:</label>
                 <input type="date" @bind="filtroFim" />
             </div>
-            <button class="dash-btn-filtrar" @onclick="CarregarDados" disabled="@carregando">
+            <button class="dash-btn-filtrar" @onclick="@CarregarDados" disabled="@carregando">
                 @(carregando ? "⌛" : "🔍 Filtrar Período")
             </button>
             @if (filtroAtivo)
             {
-                <button class="dash-btn-limpar-filtro" @onclick="LimparFiltro">✕ Limpar</button>
+                <button class="dash-btn-limpar-filtro" @onclick="@LimparFiltro">✕ Limpar</button>
             }
         </div>
 
@@ -177,13 +177,13 @@
                         @if(editandoMeta)
                         {
                             <div class="dash-meta-edit-group">
-                                <input type="number" class="dash-input-meta" @bind="novaMetaInput" placeholder="0.00" />
-                                <button class="dash-btn-salvar-meta" @onclick="SalvarMeta">✔</button>
+                                <input type="number" class="dash-input-meta" @bind="@novaMetaInput" placeholder="0.00" />
+                                <button class="dash-btn-salvar-meta" @onclick="@SalvarMeta">✔</button>
                             </div>
                         }
                         else
                         {
-                            <span class="dash-meta-valor" @onclick="HabilitarEdicaoMeta">
+                            <span class="dash-meta-valor" @onclick="@HabilitarEdicaoMeta">
                                 🎯 @dados.MetaDiaria.ToString("C2") ✏️
                             </span>
                         }
@@ -249,8 +249,8 @@
             <input type="number" step="0.01" min="0" @bind="novaDespesaValor" style="width: 100%; margin-bottom: 20px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <div style="display: flex; gap: 10px;">
-                <button style="flex: 1; padding: 10px; background: #555; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="() => mostrarModalDespesa = false">Cancelar</button>
-                <button style="flex: 1; padding: 10px; background: #8e44ad; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;" @onclick="LancarDespesa" disabled="@processandoAcao">Lançar</button>
+                <button style="flex: 1; padding: 10px; background: #555; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="@(() => mostrarModalDespesa = false)">Cancelar</button>
+                <button style="flex: 1; padding: 10px; background: #8e44ad; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;" @onclick="@LancarDespesa" disabled="@processandoAcao">Lançar</button>
             </div>
         </div>
     </div>
@@ -277,18 +277,15 @@
 
             <div style="text-align: left; margin-bottom: 25px;">
                 <label style="display:block; font-weight:bold; margin-bottom:5px; color:#e74c3c; font-size:0.8rem;">Senha de Administrador</label>
-                <input type="password" @bind="senhaAdminLimpeza" placeholder="Digite a senha..." style="width:100%; padding: 10px; border: 2px solid #e74c3c; background: #111; color: #fff; border-radius: 6px;" />
-            </div>
-
-            <button style="width: 100%; margin-bottom: 15px; padding: 15px; background: #ff9800; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("pedidos")' disabled="@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || processandoAcao)">
+                <input type="password" @bind="senhaAdminLimpeza" placeholder="Digite a senha..." style="width:100%;             <button style="width: 100%; margin-bottom: 15px; padding: 15px; background: #ff9800; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick="@(() => LimparDados("pedidos"))" disabled="@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || processandoAcao)">
                 🧨 APAGAR PEDIDOS DO PERÍODO
             </button>
             
-            <button style="width: 100%; margin-bottom: 25px; padding: 15px; background: #d32f2f; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick='() => LimparDados("financeiro")' disabled="@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || processandoAcao)">
+            <button style="width: 100%; margin-bottom: 25px; padding: 15px; background: #d32f2f; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase;" @onclick="@(() => LimparDados("financeiro"))" disabled="@(string.IsNullOrWhiteSpace(senhaAdminLimpeza) || processandoAcao)">
                 🔥 APAGAR CAIXA/DESPESAS DO PERÍODO
             </button>
-
-            <button style="width: 100%; padding: 10px; background: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="() => mostrarModalLimpar = false" disabled="@processandoAcao">Cancelar / Voltar</button>
+            <button style="width: 100%; padding: 10px; background: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="@(() => mostrarModalLimpar = false)" disabled="@processandoAcao">Cancelar / Voltar</button>
+s: 5px; cursor: pointer;" @onclick="() => mostrarModalLimpar = false" disabled="@processandoAcao">Cancelar / Voltar</button>
         </div>
     </div>
 }

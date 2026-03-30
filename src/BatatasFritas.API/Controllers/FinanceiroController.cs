@@ -39,7 +39,7 @@ public class FinanceiroController : ControllerBase
     }
 
     [HttpGet("dashboard")]
-    public async Task<IActionResult> GetDashboard([FromQuery] DateTime? inicio = null, [FromQuery] DateTime? fim = null)
+    public async Task<IActionResult> GetDashboard([FromQuery] DateTime? inicio, [FromQuery] DateTime? fim)
     {
         // Usa UTC para consistência com DataHoraPedido (salvo em UTC pelo domínio)
         var hoje      = DateTime.UtcNow.Date;

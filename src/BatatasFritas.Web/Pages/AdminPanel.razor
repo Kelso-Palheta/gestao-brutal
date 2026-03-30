@@ -26,7 +26,7 @@
             <a href="/admin/estoque" class="admin-nav-link">📦 Estoque</a>
             <a href="/admin/dashboard" class="admin-nav-link">📊 Dashboard</a>
             <a href="/kds" class="admin-nav-link">🍳 KDS</a>
-            <button @onclick="Sair" class="admin-btn-sair">🔒 Sair</button>
+            <button @onclick="@Sair" class="admin-btn-sair">🔒 Sair</button>
         </div>
     </div>
 
@@ -34,19 +34,19 @@
 
         <!-- TABS -->
         <div class="admin-tabs">
-            <button class="admin-tab @(abaAtiva == "produtos" ? "active" : "")" @onclick='() => abaAtiva = "produtos"'>
+            <button class="admin-tab @(abaAtiva == "produtos" ? "active" : "")" @onclick="@(() => abaAtiva = "produtos")">
                 🍟 Produtos (@produtos.Count)
             </button>
-            <button class="admin-tab @(abaAtiva == "complementos" ? "active" : "")" @onclick='() => abaAtiva = "complementos"'>
+            <button class="admin-tab @(abaAtiva == "complementos" ? "active" : "")" @onclick="@(() => abaAtiva = "complementos")">
                 ➕ Adicionais e Molhos (@complementos.Count)
             </button>
-            <button class="admin-tab @(abaAtiva == "bairros" ? "active" : "")" @onclick='() => abaAtiva = "bairros"'>
+            <button class="admin-tab @(abaAtiva == "bairros" ? "active" : "")" @onclick="@(() => abaAtiva = "bairros")">
                 📍 Bairros e Taxas (@bairros.Count)
             </button>
-            <button class="admin-tab @(abaAtiva == "configuracoes" ? "active" : "")" @onclick='() => abaAtiva = "configuracoes"'>
+            <button class="admin-tab @(abaAtiva == "configuracoes" ? "active" : "")" @onclick="@(() => abaAtiva = "configuracoes")">
                 ⚙️ Configurações
             </button>
-            <button class="admin-tab @(abaAtiva == "clientes" ? "active" : "")" @onclick='() => abaAtiva = "clientes"'>
+            <button class="admin-tab @(abaAtiva == "clientes" ? "active" : "")" @onclick="@(() => abaAtiva = "clientes")">
                 👥 Clientes
             </button>
         </div>
