@@ -64,7 +64,7 @@
         @if (filtroAtivo && dados.DataInicioFiltro.HasValue)
         {
             <div class="dash-section dash-period-result">
-                <h2 class="dash-section-title">📅 Resultado do Período (@dados.DataInicioFiltro.Value.ToString("dd/MM/yyyy") - @dados.DataFimFiltro?.ToString("dd/MM/yyyy"))</h2>
+                <h2 class="dash-section-title">📅 Resultado do Período (@(dados.DataInicioFiltro?.ToString("dd/MM/yyyy") ?? "-") até @(dados.DataFimFiltro?.ToString("dd/MM/yyyy") ?? "-"))</h2>
                 
                 <div class="dash-kpi-grid">
                     <div class="dash-kpi-card period-card">
@@ -672,7 +672,7 @@
             string url = "api/financeiro/dashboard";
             if (filtroAtivo)
             {
-                url += $"?inicio={filtroInicio:yyyy-MM-dd}&fim={filtroFim:yyyy-MM-dd}";
+                url += $"?inicio={filtroInicio.ToString("yyyy-MM-dd")}&fim={filtroFim.ToString("yyyy-MM-dd")}";
             }
             dados = await Http.GetFromJsonAsync<FinanceiroDashboardDto>(url);
         }

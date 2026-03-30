@@ -3,6 +3,8 @@
 @using BatatasFritas.Shared.DTOs
 @using BatatasFritas.Shared.Enums
 @using System.Net.Http.Json
+@using System.Linq
+@using System
 @inject CarrinhoState Carrinho
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -350,7 +352,7 @@
         
         if (string.IsNullOrWhiteSpace(Carrinho.TempTelefone)) return;
 
-        var telLimpo = new string(Carrinho.TempTelefone.Where(char.IsDigit).ToArray());
+        var telLimpo = new string(Carrinho.TempTelefone.Where(c => char.IsDigit(c)).ToArray());
         if (telLimpo.Length < 8) return;
 
         try
