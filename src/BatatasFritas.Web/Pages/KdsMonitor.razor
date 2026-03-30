@@ -405,7 +405,7 @@
     private IEnumerable<PedidoDetalheDto> pedidosAceitos    => todosAbertos.Where(p => p.Status == StatusPedido.Aceito);
     private IEnumerable<PedidoDetalheDto> pedidosEmPreparo  => todosAbertos.Where(p => p.Status == StatusPedido.EmPreparo);
     private IEnumerable<PedidoDetalheDto> pedidosProntos    => todosAbertos.Where(p =>
-        p.Status == StatusPedido.ProntoParaEntrega || p.Status == StatusPedido.SaiuParaEntrega);
+        p.Status == StatusPedido.ProntoParaEntrega || p.Status == StatusPedido.SaiuParaEntrega || p.Status == StatusPedido.Entregue);
 
     // ── Alerta Sonoro (rastreia IDs que já existiam) ─────────────────────
     /// IDs dos pedidos recebidos conhecidos pelo front. Se aparecer um ID novo → toca o beep.
