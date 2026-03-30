@@ -1852,12 +1852,23 @@ body {
 .admin-btn-toggle,
 .admin-btn-deletar {
     background: #1a1a1a;
+    color: #eee;
     border: 1px solid #444;
     padding: 6px 10px;
     cursor: pointer;
     font-size: 1rem;
     transition: all 0.15s;
     border-radius: 6px;
+}
+
+.admin-btn-editar:disabled,
+.admin-btn-toggle:disabled,
+.admin-btn-deletar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #222;
+    border-color: #333;
+    color: #888;
 }
 
 .admin-btn-editar:hover {
