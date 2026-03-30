@@ -21,7 +21,12 @@
         <div class="dash-header no-print">
             <div class="dash-header-left">
                 <h1>📊 Dashboard Financeiro</h1>
-                <p>Visão geral de receitas, despesas e lucro em tempo real.</p>
+                <p>
+                    Visão geral de receitas, despesas e lucro em tempo real.
+                    <span style="display:inline-block; margin-left:10px; font-size:0.8rem; padding:2px 6px; border-radius:4px; font-weight:bold; @(signalrStatus == "Conectado" ? "background:#27ae60;color:#fff;" : "background:#c0392b;color:#fff;")">
+                        SignalR: @signalrStatus
+                    </span>
+                </p>
             </div>
             <div class="dash-header-right">
                 <a href="/admin" class="dash-btn-nav">⚙️ Admin</a>
@@ -478,6 +483,7 @@
     private bool mostrarModalLimpar = false;
     
     private HubConnection? _hubConnection;
+    private string signalrStatus = "Conectando...";
 
     protected override async Task OnInitializedAsync()
     {
@@ -511,6 +517,22 @@
             .WithAutomaticReconnect()
             .Build();
 
+        _hubConnection.Closed += (ex) => {
+            signalrStatus = "Desconectado!";
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+        _hubConnection.Reconnecting += (ex) => {
+            signalrStatus = "Reconectando...";
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+        _hubConnection.Reconnected += (id) => {
+            signalrStatus = "Conectado";
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+
         _hubConnection.On<int>("NovoPedido", async pedidoId =>
         {
             await CarregarDados();
@@ -526,8 +548,12 @@
         try
         {
             await _hubConnection.StartAsync();
+            signalrStatus = "Conectado";
         }
-        catch { }
+        catch (Exception ex)
+        {
+            signalrStatus = "Erro de Conexão: " + ex.Message;
+        }
     }
 
     private async Task CarregarDados()

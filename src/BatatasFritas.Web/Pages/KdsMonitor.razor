@@ -13,6 +13,11 @@
 <!-- ============================
      KANBAN PRINCIPAL
      ============================ -->
+<div style="display:flex; justify-content:flex-end; padding:0 10px 5px 0;">
+    <span style="font-size:0.8rem; padding:4px 8px; border-radius:4px; font-weight:bold; @(signalrStatus == "Conectado" ? "background:#27ae60;color:#fff;" : "background:#c0392b;color:#fff;")">
+        SignalR: @signalrStatus
+    </span>
+</div>
 <div class="kds-kanban">
 
     <!-- Coluna: Recebidos -->
@@ -35,13 +40,7 @@
                         <span class="kds-time">@p.DataHoraPedido.ToString("HH:mm")</span>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px;">
-                        @{ var badgePag = BadgePagamento(p); }
-                        <span style="@badgePag.estilo">@badgePag.texto</span>
-                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
-                        @if (p.TipoAtendimento == TipoAtendimento.Totem)
-                        {
-                            <span style="background:#7c3aed; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">📱 TOTEM</span>
-                        }
+                        @ExibirBadgesPedido(p)
                     </div>
                     <ul class="kds-card-items">
                         @foreach (var i in p.Itens)
@@ -59,18 +58,7 @@
                         <button class="kds-btn kds-btn-aceitar" @onclick="() => MoverStatus(p.Id, StatusPedido.Aceito)">
                             Aceitar 👍
                         </button>
-                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
-                        {
-                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
-                                💰
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto;" @onclick="() => DesfazerPagamento(p.Id)" title="Desfazer Pagamento">
-                                ↩️
-                            </button>
-                        }
+                        @ExibirBotoesPagamento(p)
                         <button class="kds-btn kds-btn-cancelar-pedido" @onclick="() => AbrirCancelamento(p)" title="Cancelar pedido">
                             ✕
                         </button>
@@ -99,9 +87,7 @@
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px;">
-                        @{ var badgePag2 = BadgePagamento(p); }
-                        <span style="@badgePag2.estilo">@badgePag2.texto</span>
-                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
+                        @ExibirBadgesPedido(p)
                     </div>
                     <ul class="kds-card-items">
                         @foreach (var i in p.Itens)
@@ -119,18 +105,7 @@
                         <button class="kds-btn kds-btn-preparo" @onclick="() => MoverStatus(p.Id, StatusPedido.EmPreparo)">
                             Cozinhar 👨‍🍳
                         </button>
-                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
-                        {
-                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
-                                💰 Pago
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto;" @onclick="() => DesfazerPagamento(p.Id)" title="Desfazer Pagamento">
-                                ↩️ Pênd.
-                            </button>
-                        }
+                        @ExibirBotoesPagamento(p)
                         <button class="kds-btn" style="background:#fff; flex: 0 0 44px;" @onclick="() => ImprimirCupom(p)" title="Imprimir">
                             🖨️
                         </button>
@@ -162,9 +137,7 @@
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px;">
-                        @{ var badgePag3 = BadgePagamento(p); }
-                        <span style="@badgePag3.estilo">@badgePag3.texto</span>
-                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
+                        @ExibirBadgesPedido(p)
                     </div>
                     <ul class="kds-card-items">
                         @foreach (var i in p.Itens)
@@ -182,18 +155,7 @@
                         <button class="kds-btn kds-btn-pronto" @onclick="() => MoverStatus(p.Id, StatusPedido.ProntoParaEntrega)">
                             Pronto ✅
                         </button>
-                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
-                        {
-                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
-                                💰 Pago
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto;" @onclick="() => DesfazerPagamento(p.Id)" title="Desfazer Pagamento">
-                                ↩️ Pênd.
-                            </button>
-                        }
+                        @ExibirBotoesPagamento(p)
                         <button class="kds-btn kds-btn-cancelar-pedido" @onclick="() => AbrirCancelamento(p)" title="Cancelar pedido">
                             ✕
                         </button>
@@ -222,13 +184,7 @@
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px; margin-bottom:4px;">
-                        @{ var badgePag4 = BadgePagamento(p); }
-                        <span style="@badgePag4.estilo">@badgePag4.texto</span>
-                        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
-                        @if (p.TipoAtendimento == TipoAtendimento.Totem)
-                        {
-                            <span style="background:#7c3aed; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">📱 TOTEM</span>
-                        }
+                        @ExibirBadgesPedido(p)
                     </div>
                     <div class="kds-delivery-info">
                         📞 @p.TelefoneCliente<br />
@@ -279,18 +235,7 @@
                             </button>
                         }
                         
-                        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
-                        {
-                            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
-                                💰 Pago
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto;" @onclick="() => DesfazerPagamento(p.Id)" title="Desfazer Pagamento">
-                                ↩️ Pênd.
-                            </button>
-                        }
+                        @ExibirBotoesPagamento(p)
                         <button class="kds-btn" style="background:#fff; flex: 0 0 44px;" @onclick="() => ImprimirCupom(p)" title="Imprimir">
                             🖨️
                         </button>
@@ -418,6 +363,42 @@
 
     // ── SignalR ───────────────────────────────────────────────────────────
     private HubConnection? _hubConnection;
+    private string signalrStatus = "Conectando...";
+
+    private RenderFragment ExibirBadgesPedido(PedidoDetalheDto p) => __builder =>
+    {
+        var badge = BadgePagamento(p);
+        <span style="@badge.estilo">@badge.texto</span>
+        <span style="background:#333; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">@NomeMetodo(p.MetodoPagamento)</span>
+        @if (p.TipoAtendimento == TipoAtendimento.Totem)
+        {
+            <span style="background:#7c3aed; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">📱 TOTEM</span>
+        }
+        else if (p.TipoAtendimento == TipoAtendimento.Delivery)
+        {
+            <span style="background:#e67e22; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">🛵 DELIVERY</span>
+        }
+        else if (p.TipoAtendimento == TipoAtendimento.Balcao)
+        {
+            <span style="background:#2980b9; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">💼 BALCÃO</span>
+        }
+    };
+
+    private RenderFragment ExibirBotoesPagamento(PedidoDetalheDto p) => __builder =>
+    {
+        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
+        {
+            <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto; border-color:#d68910;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
+                ⚠️ Pendente
+            </button>
+        }
+        else
+        {
+            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto; border-color:#229954;" @onclick="() => DesfazerPagamento(p.Id)" title="Desfazer Pagamento">
+                ✅ Pago
+            </button>
+        }
+    };
 
     // ── Cancelamento ─────────────────────────────────────────────────────
     private PedidoDetalheDto? pedidoParaCancelar;
@@ -460,6 +441,22 @@
             .WithAutomaticReconnect()
             .Build();
 
+        _hubConnection.Closed += (ex) => {
+            signalrStatus = "Desconectado!";
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+        _hubConnection.Reconnecting += (ex) => {
+            signalrStatus = "Reconectando...";
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+        _hubConnection.Reconnected += (id) => {
+            signalrStatus = "Conectado";
+            InvokeAsync(StateHasChanged);
+            return Task.CompletedTask;
+        };
+
         // Novo pedido: recarrega e toca alerta
         _hubConnection.On<int>("NovoPedido", async pedidoId =>
         {
@@ -477,10 +474,11 @@
         try
         {
             await _hubConnection.StartAsync();
+            signalrStatus = "Conectado";
         }
-        catch
+        catch (Exception ex)
         {
-            // Falha ao conectar — o KDS continua funcional (sem push em tempo real)
+            signalrStatus = "Erro: " + ex.Message;
         }
     }
 
