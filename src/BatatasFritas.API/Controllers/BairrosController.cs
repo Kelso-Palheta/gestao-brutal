@@ -1,10 +1,12 @@
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace BatatasFritas.API.Controllers;
 
@@ -30,17 +32,23 @@ public class BairrosController : ControllerBase
         {
             Id = b.Id,
             Nome = b.Nome,
-            TaxaEntrega = b.TaxaEntrega
-        }).OrderBy(b => b.Nome).ToList();
+            TaxaEntrega = b.TaxaEntrega,
+            OrdemExibicao = b.OrdemExibicao
+        }).OrderBy(b => b.OrdemExibicao).ThenBy(b => b.Nome).ToList();
         
         return Ok(dtos);
     }
 
     // POST api/bairros — cria novo bairro
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Post([FromBody] BairroDto dto)
     {
+        var bairros = await _bairroRepository.GetAllAsync();
+        var maxOrdem = bairros.Any() ? bairros.Max(b => b.OrdemExibicao) : -1;
+
         var bairro = new Bairro(dto.Nome, dto.TaxaEntrega);
+        bairro.OrdemExibicao = maxOrdem + 1;
         
         _uow.BeginTransaction();
         await _bairroRepository.AddAsync(bairro);
@@ -51,6 +59,7 @@ public class BairrosController : ControllerBase
 
     // PUT api/bairros/{id} — atualiza nome e taxa de entrega
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> Put(int id, [FromBody] BairroDto dto)
     {
         var bairro = await _bairroRepository.GetByIdAsync(id);
@@ -65,9 +74,36 @@ public class BairrosController : ControllerBase
         return Ok(new { bairro.Id, bairro.Nome });
     }
 
+    // PATCH api/bairros/reordenar — salva nova ordem da lista
+    [HttpPatch("reordenar")]
+    [Authorize]
+    public async Task<IActionResult> Reordenar([FromBody] List<ReordenarBairroItem> itens)
+    {
+        _uow.BeginTransaction();
+        try
+        {
+            foreach (var item in itens)
+            {
+                var bairro = await _bairroRepository.GetByIdAsync(item.Id);
+                if (bairro != null)
+                {
+                    bairro.OrdemExibicao = item.Ordem;
+                    await _bairroRepository.UpdateAsync(bairro);
+                }
+            }
+            await _uow.CommitAsync();
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
+    }
+
     // DELETE api/bairros/{id} — remove bairro
-    // Retorna 409 se houver pedidos vinculados a este bairro.
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> Delete(int id)
     {
         var bairro = await _bairroRepository.GetByIdAsync(id);
@@ -90,4 +126,3 @@ public class BairrosController : ControllerBase
         }
     }
 }
-

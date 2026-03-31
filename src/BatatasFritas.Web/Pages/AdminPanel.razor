@@ -492,22 +492,29 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>#</th>
+                                    <th style="width:60px">Ordem</th>
                                     <th>Nome do Bairro</th>
                                     <th>Taxa de Entrega</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                @{ var posicaoBairro = 0; }
                                 @foreach (var b in bairros)
                                 {
+                                    var pos = posicaoBairro++;
                                     <tr>
-                                        <td class="admin-td-id">@b.Id</td>
+                                        <td class="admin-td-id">
+                                            <div class="admin-ordem-ctrl">
+                                                <button class="admin-btn-ordem" @onclick="@(() => MoverCimaBairro(pos))" disabled="@(pos == 0 || salvandoOrdemBairro)" title="Mover para cima">▲</button>
+                                                <button class="admin-btn-ordem" @onclick="@(() => MoverBaixoBairro(pos))" disabled="@(pos == bairros.Count - 1 || salvandoOrdemBairro)" title="Mover para baixo">▼</button>
+                                            </div>
+                                        </td>
                                         <td><strong>@b.Nome</strong></td>
                                         <td class="admin-td-preco">R$ @b.TaxaEntrega.ToString("F2")</td>
                                         <td class="admin-td-acoes">
-                                            <button class="admin-btn-editar" @onclick="() => EditarBairro(b)" title="Editar">✏️</button>
-                                            <button class="admin-btn-deletar" @onclick="() => DeletarBairro(b)" title="Excluir">🗑️</button>
+                                            <button class="admin-btn-editar" @onclick="@(() => EditarBairro(b))" title="Editar">✏️</button>
+                                            <button class="admin-btn-deletar" @onclick="@(() => DeletarBairro(b))" title="Excluir">🗑️</button>
                                         </td>
                                     </tr>
                                 }
@@ -717,6 +724,38 @@
     {
         await KdsAuth.LogoutAsync();
         Nav.NavigateTo("/kds/login", replace: true);
+    }
+
+    // ======================== ORDEM DOS BAIRROS ========================
+
+    private bool salvandoOrdemBairro = false;
+
+    private async Task MoverCimaBairro(int indice)
+    {
+        if (indice <= 0) return;
+        (bairros[indice], bairros[indice - 1]) = (bairros[indice - 1], bairros[indice]);
+        await SalvarOrdemBairros();
+    }
+
+    private async Task MoverBaixoBairro(int indice)
+    {
+        if (indice >= bairros.Count - 1) return;
+        (bairros[indice], bairros[indice + 1]) = (bairros[indice + 1], bairros[indice]);
+        await SalvarOrdemBairros();
+    }
+
+    private async Task SalvarOrdemBairros()
+    {
+        salvandoOrdemBairro = true;
+        try
+        {
+            var payload = bairros
+                .Select((b, idx) => new ReordenarBairroItem(b.Id, idx))
+                .ToList();
+            await Http.PatchAsJsonAsync("api/bairros/reordenar", payload);
+        }
+        catch { /* falha silenciosa, a lista local já foi reorganizada */ }
+        finally { salvandoOrdemBairro = false; }
     }
 
     // ======================== ORDEM DOS PRODUTOS ========================
@@ -1281,6 +1320,12 @@
 
     private async Task ConfirmarExclusaoCliente(SaldoCashbackDto c)
     {
+        if (string.IsNullOrWhiteSpace(c.Telefone))
+        {
+            msgErro = $"O cliente '{c.NomeCliente}' não possui telefone registrado e não pode ser excluído pela interface. Delete diretamente pelo banco se necessário.";
+            return;
+        }
+
         var confirm = await JS.InvokeAsync<bool>("kdsInterop.confirmar", $"Tem certeza que deseja apagar permanentemente o cliente {c.NomeCliente} ({c.Telefone}) e todo o histórico de cashback dele?");
         if (!confirm) return;
 

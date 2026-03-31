@@ -12,5 +12,6 @@ public class BairroMap : ClassMap<Bairro>
         Id(x => x.Id).GeneratedBy.Identity().Column("id");
         Map(x => x.Nome).Not.Nullable().Length(100).Column("nome");
         Map(x => x.TaxaEntrega).Not.Nullable().Column("taxa_entrega");
+        Map(x => x.OrdemExibicao).Not.Nullable().Column("ordem_exibicao").Default("0");
     }
 }

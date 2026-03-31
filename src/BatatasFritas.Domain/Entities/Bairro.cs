@@ -4,6 +4,7 @@ public class Bairro : EntityBase
 {
     public virtual string Nome { get; protected set; } = string.Empty;
     public virtual decimal TaxaEntrega { get; protected set; }
+    public virtual int OrdemExibicao { get; set; } = 0;
 
     protected Bairro() { } // Para o NHibernate
 
