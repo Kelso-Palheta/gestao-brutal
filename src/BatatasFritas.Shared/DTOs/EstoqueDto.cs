@@ -64,3 +64,9 @@ public class EstoqueDashboardDto
     public List<InsumoDto> AlertasEstoque { get; set; } = new();
     public List<MovimentacaoDto> UltimasMovimentacoes { get; set; } = new();
 }
+
+public class AjusteSaldoRequest
+{
+    public decimal NovoSaldo { get; set; }
+    public string Motivo { get; set; } = string.Empty;
+}

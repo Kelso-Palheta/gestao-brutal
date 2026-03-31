@@ -130,7 +130,6 @@ public class InsumosController : ControllerBase
         return NoContent();
     }
 
-    // ── POST api/insumos/{id}/restaurar ──────────────────────────────────
     [HttpPost("{id}/restaurar")]
     public async Task<IActionResult> Restaurar(int id)
     {
@@ -143,8 +142,6 @@ public class InsumosController : ControllerBase
         await _uow.CommitAsync();
         return Ok(new { msg = "Insumo restaurado com sucesso!" });
     }
-
-    public record AjusteSaldoRequest(decimal NovoSaldo, string Motivo);
 
     // ── PATCH api/insumos/{id}/ajustar-saldo ─────────────────────────────
     [HttpPatch("{id}/ajustar-saldo")]

@@ -23,16 +23,16 @@
 
     <!-- ── ABAS ───────────────────────────────────────────────── -->
     <div class="est-tabs">
-        <button class="est-tab @(abaAtiva == "dashboard" ? "ativo" : "")" @onclick='() => abaAtiva = "dashboard"'>
+        <button class="est-tab @(abaAtiva == "dashboard" ? "ativo" : "")" @onclick="@(() => abaAtiva = "dashboard")">
             🏠 Visão Geral
         </button>
-        <button class="est-tab @(abaAtiva == "insumos" ? "ativo" : "")" @onclick='() => MudarAba("insumos")'>
+        <button class="est-tab @(abaAtiva == "insumos" ? "ativo" : "")" @onclick="@(() => MudarAba("insumos"))">
             🧂 Insumos @(dashboard?.InsumosAbaixoMinimo > 0 ? $"⚠️{dashboard.InsumosAbaixoMinimo}" : "")
         </button>
-        <button class="est-tab @(abaAtiva == "compras" ? "ativo" : "")" @onclick='() => MudarAba("compras")'>
+        <button class="est-tab @(abaAtiva == "compras" ? "ativo" : "")" @onclick="@(() => MudarAba("compras"))">
             🛒 Compras / Entradas
         </button>
-        <button class="est-tab @(abaAtiva == "saidas" ? "ativo" : "")" @onclick='() => MudarAba("saidas")'>
+        <button class="est-tab @(abaAtiva == "saidas" ? "ativo" : "")" @onclick="@(() => MudarAba("saidas"))">
             📉 Movimentações
         </button>
     </div>
@@ -49,13 +49,13 @@
         </div>
 
         <div class="rel-filtro-atalhos">
-            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("hoje")'>Hoje</button>
-            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("7dias")'>7 dias</button>
-            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("30dias")'>30 dias</button>
-            <button class="rel-btn-atalho" @onclick='() => AplicarAtalho("mes")'>Este mês</button>
+            <button class="rel-btn-atalho" @onclick="@(() => AplicarAtalho("hoje"))">Hoje</button>
+            <button class="rel-btn-atalho" @onclick="@(() => AplicarAtalho("7dias"))">7 dias</button>
+            <button class="rel-btn-atalho" @onclick="@(() => AplicarAtalho("30dias"))">30 dias</button>
+            <button class="rel-btn-atalho" @onclick="@(() => AplicarAtalho("mes"))">Este mês</button>
         </div>
 
-        <button class="rel-btn-filtrar" @onclick="CarregarTudo" disabled="@carregando">
+        <button class="rel-btn-filtrar" @onclick="@CarregarTudo" disabled="@carregando">
             @(carregando ? "⏳" : "🔍 Filtrar")
         </button>
     </div>
@@ -107,7 +107,7 @@
                                         <td>@i.Nome</td>
                                         <td class="est-td-alerta">@i.EstoqueAtual @i.Unidade</td>
                                         <td>@i.EstoqueMinimo @i.Unidade</td>
-                                        <td><button class="est-btn-entrada" @onclick="() => AbrirEntrada(i)">+ Entrada</button></td>
+                                        <td><button class="est-btn-entrada" @onclick="@(() => AbrirEntrada(i))">+ Entrada</button></td>
                                     </tr>
                                 }
                                 </tbody>
@@ -191,10 +191,10 @@
                         </div>
                     </div>
                     <div class="est-form-btns">
-                        <button class="est-btn-salvar" @onclick="SalvarInsumo">💾 Salvar</button>
+                        <button class="est-btn-salvar" @onclick="@SalvarInsumo">💾 Salvar</button>
                         @if (editandoInsumo.Id > 0)
                         {
-                            <button class="est-btn-cancelar" @onclick="NovoInsumo">✕ Cancelar</button>
+                            <button class="est-btn-cancelar" @onclick="@NovoInsumo">✕ Cancelar</button>
                         }
                     </div>
                 </div>
@@ -230,7 +230,7 @@
                                             <div style="display:flex; align-items:center; gap:5px;">
                                                 <strong>@i.EstoqueAtual</strong>
                                                 @if(i.Ativo) {
-                                                    <button class="est-btn-ajustar-mini" @onclick="() => AbrirAjuste(i)" title="Ajustar saldo real">🔧</button>
+                                                    <button class="est-btn-ajustar-mini" @onclick="@(() => AbrirAjuste(i))" title="Ajustar saldo real">🔧</button>
                                                 }
                                             </div>
                                         </td>
@@ -239,13 +239,13 @@
                                         <td class="est-td-acoes">
                                             @if (i.Ativo)
                                             {
-                                                <button class="est-btn-editar" @onclick="() => EditarInsumo(i)" title="Editar">✏️</button>
-                                                <button class="est-btn-entrada" @onclick="() => AbrirEntrada(i)" title="Entrada">+ In</button>
-                                                <button class="est-btn-deletar" @onclick="() => DeletarInsumo(i)" title="Excluir">🗑️</button>
+                                                <button class="est-btn-editar" @onclick="@(() => EditarInsumo(i))" title="Editar">✏️</button>
+                                                <button class="est-btn-entrada" @onclick="@(() => AbrirEntrada(i))" title="Entrada">+ In</button>
+                                                <button class="est-btn-deletar" @onclick="@(() => DeletarInsumo(i))" title="Excluir">🗑️</button>
                                             }
                                             else
                                             {
-                                                <button class="est-btn-restaurar" @onclick="() => RestaurarInsumo(i)">♻️ Recuperar</button>
+                                                <button class="est-btn-restaurar" @onclick="@(() => RestaurarInsumo(i))">♻️ Recuperar</button>
                                             }
                                         </td>
                                     </tr>
@@ -312,7 +312,7 @@
                         </div>
                     }
                     <div class="est-form-btns">
-                        <button class="est-btn-salvar" @onclick="RegistrarEntrada">✅ Registrar Entrada</button>
+                        <button class="est-btn-salvar" @onclick="@RegistrarEntrada">✅ Registrar Entrada</button>
                     </div>
                 </div>
 
@@ -391,7 +391,7 @@
                         </div>
                     </div>
                     <div class="est-form-btns">
-                        <button class="est-btn-salvar" @onclick="RegistrarAjuste">✅ Registrar Ajuste</button>
+                        <button class="est-btn-salvar" @onclick="@RegistrarAjuste">✅ Registrar Ajuste</button>
                     </div>
                 </div>
 
@@ -431,7 +431,7 @@
     <!-- ── MODAL DE ENTRADA RÁPIDA ──────────────────────────────── -->
     @if (mostrarModalEntrada && insumoEntrada != null)
     {
-        <div class="est-modal-overlay" @onclick="FecharModalEntrada">
+        <div class="est-modal-overlay" @onclick="@FecharModalEntrada">
             <div class="est-modal" @onclick:stopPropagation="true">
                 <h3>📦 Entrada de Estoque</h3>
                 <p class="est-modal-sub">Insumo: <strong>@insumoEntrada.Nome</strong> (Atual: @insumoEntrada.EstoqueAtual @insumoEntrada.Unidade)</p>
@@ -454,8 +454,8 @@
                     </div>
                 </div>
                 <div class="est-modal-btns">
-                    <button class="est-btn-cancelar" @onclick="FecharModalEntrada">Cancelar</button>
-                    <button class="est-btn-salvar" @onclick="ConfirmarEntradaRapida">✅ Confirmar</button>
+                    <button class="est-btn-cancelar" @onclick="@FecharModalEntrada">Cancelar</button>
+                    <button class="est-btn-salvar" @onclick="@ConfirmarEntradaRapida">✅ Confirmar</button>
                 </div>
             </div>
         </div>
@@ -464,7 +464,7 @@
     <!-- ── MODAL DE AJUSTE DIRETO ────────────────────────────── -->
     @if (mostrarModalAjuste && insumoAjuste != null)
     {
-        <div class="est-modal-overlay" @onclick="FecharModalAjuste">
+        <div class="est-modal-overlay" @onclick="@FecharModalAjuste">
             <div class="est-modal" @onclick:stopPropagation="true" style="max-width: 350px;">
                 <h3>🔧 Ajustar Saldo Real</h3>
                 <p class="est-modal-sub">Insumo: <strong>@insumoAjuste.Nome</strong></p>
@@ -480,8 +480,8 @@
                 </div>
 
                 <div class="est-modal-btns">
-                    <button class="est-btn-cancelar" @onclick="FecharModalAjuste">Cancelar</button>
-                    <button class="est-btn-salvar" @onclick="ConfirmarAjusteSaldo">💾 Salvar</button>
+                    <button class="est-btn-cancelar" @onclick="@FecharModalAjuste">Cancelar</button>
+                    <button class="est-btn-salvar" @onclick="@ConfirmarAjusteSaldo">💾 Salvar</button>
                 </div>
             </div>
         </div>
@@ -695,7 +695,7 @@
         LimparMensagens();
         if (insumoAjuste == null) return;
         
-        var req = new { NovoSaldo = novoSaldoDesejado, Motivo = motivoAjuste };
+        var req = new AjusteSaldoRequest { NovoSaldo = novoSaldoDesejado, Motivo = motivoAjuste };
         var r = await Http.PatchAsJsonAsync($"api/insumos/{insumoAjuste.Id}/ajustar-saldo", req);
         
         if (r.IsSuccessStatusCode)
