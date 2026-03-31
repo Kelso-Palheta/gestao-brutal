@@ -80,6 +80,17 @@ public class InsumosController : ControllerBase
         return Ok(insumos);
     }
 
+    // ── GET api/insumos/todos (incluindo inativos) ───────────────────────
+    [HttpGet("todos")]
+    public async Task<IActionResult> GetTodos()
+    {
+        var insumos = (await _insumoRepo.GetAllAsync())
+            .OrderBy(i => i.Nome)
+            .Select(ToDto)
+            .ToList();
+        return Ok(insumos);
+    }
+
     // ── POST api/insumos ──────────────────────────────────────────────────
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] InsumoDto dto)
@@ -117,6 +128,42 @@ public class InsumosController : ControllerBase
         await _insumoRepo.UpdateAsync(insumo);
         await _uow.CommitAsync();
         return NoContent();
+    }
+
+    // ── POST api/insumos/{id}/restaurar ──────────────────────────────────
+    [HttpPost("{id}/restaurar")]
+    public async Task<IActionResult> Restaurar(int id)
+    {
+        var insumo = await _insumoRepo.GetByIdAsync(id);
+        if (insumo == null) return NotFound();
+
+        insumo.Ativo = true;
+        _uow.BeginTransaction();
+        await _insumoRepo.UpdateAsync(insumo);
+        await _uow.CommitAsync();
+        return Ok(new { msg = "Insumo restaurado com sucesso!" });
+    }
+
+    public record AjusteSaldoRequest(decimal NovoSaldo, string Motivo);
+
+    // ── PATCH api/insumos/{id}/ajustar-saldo ─────────────────────────────
+    [HttpPatch("{id}/ajustar-saldo")]
+    public async Task<IActionResult> AjustarSaldo(int id, [FromBody] AjusteSaldoRequest req)
+    {
+        var insumo = await _insumoRepo.GetByIdAsync(id);
+        if (insumo == null) return NotFound();
+
+        decimal diferenca = req.NovoSaldo - insumo.EstoqueAtual;
+        if (diferenca == 0) return Ok(new { msg = "O saldo informado é igual ao atual." });
+
+        var mov = new MovimentacaoEstoque(insumo, TipoMovimentacao.Ajuste, diferenca, insumo.CustoPorUnidade, req.Motivo ?? "Ajuste direto de saldo");
+
+        _uow.BeginTransaction();
+        await _movRepo.AddAsync(mov);
+        await _insumoRepo.UpdateAsync(insumo);
+        await _uow.CommitAsync();
+
+        return Ok(new { msg = "Saldo ajustado!", novoSaldo = insumo.EstoqueAtual });
     }
 
     // ── POST api/insumos/movimentar ───────────────────────────────────────

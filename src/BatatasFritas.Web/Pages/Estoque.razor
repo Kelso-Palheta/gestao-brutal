@@ -154,6 +154,13 @@
                 @if (!string.IsNullOrEmpty(msgSucesso)) { <div class="est-msg-ok">✅ @msgSucesso</div> }
                 @if (!string.IsNullOrEmpty(msgErro))    { <div class="est-msg-err">❌ @msgErro</div> }
 
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px;">
+                    <label class="est-switch-label">
+                        <input type="checkbox" @bind="mostrarInativos" @bind:after="CarregarTudo" />
+                        🔍 Mostrar itens excluídos/antigos
+                    </label>
+                </div>
+
                 <!-- Formulário novo/editar insumo -->
                 <div class="est-card">
                     <div class="est-card-title">@(editandoInsumo?.Id > 0 ? "✏️ Editar Insumo" : "➕ Novo Insumo")</div>
@@ -203,30 +210,43 @@
                                     <tr>
                                         <th>Nome</th>
                                         <th>Unidade</th>
-                                        <th>Estoque</th>
+                                        <th style="width: 120px;">Estoque</th>
                                         <th>Mínimo</th>
                                         <th>Custo/Un</th>
-                                        <th>Valor Total</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                 @foreach (var i in insumos.OrderBy(x => x.Nome))
                                 {
-                                    <tr class="@(i.AbaixoDoMinimo ? "est-row-alerta" : "")">
+                                    <tr class="@(i.AbaixoDoMinimo ? "est-row-alerta" : "") @(!i.Ativo ? "est-row-inativo" : "")">
                                         <td>
                                             @i.Nome
-                                            @if (i.AbaixoDoMinimo) { <span class="est-badge-alerta">⚠️ Baixo</span> }
+                                            @if (i.AbaixoDoMinimo && i.Ativo) { <span class="est-badge-alerta">⚠️ Baixo</span> }
+                                            @if (!i.Ativo) { <span class="est-badge-inativo">∅ Excluído</span> }
                                         </td>
                                         <td>@i.Unidade</td>
-                                        <td><strong>@i.EstoqueAtual</strong></td>
+                                        <td>
+                                            <div style="display:flex; align-items:center; gap:5px;">
+                                                <strong>@i.EstoqueAtual</strong>
+                                                @if(i.Ativo) {
+                                                    <button class="est-btn-ajustar-mini" @onclick="() => AbrirAjuste(i)" title="Ajustar saldo real">🔧</button>
+                                                }
+                                            </div>
+                                        </td>
                                         <td>@i.EstoqueMinimo</td>
                                         <td>@i.CustoPorUnidade.ToString("C2")</td>
-                                        <td>@((i.EstoqueAtual * i.CustoPorUnidade).ToString("C2"))</td>
                                         <td class="est-td-acoes">
-                                            <button class="est-btn-editar" @onclick="() => EditarInsumo(i)">✏️</button>
-                                            <button class="est-btn-entrada" @onclick="() => AbrirEntrada(i)">+ In</button>
-                                            <button class="est-btn-deletar" @onclick="() => DeletarInsumo(i)">🗑️</button>
+                                            @if (i.Ativo)
+                                            {
+                                                <button class="est-btn-editar" @onclick="() => EditarInsumo(i)" title="Editar">✏️</button>
+                                                <button class="est-btn-entrada" @onclick="() => AbrirEntrada(i)" title="Entrada">+ In</button>
+                                                <button class="est-btn-deletar" @onclick="() => DeletarInsumo(i)" title="Excluir">🗑️</button>
+                                            }
+                                            else
+                                            {
+                                                <button class="est-btn-restaurar" @onclick="() => RestaurarInsumo(i)">♻️ Recuperar</button>
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -441,6 +461,41 @@
         </div>
     }
 
+    <!-- ── MODAL DE AJUSTE DIRETO ────────────────────────────── -->
+    @if (mostrarModalAjuste && insumoAjuste != null)
+    {
+        <div class="est-modal-overlay" @onclick="FecharModalAjuste">
+            <div class="est-modal" @onclick:stopPropagation="true" style="max-width: 350px;">
+                <h3>🔧 Ajustar Saldo Real</h3>
+                <p class="est-modal-sub">Insumo: <strong>@insumoAjuste.Nome</strong></p>
+                
+                <div class="est-form-grupo" style="margin-bottom: 20px;">
+                    <label>Saldo físico agora (@insumoAjuste.Unidade)</label>
+                    <input type="number" step="0.01" @bind="novoSaldoDesejado" class="est-input" style="font-size: 1.5rem; text-align: center;" />
+                </div>
+
+                <div class="est-form-grupo">
+                    <label>Motivo do ajuste</label>
+                    <input @bind="motivoAjuste" class="est-input" placeholder="Ex: Inventário, Correção" />
+                </div>
+
+                <div class="est-modal-btns">
+                    <button class="est-btn-cancelar" @onclick="FecharModalAjuste">Cancelar</button>
+                    <button class="est-btn-salvar" @onclick="ConfirmarAjusteSaldo">💾 Salvar</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <style>
+        .est-switch-label { display: flex; align-items: center; gap: 8px; color: #ffb347; cursor: pointer; font-size: 0.9rem; }
+        .est-row-inativo { opacity: 0.5; background: rgba(0,0,0,0.2); }
+        .est-badge-inativo { background: #444; color: #aaa; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; }
+        .est-btn-restaurar { background: #4caf50; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .est-btn-ajustar-mini { background: #555; color: #fff; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
+        .est-btn-ajustar-mini:hover { background: #777; }
+    </style>
+
 </div>
 
 @code {
@@ -449,6 +504,7 @@
     private string msgSucesso = string.Empty;
     private string msgErro    = string.Empty;
 
+    // Insumos e Movimentações
     private EstoqueDashboardDto? dashboard;
     private List<InsumoDto> insumos = new();
     private List<MovimentacaoDto> movimentacoes = new();
@@ -457,10 +513,18 @@
     private NovaMovimentacaoRequest novaMovimentacao = new() { Tipo = "Entrada" };
     private NovaMovimentacaoRequest ajuste           = new() { Tipo = "Ajuste" };
 
+    private bool mostrarInativos = false;
+
     // Modal entrada rápida
     private bool mostrarModalEntrada = false;
     private InsumoDto? insumoEntrada;
     private NovaMovimentacaoRequest entradaRapida = new() { Tipo = "Entrada" };
+
+    // Modal Ajuste Direto
+    private bool mostrarModalAjuste = false;
+    private InsumoDto? insumoAjuste;
+    private decimal novoSaldoDesejado = 0;
+    private string motivoAjuste = "Ajuste de inventário";
 
     // Filtros de data
     private DateTime filtroInicio = DateTime.Today.AddDays(-6);
@@ -486,7 +550,10 @@
             var ate = filtroFim.ToString("yyyy-MM-dd");
 
             dashboard     = await Http.GetFromJsonAsync<EstoqueDashboardDto>($"api/insumos/dashboard?de={de}&ate={ate}");
-            insumos       = await Http.GetFromJsonAsync<List<InsumoDto>>("api/insumos") ?? new();
+            
+            var endpoint = mostrarInativos ? "api/insumos/todos" : "api/insumos";
+            insumos       = await Http.GetFromJsonAsync<List<InsumoDto>>(endpoint) ?? new();
+            
             movimentacoes = await Http.GetFromJsonAsync<List<MovimentacaoDto>>($"api/insumos/movimentacoes?de={de}&ate={ate}") ?? new();
         }
         catch { }
@@ -539,9 +606,19 @@
     private async Task DeletarInsumo(InsumoDto i)
     {
         LimparMensagens();
+        if (!await JS.InvokeAsync<bool>("confirm", $"Deseja realmente excluir '{i.Nome}'? Ele sumirá da lista principal, mas poderá ser recuperado depois.")) return;
+        
         var r = await Http.DeleteAsync($"api/insumos/{i.Id}");
         if (r.IsSuccessStatusCode) { msgSucesso = $"'{i.Nome}' removido."; await CarregarTudo(); }
         else msgErro = "Erro ao remover.";
+    }
+
+    private async Task RestaurarInsumo(InsumoDto i)
+    {
+        LimparMensagens();
+        var r = await Http.PostAsync($"api/insumos/{i.Id}/restaurar", null);
+        if (r.IsSuccessStatusCode) { msgSucesso = $"'{i.Nome}' restaurado!"; await CarregarTudo(); }
+        else msgErro = "Erro ao restaurar.";
     }
 
     // ── Movimentações ─────────────────────────────────────────────────────
@@ -597,6 +674,34 @@
         {
             msgSucesso = $"Entrada de {entradaRapida.Quantidade} {insumoEntrada?.Unidade} registrada!";
             FecharModalEntrada();
+            await CarregarTudo();
+        }
+        else msgErro = await r.Content.ReadAsStringAsync();
+    }
+
+    // ── Modal Ajuste Direto ─────────────────────────────────────────────
+    private void AbrirAjuste(InsumoDto i)
+    {
+        insumoAjuste = i;
+        novoSaldoDesejado = i.EstoqueAtual;
+        motivoAjuste = "Ajuste de inventário";
+        mostrarModalAjuste = true;
+    }
+
+    private void FecharModalAjuste() { mostrarModalAjuste = false; insumoAjuste = null; }
+
+    private async Task ConfirmarAjusteSaldo()
+    {
+        LimparMensagens();
+        if (insumoAjuste == null) return;
+        
+        var req = new { NovoSaldo = novoSaldoDesejado, Motivo = motivoAjuste };
+        var r = await Http.PatchAsJsonAsync($"api/insumos/{insumoAjuste.Id}/ajustar-saldo", req);
+        
+        if (r.IsSuccessStatusCode)
+        {
+            msgSucesso = "Saldo ajustado com sucesso!";
+            FecharModalAjuste();
             await CarregarTudo();
         }
         else msgErro = await r.Content.ReadAsStringAsync();

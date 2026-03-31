@@ -50,6 +50,9 @@
             <div class="dash-filter-item">
                 <label>Até:</label>
                 <input type="date" @bind="filtroFim" />
+                <button class="dash-btn-zerar" style="background: #f43f5e;" @onclick='() => LimparDados("despesas")' disabled="@processandoAcao">
+                    🔥 APAGAR DESPESAS DO PERÍODO
+                </button>
             </div>
             <button class="dash-btn-filtrar" @onclick="@CarregarDados" disabled="@carregando">
                 @(carregando ? "⌛" : "🔍 Filtrar Período")
