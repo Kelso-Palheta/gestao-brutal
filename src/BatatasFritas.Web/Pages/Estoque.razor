@@ -56,7 +56,7 @@
             <button class="rel-btn-atalho" @onclick="@(() => AplicarAtalho("mes"))">Este mês</button>
         </div>
 
-        <button class="rel-btn-filtrar" @onclick="@CarregarTudo" disabled="@carregando">
+        <button class="rel-btn-filtrar" @onclick="@(() => CarregarTudo())" disabled="@carregando">
             @(carregando ? "⏳" : "🔍 Filtrar")
         </button>
     </div>
@@ -192,10 +192,10 @@
                         </div>
                     </div>
                     <div class="est-form-btns">
-                        <button class="est-btn-salvar" @onclick="@SalvarInsumo">💾 Salvar</button>
+                        <button class="est-btn-salvar" @onclick="@(() => SalvarInsumo())">💾 Salvar</button>
                         @if (editandoInsumo.Id > 0)
                         {
-                            <button class="est-btn-cancelar" @onclick="@NovoInsumo">✕ Cancelar</button>
+                            <button class="est-btn-cancelar" @onclick="@(() => NovoInsumo())">✕ Cancelar</button>
                         }
                     </div>
                 </div>
@@ -313,7 +313,7 @@
                         </div>
                     }
                     <div class="est-form-btns">
-                        <button class="est-btn-salvar" @onclick="@RegistrarEntrada">✅ Registrar Entrada</button>
+                        <button class="est-btn-salvar" @onclick="@(() => RegistrarEntrada())">✅ Registrar Entrada</button>
                     </div>
                 </div>
 
@@ -392,7 +392,7 @@
                         </div>
                     </div>
                     <div class="est-form-btns">
-                        <button class="est-btn-salvar" @onclick="@RegistrarAjuste">✅ Registrar Ajuste</button>
+                        <button class="est-btn-salvar" @onclick="@(() => RegistrarAjuste())">✅ Registrar Ajuste</button>
                     </div>
                 </div>
 
@@ -432,7 +432,7 @@
     <!-- ── MODAL DE ENTRADA RÁPIDA ──────────────────────────────── -->
     @if (mostrarModalEntrada && insumoEntrada != null)
     {
-        <div class="est-modal-overlay" @onclick="@FecharModalEntrada">
+        <div class="est-modal-overlay" @onclick="@(() => FecharModalEntrada())">
             <div class="est-modal" @onclick:stopPropagation="true">
                 <h3>📦 Entrada de Estoque</h3>
                 <p class="est-modal-sub">Insumo: <strong>@insumoEntrada.Nome</strong> (Atual: @insumoEntrada.EstoqueAtual @insumoEntrada.Unidade)</p>
@@ -455,8 +455,8 @@
                     </div>
                 </div>
                 <div class="est-modal-btns">
-                    <button class="est-btn-cancelar" @onclick="@FecharModalEntrada">Cancelar</button>
-                    <button class="est-btn-salvar" @onclick="@ConfirmarEntradaRapida">✅ Confirmar</button>
+                    <button class="est-btn-cancelar" @onclick="@(() => FecharModalEntrada())">Cancelar</button>
+                    <button class="est-btn-salvar" @onclick="@(() => ConfirmarEntradaRapida())">✅ Confirmar</button>
                 </div>
             </div>
         </div>
@@ -465,7 +465,7 @@
     <!-- ── MODAL DE AJUSTE DIRETO ────────────────────────────── -->
     @if (mostrarModalAjuste && insumoAjuste != null)
     {
-        <div class="est-modal-overlay" @onclick="@FecharModalAjuste">
+        <div class="est-modal-overlay" @onclick="@(() => FecharModalAjuste())">
             <div class="est-modal" @onclick:stopPropagation="true" style="max-width: 350px;">
                 <h3>🔧 Ajustar Saldo Real</h3>
                 <p class="est-modal-sub">Insumo: <strong>@insumoAjuste.Nome</strong></p>
@@ -481,8 +481,8 @@
                 </div>
 
                 <div class="est-modal-btns">
-                    <button class="est-btn-cancelar" @onclick="@FecharModalAjuste">Cancelar</button>
-                    <button class="est-btn-salvar" @onclick="@ConfirmarAjusteSaldo">💾 Salvar</button>
+                    <button class="est-btn-cancelar" @onclick="@(() => FecharModalAjuste())">Cancelar</button>
+                    <button class="est-btn-salvar" @onclick="@(() => ConfirmarAjusteSaldo())">💾 Salvar</button>
                 </div>
             </div>
         </div>
