@@ -17,6 +17,7 @@ public class FinanceiroController : ControllerBase
 {
     private readonly IRepository<Pedido> _pedidoRepository;
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
+    private readonly IRepository<Insumo> _insumoRepository;
     private readonly IRepository<Configuracao> _configRepository;
     private readonly IRepository<Despesa> _despesaRepository;
     private readonly IRepository<TransacaoCashback> _cashbackRepository;
@@ -25,6 +26,7 @@ public class FinanceiroController : ControllerBase
     public FinanceiroController(
         IRepository<Pedido> pedidoRepository,
         IRepository<MovimentacaoEstoque> movRepository,
+        IRepository<Insumo> insumoRepository,
         IRepository<Configuracao> configRepository,
         IRepository<Despesa> despesaRepository,
         IRepository<TransacaoCashback> cashbackRepository,
@@ -32,6 +34,7 @@ public class FinanceiroController : ControllerBase
     {
         _pedidoRepository = pedidoRepository;
         _movRepository = movRepository;
+        _insumoRepository = insumoRepository;
         _configRepository = configRepository;
         _despesaRepository = despesaRepository;
         _cashbackRepository = cashbackRepository;
@@ -209,9 +212,22 @@ public class FinanceiroController : ControllerBase
                     break;
                 
                 case "estoque":
+                    // Ao deletar movimentacoes, precisamos reverter o EstoqueAtual dos insumos afetados
                     var movsEstoque = await _movRepository.GetAllAsync();
                     var movsNoPeriodo = movsEstoque.Where(m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva).ToList();
-                    foreach (var m in movsNoPeriodo) await _movRepository.DeleteAsync(m);
+                    foreach (var m in movsNoPeriodo)
+                    {
+                        // Reverte o impacto no estoque antes de deletar
+                        if (m.Tipo == TipoMovimentacao.Entrada)
+                            m.Insumo.AjustarEstoque(-m.Quantidade);
+                        else if (m.Tipo == TipoMovimentacao.Saida)
+                            m.Insumo.AjustarEstoque(m.Quantidade);
+                        else
+                            m.Insumo.AjustarEstoque(-m.Quantidade);
+
+                        await _insumoRepository.UpdateAsync(m.Insumo);
+                        await _movRepository.DeleteAsync(m);
+                    }
                     break;
 
                 case "despesas":
@@ -227,11 +243,8 @@ public class FinanceiroController : ControllerBase
                     break;
 
                 case "financeiro":
-                    // DashboardFinanceiro usa essa chave combinada (Caixa/Estoque e Despesas)
-                    var mf = await _movRepository.GetAllAsync();
-                    foreach (var m in mf.Where(m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva).ToList())
-                        await _movRepository.DeleteAsync(m);
-
+                    // Apaga APENAS as Despesas do período (salários, contas, etc.)
+                    // NÃO apaga movimentações de estoque para não perder o cadastro de insumos
                     var df = await _despesaRepository.GetAllAsync();
                     foreach (var d in df.Where(d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva).ToList())
                         await _despesaRepository.DeleteAsync(d);
