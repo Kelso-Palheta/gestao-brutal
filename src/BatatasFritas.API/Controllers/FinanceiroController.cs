@@ -44,11 +44,11 @@ public class FinanceiroController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard([FromQuery] DateTime? inicio, [FromQuery] DateTime? fim)
     {
-        // Usa horário local (fuso do servidor = America/Sao_Paulo, UTC-3) para coincidir com
-        // o que o operador vê no dashboard (@DateTime.Now). DataHoraPedido é salvo em UTC,
-        // portanto convertemos antes de comparar as datas.
-        var agora     = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-                            TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo"));
+        // Usa horário local (UTC-3, Brasília) para coincidir com o que o operador vê no
+        // dashboard (@DateTime.Now). Usa offset fixo para garantir compatibilidade com
+        // servidores Linux que podem não ter tzdata instalado.
+        var tzBrasilia = TimeZoneInfo.CreateCustomTimeZone("BRT", TimeSpan.FromHours(-3), "BRT", "BRT");
+        var agora     = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzBrasilia);
         var hoje      = agora.Date;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
 
@@ -60,7 +60,7 @@ public class FinanceiroController : ControllerBase
         // Consideramos como faturamento os pedidos efetivamente Pagos.
         var pedidosValidos = pedidos.Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial).ToList();
 
-        var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+        var tz = tzBrasilia;
 
         // --- MÉTRICAS HOJE ---
         var pedidosHoje  = pedidosValidos.Where(p => TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tz).Date == hoje).ToList();
