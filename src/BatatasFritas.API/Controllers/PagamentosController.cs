@@ -1,7 +1,9 @@
+using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
@@ -19,12 +21,14 @@ public class PagamentosController : ControllerBase
     private readonly IRepository<Pedido> _pedidoRepository;
     private readonly IUnitOfWork _uow;
     private readonly string _webhookSecret;
+    private readonly IHubContext<PedidosHub> _hub;
 
-    public PagamentosController(IRepository<Pedido> pedidoRepository, IUnitOfWork uow, IConfiguration config)
+    public PagamentosController(IRepository<Pedido> pedidoRepository, IUnitOfWork uow, IConfiguration config, IHubContext<PedidosHub> hub)
     {
         _pedidoRepository = pedidoRepository;
         _uow              = uow;
         _webhookSecret    = config["InfinitePay:WebhookSecret"] ?? string.Empty;
+        _hub              = hub;
     }
 
     /// <summary>
@@ -85,6 +89,10 @@ public class PagamentosController : ControllerBase
             _uow.BeginTransaction();
             await _pedidoRepository.UpdateAsync(pedido);
             await _uow.CommitAsync();
+
+            // Notifica o KDS e o Dashboard em tempo real via SignalR
+            await _hub.Clients.All.SendAsync("StatusAtualizado", pedidoId, pedido.StatusPagamento.ToString());
+
             return Ok(); // InfinitePay para de tentar ao receber 200
         }
         catch (Exception ex)

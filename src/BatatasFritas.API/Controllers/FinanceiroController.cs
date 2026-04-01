@@ -44,9 +44,13 @@ public class FinanceiroController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard([FromQuery] DateTime? inicio, [FromQuery] DateTime? fim)
     {
-        // Usa UTC para consistência com DataHoraPedido (salvo em UTC pelo domínio)
-        var hoje      = DateTime.UtcNow.Date;
-        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        // Usa horário local (fuso do servidor = America/Sao_Paulo, UTC-3) para coincidir com
+        // o que o operador vê no dashboard (@DateTime.Now). DataHoraPedido é salvo em UTC,
+        // portanto convertemos antes de comparar as datas.
+        var agora     = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                            TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo"));
+        var hoje      = agora.Date;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
 
         var pedidos = await _pedidoRepository.GetAllAsync();
         var movimentacoes = await _movRepository.GetAllAsync();
@@ -56,15 +60,17 @@ public class FinanceiroController : ControllerBase
         // Consideramos como faturamento os pedidos efetivamente Pagos.
         var pedidosValidos = pedidos.Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial).ToList();
 
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
         // --- MÉTRICAS HOJE ---
-        var pedidosHoje = pedidosValidos.Where(p => p.DataHoraPedido.Date == hoje).ToList();
-        var comprasHoje = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao.Date == hoje).ToList();
-        var despesasHoje = despesasObj.Where(d => d.DataRegistro.Date == hoje).ToList();
+        var pedidosHoje  = pedidosValidos.Where(p => TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tz).Date == hoje).ToList();
+        var comprasHoje  = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && TimeZoneInfo.ConvertTimeFromUtc(m.DataMovimentacao, tz).Date == hoje).ToList();
+        var despesasHoje = despesasObj.Where(d => TimeZoneInfo.ConvertTimeFromUtc(d.DataRegistro, tz).Date == hoje).ToList();
 
         // --- MÉTRICAS MÊS ---
-        var pedidosMes = pedidosValidos.Where(p => p.DataHoraPedido.Date >= inicioMes).ToList();
-        var comprasMes = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao.Date >= inicioMes).ToList();
-        var despesasMes = despesasObj.Where(d => d.DataRegistro.Date >= inicioMes).ToList();
+        var pedidosMes  = pedidosValidos.Where(p => TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tz).Date >= inicioMes).ToList();
+        var comprasMes  = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && TimeZoneInfo.ConvertTimeFromUtc(m.DataMovimentacao, tz).Date >= inicioMes).ToList();
+        var despesasMes = despesasObj.Where(d => TimeZoneInfo.ConvertTimeFromUtc(d.DataRegistro, tz).Date >= inicioMes).ToList();
 
         // --- MÉTRICAS PERÍODO (FILTRO) ---
         var vendasPeriodo = 0m;
@@ -78,9 +84,9 @@ public class FinanceiroController : ControllerBase
         if (inicio.HasValue && fim.HasValue)
         {
             var dataFimInclusiva = fim.Value.Date.AddDays(1).AddTicks(-1);
-            var pPeriodo = pedidosValidos.Where(p => p.DataHoraPedido >= inicio.Value && p.DataHoraPedido <= dataFimInclusiva).ToList();
-            var cPeriodo = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao >= inicio.Value && m.DataMovimentacao <= dataFimInclusiva).ToList();
-            var dPeriodo = despesasObj.Where(d => d.DataRegistro >= inicio.Value && d.DataRegistro <= dataFimInclusiva).ToList();
+            var pPeriodo = pedidosValidos.Where(p => { var d = TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tz); return d >= inicio.Value && d <= dataFimInclusiva; }).ToList();
+            var cPeriodo = movimentacoes.Where(m => m.Tipo == TipoMovimentacao.Entrada && TimeZoneInfo.ConvertTimeFromUtc(m.DataMovimentacao, tz) >= inicio.Value && TimeZoneInfo.ConvertTimeFromUtc(m.DataMovimentacao, tz) <= dataFimInclusiva).ToList();
+            var dPeriodo = despesasObj.Where(d => TimeZoneInfo.ConvertTimeFromUtc(d.DataRegistro, tz) >= inicio.Value && TimeZoneInfo.ConvertTimeFromUtc(d.DataRegistro, tz) <= dataFimInclusiva).ToList();
 
             vendasPeriodo = pPeriodo.Sum(p => p.ValorTotal);
             comprasPeriodo = cPeriodo.Sum(m => m.ValorTotal);

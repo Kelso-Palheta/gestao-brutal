@@ -49,8 +49,6 @@ public class Pedido : EntityBase
         DataHoraPedido = DateTime.UtcNow;
         Status = StatusPedido.Recebido;
         StatusPagamento = StatusPagamento.Pendente;
-        
-        // Se for dinheiro presencial, nós aceitamos que a pessoa vá pagar ao entregador/balção (mas marcamos como 'Presencial' depois ou iniciamos com 'Pendente')
     }
 
     public virtual void SetLinkPagamento(string link)
