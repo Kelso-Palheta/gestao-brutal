@@ -1439,8 +1439,9 @@
 
     // ======================== LIMPEZA DE DADOS ========================
     // Seção desativada conforme solicitação
-    private DateTime dataInicioLimpeza = DateTime.Today.AddDays(-30);
-    private DateTime dataFimLimpeza = DateTime.Today;
+    // Variáveis de data como string para evitar bugs de compilação no Linux/Docker
+    private string dataInicioLimpezaStr = DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd");
+    private string dataFimLimpezaStr    = DateTime.Today.ToString("yyyy-MM-dd");
     private string senhaAdminLimpeza = "";
     private async Task LimparDados(string tipo) { }
 }

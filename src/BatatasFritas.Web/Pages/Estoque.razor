@@ -42,11 +42,11 @@
     <div class="rel-filtro-bar" style="margin-top: 15px; margin-bottom: 20px;">
         <div class="rel-filtro-grupo">
             <label>De</label>
-            <input type="date" @bind="filtroInicio" class="rel-filtro-input" />
+            <input type="date" value="@filtroInicioStr" @onchange="@(e => filtroInicioStr = e.Value?.ToString() ?? "")" class="rel-filtro-input" />
         </div>
         <div class="rel-filtro-grupo">
             <label>Até</label>
-            <input type="date" @bind="filtroFim" class="rel-filtro-input" />
+            <input type="date" value="@filtroFimStr" @onchange="@(e => filtroFimStr = e.Value?.ToString() ?? "")" class="rel-filtro-input" />
         </div>
 
         <div class="rel-filtro-atalhos">
@@ -527,9 +527,9 @@
     private decimal novoSaldoDesejado = 0;
     private string motivoAjuste = "Ajuste de inventário";
 
-    // Filtros de data
-    private DateTime filtroInicio = DateTime.Today.AddDays(-6);
-    private DateTime filtroFim    = DateTime.Today;
+    // Filtros de data como string para evitar bugs de compilação no Linux/Docker
+    private string filtroInicioStr = DateTime.Today.AddDays(-6).ToString("yyyy-MM-dd");
+    private string filtroFimStr    = DateTime.Today.ToString("yyyy-MM-dd");
 
     protected override async Task OnInitializedAsync()
     {
@@ -547,8 +547,8 @@
         carregando = true;
         try
         {
-            var de  = filtroInicio.ToString("yyyy-MM-dd");
-            var ate = filtroFim.ToString("yyyy-MM-dd");
+            var de  = filtroInicioStr;
+            var ate = filtroFimStr;
 
             dashboard     = await Http.GetFromJsonAsync<EstoqueDashboardDto>($"api/insumos/dashboard?de={de}&ate={ate}");
             
@@ -564,14 +564,16 @@
     private void AplicarAtalho(string atalho)
     {
         var hoje = DateTime.Today;
-        (filtroInicio, filtroFim) = atalho switch
+        var (inicio, fim) = atalho switch
         {
             "hoje"   => (hoje, hoje),
             "7dias"  => (hoje.AddDays(-6), hoje),
             "30dias" => (hoje.AddDays(-29), hoje),
             "mes"    => (new DateTime(hoje.Year, hoje.Month, 1), hoje),
-            _        => (filtroInicio, filtroFim)
+            _        => (DateTime.Parse(filtroInicioStr), DateTime.Parse(filtroFimStr))
         };
+        filtroInicioStr = inicio.ToString("yyyy-MM-dd");
+        filtroFimStr = fim.ToString("yyyy-MM-dd");
     }
 
     private async Task MudarAba(string aba)

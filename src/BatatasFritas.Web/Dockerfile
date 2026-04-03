@@ -5,8 +5,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
 # ── LAYER CACHEADA: instala wasm-tools UMA VEZ e reutiliza em todos os deploys ──
-# Este step fica ANTES dos COPYs para que o BuildKit o cache entre builds.
-# Só re-executa se esta linha do Dockerfile mudar.
+# Adicionamos variáveis de ambiente para estabilizar o build (datas e telemetria)
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+
 RUN dotnet workload install wasm-tools
 
 # Copy the solution file and project files for restore
