@@ -1,8 +1,13 @@
 # Build WebAssembly
-# Usa imagem base customizada com wasm-tools pré-instalado (2-3 min mais rápido que sdk:8.0 puro).
-# A imagem é publicada automaticamente via .github/workflows/build-base-image.yml
-FROM ghcr.io/kelso-palheta/blazor-sdk:net8 AS build
+# NOTA: usa sdk:8.0 (mesma imagem da API — JÁ CACHEADA no servidor Hetzner).
+# A imagem customizada ghcr.io foi descartada pois causava download duplicado de 543MB.
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
+
+# ── LAYER CACHEADA: instala wasm-tools UMA VEZ e reutiliza em todos os deploys ──
+# Este step fica ANTES dos COPYs para que o BuildKit o cache entre builds.
+# Só re-executa se esta linha do Dockerfile mudar.
+RUN dotnet workload install wasm-tools
 
 # Copy the solution file and project files for restore
 COPY ["BatatasFritas.sln", "./"]
@@ -19,7 +24,7 @@ RUN dotnet restore "BatatasFritas.sln"
 COPY . .
 WORKDIR "/app/src/BatatasFritas.Web"
 
-# Publish the frontend (wasm-tools já está na imagem base — sem overhead de download)
+# Publish the frontend
 RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish
 
 # Final Nginx image to serve static files
