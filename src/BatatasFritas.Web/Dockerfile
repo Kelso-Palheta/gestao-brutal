@@ -35,13 +35,12 @@ RUN find . -type d -name "bin" -exec rm -rf {} + && \
 
 WORKDIR "/app/src/BatatasFritas.Web"
 
-# Publish the frontend com VERBOSIDADE DETALHADA e captura de erro
+# Publish the frontend
+# Nota: sem --no-restore pois o find acima apaga os obj/ criados pelo restore anterior
 RUN dotnet publish "BatatasFritas.Web.csproj" \
     -c Release \
     -o /app/publish \
-    --no-restore \
-    -v d \
-    | tee /app/publish_log.txt
+    -v d
 
 # Final Nginx image to serve static files
 FROM nginx:alpine AS final
