@@ -45,11 +45,11 @@
         <div class="dash-filter-bar no-print">
             <div class="dash-filter-item">
                 <label>De:</label>
-                <input type="date" @bind="filtroInicio" @bind:format="yyyy-MM-dd" />
+                <input type="date" @bind="filtroInicioStr" />
             </div>
             <div class="dash-filter-item">
                 <label>Até:</label>
-                <input type="date" @bind="filtroFim" @bind:format="yyyy-MM-dd" />
+                <input type="date" @bind="filtroFimStr" />
             </div>
             <button class="dash-btn-filtrar" @onclick="@(() => AplicarFiltro())" disabled="@carregando">
                 @(carregando ? "⌛" : "🔍 Filtrar")
@@ -317,7 +317,7 @@
             <input type="number" step="0.01" min="0" @bind="novaDespesaValor" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <label>Data da Despesa</label>
-            <input type="date" @bind="novaDespesaData" @bind:format="yyyy-MM-dd" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+            <input type="date" @bind="novaDespesaDataStr" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <label>Observação (opcional)</label>
             <textarea @bind="novaDespesaObservacao" placeholder="Ex: Ref. semana 10/03 a 15/03..." rows="3" style="width: 100%; margin-bottom: 20px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff; resize: none; box-sizing: border-box;"></textarea>
@@ -341,11 +341,11 @@
             <div style="display: flex; gap: 15px; text-align: left; margin-bottom: 15px;">
                 <div style="flex: 1;">
                     <label style="display:block; font-weight:bold; margin-bottom:5px; color:#aaa; font-size:0.8rem;">Data Inicial</label>
-                    <input type="date" @bind="dataInicioLimpeza" @bind:format="yyyy-MM-dd" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
+                    <input type="date" @bind="dataInicioLimpezaStr" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
                 </div>
                 <div style="flex: 1;">
                     <label style="display:block; font-weight:bold; margin-bottom:5px; color:#aaa; font-size:0.8rem;">Data Final</label>
-                    <input type="date" @bind="dataFimLimpeza" @bind:format="yyyy-MM-dd" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
+                    <input type="date" @bind="dataFimLimpezaStr" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
                 </div>
             </div>
 
@@ -693,7 +693,7 @@
     private string novaDespesaCategoria = "Funcionario";
     private decimal novaDespesaValor = 0;
     private string novaDespesaObservacao = "";
-    private DateTime novaDespesaData = DateTime.Today;
+    private string novaDespesaDataStr = DateTime.Today.ToString("yyyy-MM-dd");
     
     // Modal Limpeza
     private bool mostrarModalLimpar = false;
@@ -779,9 +779,9 @@
         try
         {
             string url = "api/financeiro/dashboard";
-            if (filtroAtivo)
+            if (filtroAtivo && !string.IsNullOrEmpty(filtroInicioStr) && !string.IsNullOrEmpty(filtroFimStr))
             {
-                url += $"?inicio={filtroInicio.ToString("yyyy-MM-dd")}&fim={filtroFim.ToString("yyyy-MM-dd")}";
+                url += $"?inicio={filtroInicioStr}&fim={filtroFimStr}";
             }
             dados = await Http.GetFromJsonAsync<FinanceiroDashboardDto>(url);
         }
@@ -795,55 +795,57 @@
         }
     }
 
-    private DateTime filtroInicio = DateTime.Today.AddDays(-7);
-    private DateTime filtroFim = DateTime.Today;
-    private bool filtroAtivo = false;
+    // Datas como string yyyy-MM-dd — evita o bug de DateTime.MinValue (ano 0001)
+    // causado pelo Blazor tentar fazer parse com cultura pt-BR ao editar manualmente.
+    private string filtroInicioStr = DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd");
+    private string filtroFimStr    = DateTime.Today.ToString("yyyy-MM-dd");
+    private bool   filtroAtivo  = false;
     private string filtroAtalho = "";
 
     private async Task AplicarFiltro()
     {
         filtroAtalho = "";
-        filtroAtivo = true;
+        filtroAtivo  = true;
         await CarregarDados();
     }
 
     private async Task AtalhoHoje()
     {
-        filtroInicio = DateTime.Today;
-        filtroFim = DateTime.Today;
-        filtroAtalho = "hoje";
-        filtroAtivo = true;
+        var hoje = DateTime.Today.ToString("yyyy-MM-dd");
+        filtroInicioStr = hoje;
+        filtroFimStr    = hoje;
+        filtroAtalho    = "hoje";
+        filtroAtivo     = true;
         await CarregarDados();
     }
 
     private async Task AtalhoEstaSemana()
     {
         var hoje = DateTime.Today;
-        // Semana começa na segunda-feira (DayOfWeek.Monday = 1)
         int diasDesdeSegunda = ((int)hoje.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
-        filtroInicio = hoje.AddDays(-diasDesdeSegunda);
-        filtroFim = hoje;
-        filtroAtalho = "semana";
-        filtroAtivo = true;
+        filtroInicioStr = hoje.AddDays(-diasDesdeSegunda).ToString("yyyy-MM-dd");
+        filtroFimStr    = hoje.ToString("yyyy-MM-dd");
+        filtroAtalho    = "semana";
+        filtroAtivo     = true;
         await CarregarDados();
     }
 
     private async Task AtalhoEsteMes()
     {
         var hoje = DateTime.Today;
-        filtroInicio = new DateTime(hoje.Year, hoje.Month, 1);
-        filtroFim = hoje;
-        filtroAtalho = "mes";
-        filtroAtivo = true;
+        filtroInicioStr = new DateTime(hoje.Year, hoje.Month, 1).ToString("yyyy-MM-dd");
+        filtroFimStr    = hoje.ToString("yyyy-MM-dd");
+        filtroAtalho    = "mes";
+        filtroAtivo     = true;
         await CarregarDados();
     }
 
     private async Task LimparFiltro()
     {
-        filtroInicio = DateTime.Today.AddDays(-7);
-        filtroFim = DateTime.Today;
-        filtroAtivo = false;
-        filtroAtalho = "";
+        filtroInicioStr = DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd");
+        filtroFimStr    = DateTime.Today.ToString("yyyy-MM-dd");
+        filtroAtivo     = false;
+        filtroAtalho    = "";
         await CarregarDados();
     }
 
@@ -902,7 +904,7 @@
                 Descricao = novaDespesaDescricao,
                 Categoria = novaDespesaCategoria,
                 Valor = novaDespesaValor,
-                DataRegistro = novaDespesaData,
+                DataRegistro = DateTime.Parse(novaDespesaDataStr),
                 Observacao = string.IsNullOrWhiteSpace(novaDespesaObservacao) ? null : novaDespesaObservacao
             };
 
@@ -914,7 +916,7 @@
                 novaDespesaDescricao = "";
                 novaDespesaValor = 0;
                 novaDespesaObservacao = "";
-                novaDespesaData = DateTime.Today;
+                novaDespesaDataStr = DateTime.Today.ToString("yyyy-MM-dd");
                 await CarregarDados();
             }
             else
@@ -932,8 +934,8 @@
         }
     }
 
-    private DateTime dataInicioLimpeza = DateTime.Today.AddDays(-30);
-    private DateTime dataFimLimpeza = DateTime.Today;
+    private string dataInicioLimpezaStr = DateTime.Today.AddDays(-30).ToString("yyyy-MM-dd");
+    private string dataFimLimpezaStr    = DateTime.Today.ToString("yyyy-MM-dd");
     private string senhaAdminLimpeza = "";
 
     private async Task LimparDados(string tipo)
@@ -947,8 +949,8 @@
             var dto = new LimparHistoricoDto
             {
                 Tipo = tipo,
-                DataInicio = dataInicioLimpeza,
-                DataFim = dataFimLimpeza,
+                DataInicio = DateTime.Parse(dataInicioLimpezaStr),
+                DataFim    = DateTime.Parse(dataFimLimpezaStr),
                 SenhaAdmin = senhaAdminLimpeza
             };
 
