@@ -29,18 +29,15 @@ RUN dotnet restore "BatatasFritas.sln"
 # Copy the remaining source code
 COPY . .
 
-# Limpeza profunda antes de compilar para garantir que nada do macOS (bin/obj) restou
-RUN find . -type d -name "bin" -exec rm -rf {} + && \
-    find . -type d -name "obj" -exec rm -rf {} +
-
 WORKDIR "/app/src/BatatasFritas.Web"
 
 # Publish the frontend
 # Nota: sem --no-restore pois o find acima apaga os obj/ criados pelo restore anterior
+# E sem o pipe para o 'tee' para não mascarar o erro do dotnet publish
 RUN dotnet publish "BatatasFritas.Web.csproj" \
     -c Release \
     -o /app/publish \
-    -v d
+    -v n
 
 # Final Nginx image to serve static files
 FROM nginx:alpine AS final
