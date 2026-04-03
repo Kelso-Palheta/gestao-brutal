@@ -10,8 +10,10 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV CI=true
 
-RUN dotnet workload install wasm-tools
+# Forçamos a instalação limpa do workload e verificamos a versão
+RUN dotnet workload install wasm-tools && dotnet workload --version
 
 # Copy the solution file and project files for restore
 COPY ["BatatasFritas.sln", "./"]
@@ -26,13 +28,20 @@ RUN dotnet restore "BatatasFritas.sln"
 
 # Copy the remaining source code
 COPY . .
+
+# Limpeza profunda antes de compilar para garantir que nada do macOS (bin/obj) restou
+RUN find . -type d -name "bin" -exec rm -rf {} + && \
+    find . -type d -name "obj" -exec rm -rf {} +
+
 WORKDIR "/app/src/BatatasFritas.Web"
 
-# Publish the frontend
-# Simplificamos para log direto e adicionamos flags de CI para forçar o output no Coolify
-ENV CI=true
-ENV DOTNET_NOLOGO=true
-RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish --no-restore -v n
+# Publish the frontend com VERBOSIDADE DETALHADA e captura de erro
+RUN dotnet publish "BatatasFritas.Web.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore \
+    -v d \
+    | tee /app/publish_log.txt
 
 # Final Nginx image to serve static files
 FROM nginx:alpine AS final
