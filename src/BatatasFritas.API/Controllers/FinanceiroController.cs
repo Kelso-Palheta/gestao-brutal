@@ -106,6 +106,32 @@ public class FinanceiroController : ControllerBase
             metaDiaria = metaObj;
         }
 
+        // --- DETALHES DO MÊS ---
+        var pixMes      = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
+        var cartaoMes   = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal);
+        var dinheiroMes = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
+
+        var despFuncMes    = despesasMes.Where(d => d.Categoria == "Funcionario").Sum(d => d.Valor);
+        var despEnergMes   = despesasMes.Where(d => d.Categoria == "Energia/Agua").Sum(d => d.Valor);
+        var despImpostoMes = despesasMes.Where(d => d.Categoria == "Imposto").Sum(d => d.Valor);
+        var despOutrosMes  = despesasMes.Where(d => d.Categoria == "Outros").Sum(d => d.Valor);
+
+        // --- DETALHES DO PERÍODO ---
+        var despFuncPer    = 0m;
+        var despEnergPer   = 0m;
+        var despImpostoPer = 0m;
+        var despOutrosPer  = 0m;
+
+        if (inicio.HasValue && fim.HasValue)
+        {
+            var dataFimInclusiva2 = fim.Value.Date.AddDays(1).AddTicks(-1);
+            var dPer = despesasObj.Where(d => TimeZoneInfo.ConvertTimeFromUtc(d.DataRegistro, tz) >= inicio.Value && TimeZoneInfo.ConvertTimeFromUtc(d.DataRegistro, tz) <= dataFimInclusiva2).ToList();
+            despFuncPer    = dPer.Where(d => d.Categoria == "Funcionario").Sum(d => d.Valor);
+            despEnergPer   = dPer.Where(d => d.Categoria == "Energia/Agua").Sum(d => d.Valor);
+            despImpostoPer = dPer.Where(d => d.Categoria == "Imposto").Sum(d => d.Valor);
+            despOutrosPer  = dPer.Where(d => d.Categoria == "Outros").Sum(d => d.Valor);
+        }
+
         var dto = new FinanceiroDashboardDto
         {
             // Métricas Hoje
@@ -120,22 +146,40 @@ public class FinanceiroController : ControllerBase
             DespesasMes = despesasMes.Sum(d => d.Valor),
 
             // Métodos Hoje
-            PixHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal),
-            CartaoHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal),
+            PixHoje     = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal),
+            CartaoHoje  = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal),
             DinheiroHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal),
 
             MetaDiaria = metaDiaria,
 
+            // Métodos Mês
+            PixMes      = pixMes,
+            CartaoMes   = cartaoMes,
+            DinheiroMes = dinheiroMes,
+
+            // Despesas Mês por Categoria
+            DespesaFuncionarioMes  = despFuncMes,
+            DespesaEnergiaAguaMes  = despEnergMes,
+            DespesaImpostoMes      = despImpostoMes,
+            DespesaOutrosMes       = despOutrosMes,
+
             // Métricas Período
-            VendasPeriodo = vendasPeriodo,
-            ComprasPeriodo = comprasPeriodo,
-            DespesasPeriodo = despesasPeriodo,
+            VendasPeriodo      = vendasPeriodo,
+            ComprasPeriodo     = comprasPeriodo,
+            DespesasPeriodo    = despesasPeriodo,
             TotalPedidosPeriodo = totalPedidosPeriodo,
-            PixPeriodo = pixPeriodo,
-            CartaoPeriodo = cartaoPeriodo,
-            DinheiroPeriodo = dinheiroPeriodo,
+            PixPeriodo         = pixPeriodo,
+            CartaoPeriodo      = cartaoPeriodo,
+            DinheiroPeriodo    = dinheiroPeriodo,
+
+            // Despesas Período por Categoria
+            DespesaFuncionarioPeriodo  = despFuncPer,
+            DespesaEnergiaAguaPeriodo  = despEnergPer,
+            DespesaImpostoPeriodo      = despImpostoPer,
+            DespesaOutrosPeriodo       = despOutrosPer,
+
             DataInicioFiltro = inicio,
-            DataFimFiltro = fim
+            DataFimFiltro    = fim
         };
 
         return Ok(dto);

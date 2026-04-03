@@ -24,16 +24,33 @@ public class FinanceiroDashboardDto
     public decimal DinheiroHoje { get; set; }
     public int TotalPedidosHoje { get; set; }
 
+    // Divisão por Método de Pagamento (Mês)
+    public decimal PixMes { get; set; }
+    public decimal CartaoMes { get; set; }
+    public decimal DinheiroMes { get; set; }
+
+    // Despesas do Mês por Categoria
+    public decimal DespesaFuncionarioMes { get; set; }
+    public decimal DespesaEnergiaAguaMes { get; set; }
+    public decimal DespesaImpostoMes { get; set; }
+    public decimal DespesaOutrosMes { get; set; }
+
     // Métricas do Período Selecionado (Filtro)
     public decimal VendasPeriodo { get; set; }
     public decimal ComprasPeriodo { get; set; }
     public decimal DespesasPeriodo { get; set; }
     public decimal LucroPeriodo => VendasPeriodo - ComprasPeriodo - DespesasPeriodo;
-    
+
     public decimal PixPeriodo { get; set; }
     public decimal CartaoPeriodo { get; set; }
     public decimal DinheiroPeriodo { get; set; }
     public int TotalPedidosPeriodo { get; set; }
+
+    // Despesas do Período por Categoria
+    public decimal DespesaFuncionarioPeriodo { get; set; }
+    public decimal DespesaEnergiaAguaPeriodo { get; set; }
+    public decimal DespesaImpostoPeriodo { get; set; }
+    public decimal DespesaOutrosPeriodo { get; set; }
 
     public DateTime? DataInicioFiltro { get; set; }
     public DateTime? DataFimFiltro { get; set; }

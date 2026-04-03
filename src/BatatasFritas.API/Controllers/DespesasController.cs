@@ -42,7 +42,10 @@ public class DespesasController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Descricao) || dto.Valor <= 0) return BadRequest();
 
-        var disp = new Despesa(dto.Descricao, dto.Valor, dto.DataRegistro.ToLocalTime(), dto.Categoria, dto.Observacao);
+        // Usa a data escolhida pelo usuário ao meio-dia (12:00) para evitar que o offset
+        // UTC-3 faça a despesa aparecer no dia anterior ao filtrar (00:00 UTC → 21:00 BRT = dia errado).
+        var dataCorrigida = dto.DataRegistro.Date.AddHours(12);
+        var disp = new Despesa(dto.Descricao, dto.Valor, dataCorrigida, dto.Categoria, dto.Observacao);
         
         _uow.BeginTransaction();
         await _repo.AddAsync(disp);

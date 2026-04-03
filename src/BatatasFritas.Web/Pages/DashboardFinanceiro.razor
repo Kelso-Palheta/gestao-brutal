@@ -87,20 +87,48 @@
                 </div>
 
                 <div class="dash-card no-print" style="margin-top: -10px; margin-bottom: 30px;">
-                   <div style="display:flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
-                        <div class="dash-pagamento-row" style="border:none; padding:0;">
-                            <span style="margin-right:10px;">📱 PIX:</span>
-                            <strong>@dados.PixPeriodo.ToString("C2")</strong>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; flex-wrap:wrap;">
+                        <!-- Pagamentos do Período -->
+                        <div>
+                            <h4 style="margin:0 0 12px 0; font-size:13px; text-transform:uppercase; letter-spacing:1px; color:#888;">Entradas por Método</h4>
+                            <div class="dash-pagamento-row" style="border-bottom:1px solid #2a2a2a; padding:8px 0;">
+                                <span>📱 PIX</span><strong>@dados.PixPeriodo.ToString("C2")</strong>
+                            </div>
+                            <div class="dash-pagamento-row" style="border-bottom:1px solid #2a2a2a; padding:8px 0;">
+                                <span>💳 Cartão</span><strong>@dados.CartaoPeriodo.ToString("C2")</strong>
+                            </div>
+                            <div class="dash-pagamento-row" style="padding:8px 0;">
+                                <span>💵 Dinheiro</span><strong>@dados.DinheiroPeriodo.ToString("C2")</strong>
+                            </div>
                         </div>
-                        <div class="dash-pagamento-row" style="border:none; padding:0;">
-                            <span style="margin-right:10px;">💳 Cartão:</span>
-                            <strong>@dados.CartaoPeriodo.ToString("C2")</strong>
+                        <!-- Despesas do Período por Categoria -->
+                        <div>
+                            <h4 style="margin:0 0 12px 0; font-size:13px; text-transform:uppercase; letter-spacing:1px; color:#888;">Despesas por Categoria</h4>
+                            @if (dados.DespesasPeriodo == 0) {
+                                <p style="color:#555; font-size:13px;">Nenhuma despesa no período.</p>
+                            }
+                            @if (dados.DespesaFuncionarioPeriodo > 0) {
+                                <div class="dash-pagamento-row" style="border-bottom:1px solid #2a2a2a; padding:8px 0;">
+                                    <span>👷 Funcionários</span><strong style="color:#d94bd9;">@dados.DespesaFuncionarioPeriodo.ToString("C2")</strong>
+                                </div>
+                            }
+                            @if (dados.DespesaEnergiaAguaPeriodo > 0) {
+                                <div class="dash-pagamento-row" style="border-bottom:1px solid #2a2a2a; padding:8px 0;">
+                                    <span>⚡ Energia/Água/Net</span><strong style="color:#d94bd9;">@dados.DespesaEnergiaAguaPeriodo.ToString("C2")</strong>
+                                </div>
+                            }
+                            @if (dados.DespesaImpostoPeriodo > 0) {
+                                <div class="dash-pagamento-row" style="border-bottom:1px solid #2a2a2a; padding:8px 0;">
+                                    <span>🏛️ Imposto/Taxa</span><strong style="color:#d94bd9;">@dados.DespesaImpostoPeriodo.ToString("C2")</strong>
+                                </div>
+                            }
+                            @if (dados.DespesaOutrosPeriodo > 0) {
+                                <div class="dash-pagamento-row" style="padding:8px 0;">
+                                    <span>📋 Outras</span><strong style="color:#d94bd9;">@dados.DespesaOutrosPeriodo.ToString("C2")</strong>
+                                </div>
+                            }
                         </div>
-                        <div class="dash-pagamento-row" style="border:none; padding:0;">
-                            <span style="margin-right:10px;">💵 Dinheiro:</span>
-                            <strong>@dados.DinheiroPeriodo.ToString("C2")</strong>
-                        </div>
-                   </div>
+                    </div>
                 </div>
             </div>
         }
@@ -189,28 +217,62 @@
                         }
                     </div>
                     
-                    <div class="dash-progress-wrapper">
-                        <div class="dash-progress-bar" style="width: @(Math.Min(100, dados.ProgressoMeta))%; background-color: @(dados.ProgressoMeta >= 100 ? "#4caf50" : "#ffb347");"></div>
+                    <div class="dash-progress-wrapper" style="position:relative; height:22px;">
+                        <div class="dash-progress-bar" style="width: @(Math.Min(100, dados.ProgressoMeta))%; background: @(dados.ProgressoMeta >= 100 ? "linear-gradient(90deg,#4caf50,#81c784)" : dados.ProgressoMeta >= 75 ? "linear-gradient(90deg,#ffb347,#ffe066)" : "linear-gradient(90deg,#e74c3c,#ffb347)"); height:100%; display:flex; align-items:center; justify-content:flex-end; padding-right:6px; font-size:11px; font-weight:bold; color:#000; white-space:nowrap; transition: width 0.6s cubic-bezier(0.4,0,0.2,1);">
+                            @if (dados.ProgressoMeta > 12) { <span>@dados.ProgressoMeta.ToString("F0")%</span> }
+                        </div>
+                        @foreach (var marker in new[] { 25, 50, 75 })
+                        {
+                            <div style="position:absolute; top:0; bottom:0; left:@(marker)%; width:1px; background:rgba(255,255,255,0.15);"></div>
+                        }
                     </div>
-                    <p class="dash-meta-perc">@dados.ProgressoMeta.ToString("F1")% concluído hoje</p>
+                    <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:11px; color:#555;">
+                        <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                    </div>
+                    <p class="dash-meta-perc">@dados.ProgressoMeta.ToString("F1")% da meta de @dados.MetaDiaria.ToString("C2") atingida hoje</p>
                 </div>
 
                 <div class="dash-mes-group">
                     <h4>Acumulado do Mês Atual</h4>
+
                     <div class="dash-mes-row">
-                        <span>Faturamento Bruto:</span>
+                        <span>📈 Faturamento Bruto:</span>
                         <strong class="cor-receita">@dados.VendasMes.ToString("C2")</strong>
                     </div>
+                    <div class="dash-mes-sub-row">
+                        <span>📱 PIX</span><strong>@dados.PixMes.ToString("C2")</strong>
+                    </div>
+                    <div class="dash-mes-sub-row">
+                        <span>💳 Cartão</span><strong>@dados.CartaoMes.ToString("C2")</strong>
+                    </div>
+                    <div class="dash-mes-sub-row" style="margin-bottom:8px;">
+                        <span>💵 Dinheiro</span><strong>@dados.DinheiroMes.ToString("C2")</strong>
+                    </div>
+
                     <div class="dash-mes-row">
-                        <span>Gastos com Estoque:</span>
+                        <span>📦 Gastos com Estoque:</span>
                         <strong class="cor-despesa">@dados.ComprasMes.ToString("C2")</strong>
                     </div>
-                    <div class="dash-mes-row">
-                        <span>Despesas Operacionais:</span>
-                        <strong class="cor-despesa" style="color:#d94bd9;">@dados.DespesasMes.ToString("C2")</strong>
+
+                    <div class="dash-mes-row" style="margin-top:4px;">
+                        <span>💸 Despesas Operacionais:</span>
+                        <strong style="color:#d94bd9;">@dados.DespesasMes.ToString("C2")</strong>
                     </div>
+                    @if (dados.DespesaFuncionarioMes > 0) {
+                        <div class="dash-mes-sub-row"><span>👷 Funcionários</span><strong>@dados.DespesaFuncionarioMes.ToString("C2")</strong></div>
+                    }
+                    @if (dados.DespesaEnergiaAguaMes > 0) {
+                        <div class="dash-mes-sub-row"><span>⚡ Energia/Água/Net</span><strong>@dados.DespesaEnergiaAguaMes.ToString("C2")</strong></div>
+                    }
+                    @if (dados.DespesaImpostoMes > 0) {
+                        <div class="dash-mes-sub-row"><span>🏛️ Imposto/Taxa</span><strong>@dados.DespesaImpostoMes.ToString("C2")</strong></div>
+                    }
+                    @if (dados.DespesaOutrosMes > 0) {
+                        <div class="dash-mes-sub-row" style="margin-bottom:8px;"><span>📋 Outras</span><strong>@dados.DespesaOutrosMes.ToString("C2")</strong></div>
+                    }
+
                     <div class="dash-mes-row destaque">
-                        <span>Lucro Acumulado:</span>
+                        <span>💰 Lucro Acumulado:</span>
                         <strong class="@(dados.LucroMes >= 0 ? "cor-receita" : "cor-despesa")">@dados.LucroMes.ToString("C2")</strong>
                     </div>
                 </div>
@@ -472,6 +534,15 @@
     justify-content: space-between;
     padding: 8px 0;
     font-size: 15px;
+}
+.dash-mes-sub-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0 3px 16px;
+    font-size: 13px;
+    color: #aaa;
+    border-left: 2px solid #333;
+    margin-left: 4px;
 }
 .dash-mes-row.destaque {
     font-size: 18px;
