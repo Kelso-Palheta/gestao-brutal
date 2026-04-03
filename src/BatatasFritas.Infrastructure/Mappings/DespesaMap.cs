@@ -13,5 +13,6 @@ public class DespesaMap : ClassMap<Despesa>
         Map(x => x.Valor).Not.Nullable();
         Map(x => x.DataRegistro).Not.Nullable();
         Map(x => x.Categoria).Not.Nullable().Length(50);
+        Map(x => x.Observacao).Nullable().Length(500);
     }
 }

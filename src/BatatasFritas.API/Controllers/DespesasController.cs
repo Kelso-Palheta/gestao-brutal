@@ -42,7 +42,7 @@ public class DespesasController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Descricao) || dto.Valor <= 0) return BadRequest();
 
-        var disp = new Despesa(dto.Descricao, dto.Valor, dto.DataRegistro.ToLocalTime(), dto.Categoria);
+        var disp = new Despesa(dto.Descricao, dto.Valor, dto.DataRegistro.ToLocalTime(), dto.Categoria, dto.Observacao);
         
         _uow.BeginTransaction();
         await _repo.AddAsync(disp);
@@ -88,6 +88,7 @@ public class DespesasController : ControllerBase
         Descricao = d.Descricao,
         Valor = d.Valor,
         DataRegistro = d.DataRegistro,
-        Categoria = d.Categoria
+        Categoria = d.Categoria,
+        Observacao = d.Observacao
     };
 }

@@ -9,4 +9,5 @@ public class DespesaDto
     public decimal Valor { get; set; }
     public DateTime DataRegistro { get; set; }
     public string Categoria { get; set; } = "Outros";
+    public string? Observacao { get; set; }
 }

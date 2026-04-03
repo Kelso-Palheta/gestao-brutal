@@ -51,7 +51,7 @@
                 <label>Até:</label>
                 <input type="date" @bind="filtroFim" />
             </div>
-            <button class="dash-btn-filtrar" @onclick="@(() => CarregarDados())" disabled="@carregando">
+            <button class="dash-btn-filtrar" @onclick="@(() => AplicarFiltro())" disabled="@carregando">
                 @(carregando ? "⌛" : "🔍 Filtrar Período")
             </button>
             @if (filtroAtivo)
@@ -246,7 +246,13 @@
             </select>
             
             <label>Valor (R$)</label>
-            <input type="number" step="0.01" min="0" @bind="novaDespesaValor" style="width: 100%; margin-bottom: 20px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+            <input type="number" step="0.01" min="0" @bind="novaDespesaValor" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+
+            <label>Data da Despesa</label>
+            <input type="date" @bind="novaDespesaData" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+
+            <label>Observação (opcional)</label>
+            <textarea @bind="novaDespesaObservacao" placeholder="Ex: Ref. semana 10/03 a 15/03..." rows="2" style="width: 100%; margin-bottom: 20px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff; resize: vertical;"></textarea>
 
             <div style="display: flex; gap: 10px;">
                 <button style="flex: 1; padding: 10px; background: #555; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="@(() => mostrarModalDespesa = false)">Cancelar</button>
@@ -587,6 +593,8 @@
     private string novaDespesaDescricao = "";
     private string novaDespesaCategoria = "Funcionario";
     private decimal novaDespesaValor = 0;
+    private string novaDespesaObservacao = "";
+    private DateTime novaDespesaData = DateTime.Today;
     
     // Modal Limpeza
     private bool mostrarModalLimpar = false;
@@ -692,6 +700,12 @@
     private DateTime filtroFim = DateTime.Today;
     private bool filtroAtivo = false;
 
+    private async Task AplicarFiltro()
+    {
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
     private async Task LimparFiltro()
     {
         filtroInicio = DateTime.Today.AddDays(-7);
@@ -755,7 +769,8 @@
                 Descricao = novaDespesaDescricao,
                 Categoria = novaDespesaCategoria,
                 Valor = novaDespesaValor,
-                DataRegistro = DateTime.Now
+                DataRegistro = novaDespesaData,
+                Observacao = string.IsNullOrWhiteSpace(novaDespesaObservacao) ? null : novaDespesaObservacao
             };
 
             var r = await Http.PostAsJsonAsync("api/despesas", despesa);
@@ -765,6 +780,8 @@
                 msgSucesso = "Despesa lançada com sucesso!";
                 novaDespesaDescricao = "";
                 novaDespesaValor = 0;
+                novaDespesaObservacao = "";
+                novaDespesaData = DateTime.Today;
                 await CarregarDados();
             }
             else
