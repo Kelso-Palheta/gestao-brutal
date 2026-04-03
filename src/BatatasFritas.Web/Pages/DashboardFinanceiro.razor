@@ -45,11 +45,11 @@
         <div class="dash-filter-bar no-print">
             <div class="dash-filter-item">
                 <label>De:</label>
-                <input type="date" @bind="filtroInicioStr" />
+                <input type="date" value="@filtroInicioStr" @onchange="@(e => filtroInicioStr = e.Value?.ToString() ?? "")" />
             </div>
             <div class="dash-filter-item">
                 <label>Até:</label>
-                <input type="date" @bind="filtroFimStr" />
+                <input type="date" value="@filtroFimStr" @onchange="@(e => filtroFimStr = e.Value?.ToString() ?? "")" />
             </div>
             <button class="dash-btn-filtrar" @onclick="@(() => AplicarFiltro())" disabled="@carregando">
                 @(carregando ? "⌛" : "🔍 Filtrar")
@@ -317,7 +317,7 @@
             <input type="number" step="0.01" min="0" @bind="novaDespesaValor" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <label>Data da Despesa</label>
-            <input type="date" @bind="novaDespesaDataStr" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+            <input type="date" value="@novaDespesaDataStr" @onchange="@(e => novaDespesaDataStr = e.Value?.ToString() ?? "")" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <label>Observação (opcional)</label>
             <textarea @bind="novaDespesaObservacao" placeholder="Ex: Ref. semana 10/03 a 15/03..." rows="3" style="width: 100%; margin-bottom: 20px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff; resize: none; box-sizing: border-box;"></textarea>
@@ -341,11 +341,11 @@
             <div style="display: flex; gap: 15px; text-align: left; margin-bottom: 15px;">
                 <div style="flex: 1;">
                     <label style="display:block; font-weight:bold; margin-bottom:5px; color:#aaa; font-size:0.8rem;">Data Inicial</label>
-                    <input type="date" @bind="dataInicioLimpezaStr" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
+                    <input type="date" value="@dataInicioLimpezaStr" @onchange="@(e => dataInicioLimpezaStr = e.Value?.ToString() ?? "")" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
                 </div>
                 <div style="flex: 1;">
                     <label style="display:block; font-weight:bold; margin-bottom:5px; color:#aaa; font-size:0.8rem;">Data Final</label>
-                    <input type="date" @bind="dataFimLimpezaStr" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
+                    <input type="date" value="@dataFimLimpezaStr" @onchange="@(e => dataFimLimpezaStr = e.Value?.ToString() ?? "")" style="width:100%; padding: 10px; border: 1px solid #444; background: #111; color: #fff; border-radius: 6px;" />
                 </div>
             </div>
 
