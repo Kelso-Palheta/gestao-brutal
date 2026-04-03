@@ -2,6 +2,7 @@
 # NOTA: usa sdk:8.0 (mesma imagem da API — JÁ CACHEADA no servidor Hetzner).
 # A imagem customizada ghcr.io foi descartada pois causava download duplicado de 543MB.
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+RUN apt-get update && apt-get install -y python3
 WORKDIR /app
 
 # ── LAYER CACHEADA: instala wasm-tools UMA VEZ e reutiliza em todos os deploys ──
