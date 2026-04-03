@@ -142,12 +142,13 @@
                 @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
                 {
                     <div class="totem-obs-box">
-                        <label>Complementos Gratuitos (Molhos)</label>
+                        <label>Molhos incluídos — toque para retirar</label>
                         <div class="totem-quick-obs">
                             @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
                             {
-                                <button class="totem-chip @(selecionadosIds.Contains(c.Id) ? "on-green" : "")" @onclick='() => ToggleComplemento(c)'>
-                                    @(selecionadosIds.Contains(c.Id) ? "✅ " : "+ ")@c.Nome
+                                bool incluido = selecionadosIds.Contains(c.Id);
+                                <button class="totem-chip @(incluido ? "on-green" : "on-red")" @onclick='() => ToggleComplemento(c)'>
+                                    @(incluido ? "✅ " : "✕ ")@c.Nome
                                 </button>
                             }
                         </div>
@@ -157,12 +158,13 @@
                 @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
                 {
                     <div class="totem-obs-box">
-                        <label>Remoções / Sem</label>
+                        <label>Ingredientes — toque para retirar</label>
                         <div class="totem-quick-obs">
                             @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
                             {
-                                <button class="totem-chip @(selecionadosIds.Contains(c.Id) ? "on" : "")" @onclick='() => ToggleComplemento(c)'>
-                                    @(selecionadosIds.Contains(c.Id) ? "✅ " : "❌ ")@c.Nome
+                                bool incluido = selecionadosIds.Contains(c.Id);
+                                <button class="totem-chip @(incluido ? "on-green" : "on-red")" @onclick='() => ToggleComplemento(c)'>
+                                    @(incluido ? "✅ " : "✕ ")@c.Nome
                                 </button>
                             }
                         </div>
@@ -299,6 +301,11 @@
         quantidade = 1;
         selecionadosIds.Clear();
         quantidadesAdicionais.Clear();
+
+        // Pré-selecionar molhos e ingredientes: verde = incluído por padrão.
+        // O cliente só clica se quiser RETIRAR (fica vermelho com ✕).
+        foreach (var comp in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito" || x.TipoAcao == "Remocao"))
+            selecionadosIds.Add(comp.Id);
     }
 
     private void FecharModal() => produtoSelecionado = null;
@@ -325,21 +332,30 @@
     {
         if (produtoSelecionado != null)
         {
-            var selecionados = todosComplementos.Where(c => selecionadosIds.Contains(c.Id)).Select(c => c.Nome).ToList();
-            var pagos = todosComplementos.Where(c => c.TipoAcao == "AdicionalPago" && quantidadesAdicionais.ContainsKey(c.Id))
-                                         .Select(c => $"{quantidadesAdicionais[c.Id]}x {c.Nome}");
-            
-            selecionados.AddRange(pagos);
-            var observacaoFinal = string.Join(", ", selecionados);
+            var partes = new List<string>();
 
-            var precoTotalObj = produtoSelecionado.PrecoBase + precoAdicionais;
+            // Molhos retirados (desmarcados = vermelhos)
+            var molhosRetirados = complementosAtivos
+                .Where(c => c.TipoAcao == "MolhoGratuito" && !selecionadosIds.Contains(c.Id))
+                .Select(c => $"Sem {c.Nome}");
+            partes.AddRange(molhosRetirados);
 
-            Carrinho.AdicionarItemComOpcoes(
-                produtoSelecionado,
-                quantidade,
-                precoTotalObj,
-                observacaoFinal
-            );
+            // Ingredientes retirados (desmarcados = vermelhos)
+            var ingredientesRetirados = complementosAtivos
+                .Where(c => c.TipoAcao == "Remocao" && !selecionadosIds.Contains(c.Id))
+                .Select(c => $"Sem {c.Nome}");
+            partes.AddRange(ingredientesRetirados);
+
+            // Adicionais pagos incluídos
+            var pagos = complementosAtivos
+                .Where(c => c.TipoAcao == "AdicionalPago" && quantidadesAdicionais.ContainsKey(c.Id))
+                .Select(c => $"{quantidadesAdicionais[c.Id]}x {c.Nome}");
+            partes.AddRange(pagos);
+
+            var observacaoFinal = string.Join(", ", partes);
+            var precoTotal = produtoSelecionado.PrecoBase + precoAdicionais;
+
+            Carrinho.AdicionarItemComOpcoes(produtoSelecionado, quantidade, precoTotal, observacaoFinal);
         }
         FecharModal();
     }

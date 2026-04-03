@@ -3742,9 +3742,15 @@ select.est-input option {
 }
 
 .totem-chip.on-green {
-    background: rgba(46, 204, 113, 0.2); /* verde */
+    background: rgba(46, 204, 113, 0.2); /* verde = incluído */
     border-color: #2ecc71;
     color: #2ecc71;
+}
+
+.totem-chip.on-red {
+    background: rgba(231, 76, 60, 0.15); /* vermelho = retirado */
+    border-color: #e74c3c;
+    color: #e74c3c;
 }
 
 .totem-qty-selector {
