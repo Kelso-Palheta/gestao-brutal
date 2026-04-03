@@ -25,8 +25,10 @@ COPY . .
 WORKDIR "/app/src/BatatasFritas.Web"
 
 # Publish the frontend
-# Redirecionamos o log para um arquivo e damos 'cat' nele caso falhe, para ver o erro no Coolify
-RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish --no-restore -v n > /tmp/build.log 2>&1 || (cat /tmp/build.log && exit 1) && cat /tmp/build.log
+# Simplificamos para log direto e adicionamos flags de CI para forçar o output no Coolify
+ENV CI=true
+ENV DOTNET_NOLOGO=true
+RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish --no-restore -v n
 
 # Final Nginx image to serve static files
 FROM nginx:alpine AS final

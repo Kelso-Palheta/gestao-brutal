@@ -1,0 +1,11 @@
+**bin
+**obj
+.git
+.vs
+.vscode
+.idea
+*.user
+*.lock.json
+node_modules
+/artifacts
+/tmp
