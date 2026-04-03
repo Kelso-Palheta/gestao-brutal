@@ -17,6 +17,9 @@ RUN dotnet restore "BatatasFritas.sln"
 COPY . .
 WORKDIR "/app/src/BatatasFritas.Web"
 
+# Instala o workload obrigatório para publicar Blazor WebAssembly
+RUN dotnet workload install wasm-tools
+
 # Publish the frontend
 RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish
 
