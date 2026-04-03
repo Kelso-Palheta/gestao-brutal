@@ -52,12 +52,18 @@
                 <input type="date" @bind="filtroFim" @bind:format="yyyy-MM-dd" />
             </div>
             <button class="dash-btn-filtrar" @onclick="@(() => AplicarFiltro())" disabled="@carregando">
-                @(carregando ? "⌛" : "🔍 Filtrar Período")
+                @(carregando ? "⌛" : "🔍 Filtrar")
             </button>
             @if (filtroAtivo)
             {
                 <button class="dash-btn-limpar-filtro" @onclick="@(() => LimparFiltro())">✕ Limpar</button>
             }
+            <div class="dash-filter-atalhos">
+                <span style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; align-self:center;">Atalhos:</span>
+                <button class="dash-btn-atalho @(filtroAtalho == "hoje" ? "ativo" : "")" @onclick="@(() => AtalhoHoje())">Hoje</button>
+                <button class="dash-btn-atalho @(filtroAtalho == "semana" ? "ativo" : "")" @onclick="@(() => AtalhoEstaSemana())">Esta Semana</button>
+                <button class="dash-btn-atalho @(filtroAtalho == "mes" ? "ativo" : "")" @onclick="@(() => AtalhoEsteMes())">Este Mês</button>
+            </div>
         </div>
 
         <!-- BLOCO 0: RESUMO DO PERÍODO SELECIONADO (Se houver filtro) -->
@@ -616,6 +622,28 @@
     margin-bottom: 25px;
     flex-wrap: wrap;
 }
+.dash-filter-atalhos {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 10px;
+    padding-left: 15px;
+    border-left: 1px solid #333;
+    flex-wrap: wrap;
+}
+.dash-btn-atalho {
+    background: #2a2a2a;
+    color: #aaa;
+    border: 1px solid #444;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.dash-btn-atalho:hover { background: #333; color: #fff; border-color: #ffb347; }
+.dash-btn-atalho.ativo { background: #ffb347; color: #000; border-color: #ffb347; }
 .dash-filter-item { display: flex; flex-direction: column; gap: 5px; }
 .dash-filter-item label { font-size: 0.8rem; color: #888; font-weight: bold; }
 .dash-filter-item input { background: #000; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 6px; }
@@ -770,9 +798,42 @@
     private DateTime filtroInicio = DateTime.Today.AddDays(-7);
     private DateTime filtroFim = DateTime.Today;
     private bool filtroAtivo = false;
+    private string filtroAtalho = "";
 
     private async Task AplicarFiltro()
     {
+        filtroAtalho = "";
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
+    private async Task AtalhoHoje()
+    {
+        filtroInicio = DateTime.Today;
+        filtroFim = DateTime.Today;
+        filtroAtalho = "hoje";
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
+    private async Task AtalhoEstaSemana()
+    {
+        var hoje = DateTime.Today;
+        // Semana começa na segunda-feira (DayOfWeek.Monday = 1)
+        int diasDesdeSegunda = ((int)hoje.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        filtroInicio = hoje.AddDays(-diasDesdeSegunda);
+        filtroFim = hoje;
+        filtroAtalho = "semana";
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
+    private async Task AtalhoEsteMes()
+    {
+        var hoje = DateTime.Today;
+        filtroInicio = new DateTime(hoje.Year, hoje.Month, 1);
+        filtroFim = hoje;
+        filtroAtalho = "mes";
         filtroAtivo = true;
         await CarregarDados();
     }
@@ -782,6 +843,7 @@
         filtroInicio = DateTime.Today.AddDays(-7);
         filtroFim = DateTime.Today;
         filtroAtivo = false;
+        filtroAtalho = "";
         await CarregarDados();
     }
 
