@@ -1,0 +1,18 @@
+# =============================================================================
+# Imagem base customizada: .NET 8 SDK com wasm-tools pré-instalado
+# Usada pelo BatatasFritas.Web (Blazor WebAssembly) para reduzir o tempo de build.
+#
+# Publicada em: ghcr.io/kelso-palheta/blazor-sdk:net8
+# Rebuild necessário apenas quando: versão do .NET mudar ou wasm-tools atualizar.
+# =============================================================================
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+LABEL org.opencontainers.image.source="https://github.com/Kelso-Palheta/gestao-brutal"
+LABEL org.opencontainers.image.description="NET 8 SDK com wasm-tools pre-instalado para builds Blazor WASM"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Instala o workload wasm-tools necessário para compilar Blazor WebAssembly
+# Isso é feito uma única vez na imagem base, evitando o download em cada deploy
+RUN dotnet workload install wasm-tools \
+    && dotnet workload list

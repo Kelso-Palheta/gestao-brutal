@@ -1,5 +1,7 @@
 # Build WebAssembly
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Usa imagem base customizada com wasm-tools pré-instalado (2-3 min mais rápido que sdk:8.0 puro).
+# A imagem é publicada automaticamente via .github/workflows/build-base-image.yml
+FROM ghcr.io/kelso-palheta/blazor-sdk:net8 AS build
 WORKDIR /app
 
 # Copy the solution file and project files for restore
@@ -17,10 +19,7 @@ RUN dotnet restore "BatatasFritas.sln"
 COPY . .
 WORKDIR "/app/src/BatatasFritas.Web"
 
-# Instala o workload obrigatório para publicar Blazor WebAssembly
-RUN dotnet workload install wasm-tools
-
-# Publish the frontend
+# Publish the frontend (wasm-tools já está na imagem base — sem overhead de download)
 RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish
 
 # Final Nginx image to serve static files
