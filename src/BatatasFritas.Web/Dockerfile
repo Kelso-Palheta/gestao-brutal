@@ -25,7 +25,8 @@ COPY . .
 WORKDIR "/app/src/BatatasFritas.Web"
 
 # Publish the frontend
-RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish
+# Adicionamos -v n para ver o erro real no log do Coolify
+RUN dotnet publish "BatatasFritas.Web.csproj" -c Release -o /app/publish /p:BlazorEnableCompression=false --no-restore -v n
 
 # Final Nginx image to serve static files
 FROM nginx:alpine AS final
