@@ -533,6 +533,52 @@
         @if (abaAtiva == "configuracoes")
         {
             <div class="admin-section">
+
+                <!-- Seção Cardápio Digital -->
+                <div class="admin-section-header">
+                    <h2>Cardápio Digital</h2>
+                </div>
+                <div class="admin-form-card" style="margin-bottom: 24px;">
+                    <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+                        <div style="font-size:2.5rem;">@(menuDigitalAtivo ? "🟢" : "🔴")</div>
+                        <div>
+                            <h3 style="margin:0 0 4px 0;">@(menuDigitalAtivo ? "Cardápio Aberto" : "Cardápio Encerrado")</h3>
+                            <p style="margin:0; color:#666; font-size:0.85rem;">
+                                @(menuDigitalAtivo
+                                    ? "Os clientes podem ver o cardápio e fazer pedidos normalmente."
+                                    : "O cardápio está exibindo a mensagem de encerramento. Pedidos bloqueados.")
+                            </p>
+                        </div>
+                        <button @onclick="ToggleMenuDigital"
+                                disabled="@salvandoMenuDigital"
+                                style="margin-left:auto; padding:12px 28px; font-size:1rem; font-weight:bold; border:none; border-radius:8px; cursor:pointer; transition:0.2s;
+                                       background:@(menuDigitalAtivo ? "#e74c3c" : "#27ae60"); color:#fff;">
+                            @if (salvandoMenuDigital) { <text>⌛ Salvando...</text> }
+                            else if (menuDigitalAtivo) { <text>🔴 Encerrar Cardápio</text> }
+                            else { <text>🟢 Abrir Cardápio</text> }
+                        </button>
+                    </div>
+
+                    <div class="admin-field" style="margin-bottom:12px;">
+                        <label>Mensagem exibida quando encerrado</label>
+                        <input type="text" @bind="menuDigitalMensagem" maxlength="200"
+                               placeholder="Ex: Atendimento encerrado. Voltamos amanhã às 11h! 🍟"
+                               style="width:100%;" />
+                    </div>
+                    <p style="font-size:0.8rem; color:#999; margin:0 0 12px 0;">
+                        Esta mensagem aparece para o cliente na tela do totem quando o cardápio estiver encerrado.
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(msgMenuDigitalOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgMenuDigitalOk</div>  }
+                    @if (!string.IsNullOrEmpty(msgMenuDigitalErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgMenuDigitalErro</div> }
+
+                    <div class="admin-form-actions" style="margin-top:12px;">
+                        <button class="admin-btn-salvar" @onclick="SalvarMensagemMenuDigital" disabled="@salvandoMenuDigital">
+                            💾 Salvar Mensagem
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Seção Cashback -->
                 <div class="admin-section-header">
                     <h2>Cashback</h2>
@@ -707,6 +753,13 @@
 
             var cbConfig = await Http.GetFromJsonAsync<CashbackConfigDto>("api/cashback/configuracao");
             if (cbConfig != null) porcentagemCashback = cbConfig.Porcentagem;
+
+            var menuStatus = await Http.GetFromJsonAsync<MenuDigitalStatusDto>("api/configuracoes/menu-digital");
+            if (menuStatus != null)
+            {
+                menuDigitalAtivo    = menuStatus.Ativo;
+                menuDigitalMensagem = menuStatus.Mensagem;
+            }
         }
         catch (Exception ex)
         {
@@ -1154,6 +1207,42 @@
         {
             alterandoSenha = false;
         }
+    }
+
+    // ======================== MENU DIGITAL ========================
+
+    private bool    menuDigitalAtivo    = true;
+    private string  menuDigitalMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
+    private bool    salvandoMenuDigital  = false;
+    private string  msgMenuDigitalOk    = "";
+    private string  msgMenuDigitalErro  = "";
+
+    private async Task ToggleMenuDigital()
+    {
+        menuDigitalAtivo = !menuDigitalAtivo;
+        await EnviarStatusMenuDigital();
+    }
+
+    private async Task SalvarMensagemMenuDigital()
+    {
+        await EnviarStatusMenuDigital();
+    }
+
+    private async Task EnviarStatusMenuDigital()
+    {
+        msgMenuDigitalOk = ""; msgMenuDigitalErro = "";
+        salvandoMenuDigital = true;
+        try
+        {
+            var dto = new MenuDigitalStatusDto { Ativo = menuDigitalAtivo, Mensagem = menuDigitalMensagem };
+            var res = await Http.PostAsJsonAsync("api/configuracoes/menu-digital", dto);
+            if (res.IsSuccessStatusCode)
+                msgMenuDigitalOk = menuDigitalAtivo ? "Cardápio aberto com sucesso!" : "Cardápio encerrado. Mensagem ativa no totem.";
+            else
+                msgMenuDigitalErro = await res.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex) { msgMenuDigitalErro = $"Erro: {ex.Message}"; }
+        finally { salvandoMenuDigital = false; }
     }
 
     // ======================== CASHBACK ========================

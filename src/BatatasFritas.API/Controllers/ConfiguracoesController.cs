@@ -96,6 +96,57 @@ public class ConfiguracoesController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────
+    // GET api/configuracoes/menu-digital — público (Totem consulta sem auth)
+    // ─────────────────────────────────────────────────────────────
+    [AllowAnonymous]
+    [HttpGet("menu-digital")]
+    public async Task<ActionResult<MenuDigitalStatusDto>> GetMenuDigital()
+    {
+        var configAtivo    = await _repo.FindAsync(c => c.Chave == "menu_digital_ativo");
+        var configMensagem = await _repo.FindAsync(c => c.Chave == "menu_digital_mensagem");
+
+        bool ativo = configAtivo == null || configAtivo.Valor == "true"; // padrão: aberto
+        string mensagem = configMensagem?.Valor ?? "Atendimento encerrado. Voltamos em breve! 🍟";
+
+        return Ok(new MenuDigitalStatusDto { Ativo = ativo, Mensagem = mensagem });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // POST api/configuracoes/menu-digital — somente admin
+    // ─────────────────────────────────────────────────────────────
+    [HttpPost("menu-digital")]
+    public async Task<IActionResult> SetMenuDigital([FromBody] MenuDigitalStatusDto dto)
+    {
+        try
+        {
+            _uow.BeginTransaction();
+
+            await UpsertConfig("menu_digital_ativo",    dto.Ativo ? "true" : "false");
+            await UpsertConfig("menu_digital_mensagem", dto.Mensagem ?? "Atendimento encerrado. Voltamos em breve! 🍟");
+
+            await _uow.CommitAsync();
+            return Ok(new { mensagem = dto.Ativo ? "Cardápio ativado!" : "Cardápio encerrado." });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
+    }
+
+    private async Task UpsertConfig(string chave, string valor)
+    {
+        var config = await _repo.FindAsync(c => c.Chave == chave);
+        if (config == null)
+            await _repo.AddAsync(new Configuracao(chave, valor));
+        else
+        {
+            config.Valor = valor;
+            await _repo.UpdateAsync(config);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // Helper: busca a senha (hash ou padrão) e verifica
     // ─────────────────────────────────────────────────────────────
     private async Task<bool> VerificarSenha(string senhaInformada)
