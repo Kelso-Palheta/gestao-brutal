@@ -43,15 +43,20 @@ public class PagamentosController : ControllerBase
         var rawBody = await new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true).ReadToEndAsync();
         Request.Body.Position = 0;
 
-        // Verifica assinatura quando o secret estiver configurado
-        if (!string.IsNullOrEmpty(_webhookSecret))
+        // OBRIGATÓRIO: Verifica assinatura HMAC-SHA256 para evitar fraudes.
+        // Se _webhookSecret não estiver configurado em produção, isso é um erro crítico de segurança.
+        var signature = Request.Headers["X-InfinitePay-Signature"].ToString();
+        
+        if (string.IsNullOrEmpty(_webhookSecret) || _webhookSecret.Contains("CHANGE_ME"))
         {
-            var signature = Request.Headers["X-Signature"].ToString();
-            if (string.IsNullOrEmpty(signature) || !VerifyHmac(rawBody, signature, _webhookSecret))
-            {
-                Console.WriteLine("Webhook InfinitePay rejeitado: assinatura inválida.");
-                return Unauthorized("Assinatura inválida.");
-            }
+            Console.WriteLine($"ERRO CRÍTICO: InfinitePay:WebhookSecret não está configurado corretamente (Valor: '{_webhookSecret}'). Webhook rejeitado por segurança.");
+            return StatusCode(500, "Erro interno de configuração de segurança.");
+        }
+
+        if (string.IsNullOrEmpty(signature) || !VerifyHmac(rawBody, signature, _webhookSecret))
+        {
+            Console.WriteLine($"Webhook InfinitePay rejeitado: assinatura inválida ou ausente. Signature: {signature}");
+            return Unauthorized("Assinatura inválida.");
         }
 
         InfinitePayWebhookPayload? payload;
@@ -106,10 +111,22 @@ public class PagamentosController : ControllerBase
 
     private static bool VerifyHmac(string body, string signature, string secret)
     {
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-        var hash     = hmac.ComputeHash(Encoding.UTF8.GetBytes(body));
-        var expected = Convert.ToHexString(hash).ToLowerInvariant();
-        return string.Equals(expected, signature.ToLowerInvariant(), StringComparison.Ordinal);
+        try
+        {
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+            var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(body));
+            var expected = Convert.ToHexString(hash).ToLowerInvariant();
+
+            // Comparação de tempo constante para evitar ataques de temporização
+            return CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(expected),
+                Encoding.UTF8.GetBytes(signature.ToLowerInvariant())
+            );
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
 

@@ -1,0 +1,7 @@
+- [x] Atualizar cálculo de valor elegível para cashback em Pedido.cs
+- [x] Atualizar Pedido.cs para suportar múltiplos métodos de pagamento
+- [x] Ajustar lógica de cálculo de valor no Pedido.cs
+- [x] Atualizar DTOs (NovoPedidoDto) para múltiplos pagamentos
+- [x] Atualizar PedidosController.cs para lidar com múltiplos pagamentos
+- [ ] Atualizar KdsController.cs para usar ValorElegivelCashback
+- [ ] Atualizar frontend (Blazor) para capturar múltiplos pagamentos
