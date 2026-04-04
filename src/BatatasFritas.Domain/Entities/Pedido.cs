@@ -14,13 +14,22 @@ public class Pedido : EntityBase
     
     public virtual decimal TaxaEntrega => BairroEntrega?.TaxaEntrega ?? 0m;
     public virtual decimal ValorTotalItens => Itens.Sum(i => i.PrecoUnitario * i.Quantidade);
+    
+    // Novo: Valor elegível para cashback (apenas produtos de categoria Batatas, Porções ou complementos pagos)
+    public virtual decimal ValorElegivelCashback => Itens
+        .Where(i => i.Produto.CategoriaId == CategoriaEnum.Batatas || 
+                    i.Produto.CategoriaId == CategoriaEnum.Porcoes)
+        .Sum(i => i.PrecoUnitario * i.Quantidade);
+
     public virtual decimal ValorCashbackUsado { get; protected set; } = 0m;
     public virtual decimal ValorTotal => Math.Max(0, ValorTotalItens + TaxaEntrega - ValorCashbackUsado);
 
     public virtual DateTime DataHoraPedido { get; protected set; }
     public virtual StatusPedido Status { get; protected set; }
     public virtual MetodoPagamento MetodoPagamento { get; protected set; }
+    public virtual MetodoPagamento? SegundoMetodoPagamento { get; protected set; }
     public virtual decimal? TrocoPara { get; protected set; }
+    public virtual decimal? ValorSegundoPagamento { get; protected set; }
 
     // -- Novos campos Módulo I e F --
     public virtual string LinkPagamento { get; protected set; } = string.Empty;
@@ -36,13 +45,15 @@ public class Pedido : EntityBase
 
     protected Pedido() { } // NHibernate
 
-    public Pedido(string nomeCliente, string telefoneCliente, string enderecoEntrega, Bairro? bairroEntrega, MetodoPagamento metodoPagamento, decimal? trocoPara = null, TipoAtendimento tipoAtendimento = TipoAtendimento.Delivery, decimal valorCashbackUsado = 0m)
+    public Pedido(string nomeCliente, string telefoneCliente, string enderecoEntrega, Bairro? bairroEntrega, MetodoPagamento metodoPagamento, decimal? trocoPara = null, TipoAtendimento tipoAtendimento = TipoAtendimento.Delivery, decimal valorCashbackUsado = 0m, MetodoPagamento? segundoMetodoPagamento = null, decimal? valorSegundoPagamento = null)
     {
         NomeCliente = nomeCliente;
         TelefoneCliente = telefoneCliente;
         EnderecoEntrega = enderecoEntrega;
         BairroEntrega = bairroEntrega;
         MetodoPagamento = metodoPagamento;
+        SegundoMetodoPagamento = segundoMetodoPagamento;
+        ValorSegundoPagamento = valorSegundoPagamento;
         TrocoPara = trocoPara;
         TipoAtendimento = tipoAtendimento;
         ValorCashbackUsado = valorCashbackUsado;

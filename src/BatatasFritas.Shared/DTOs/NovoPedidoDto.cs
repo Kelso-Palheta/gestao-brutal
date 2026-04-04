@@ -10,6 +10,8 @@ public class NovoPedidoDto
     public string EnderecoEntrega { get; set; } = string.Empty;
     public int BairroEntregaId { get; set; }
     public MetodoPagamento MetodoPagamento { get; set; }
+    public MetodoPagamento? SegundoMetodoPagamento { get; set; }
+    public decimal? ValorSegundoPagamento { get; set; }
     public decimal? TrocoPara { get; set; }
     public TipoAtendimento TipoAtendimento { get; set; } = TipoAtendimento.Delivery;
     public decimal ValorCashbackUsado { get; set; } = 0m;

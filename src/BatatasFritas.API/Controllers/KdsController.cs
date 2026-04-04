@@ -110,7 +110,7 @@ public class KdsController : ControllerBase
                         await _carteiraRepository.AddAsync(carteira);
                     }
 
-                    var valorGanho = Math.Round(pedido.ValorTotal * (porcentagem / 100m), 2);
+                    var valorGanho = Math.Round(pedido.ValorElegivelCashback * (porcentagem / 100m), 2);
                     if (valorGanho > 0)
                     {
                         carteira.AdicionarSaldo(valorGanho, $"Ganho de {porcentagem}% no pedido #{pedido.Id}", pedido.Id);

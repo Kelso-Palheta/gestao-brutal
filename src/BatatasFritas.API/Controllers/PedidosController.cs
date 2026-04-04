@@ -65,7 +65,7 @@ public class PedidosController : ControllerBase
             System.Console.WriteLine($"DTO RECEBIDO: Nome={dto.NomeCliente}, Telefone={dto.TelefoneCliente}, Endereco={dto.EnderecoEntrega}, BairroId={dto.BairroEntregaId}, Pag={dto.MetodoPagamento}, Troco={dto.TrocoPara}, QtdItens={dto.Itens?.Count}, Cashback={dto.ValorCashbackUsado}");
 
             var bairro = await _bairroRepository.GetByIdAsync(dto.BairroEntregaId);
-            var pedido = new Pedido(dto.NomeCliente, dto.TelefoneCliente, dto.EnderecoEntrega, bairro, dto.MetodoPagamento, dto.TrocoPara, dto.TipoAtendimento, dto.ValorCashbackUsado);
+            var pedido = new Pedido(dto.NomeCliente, dto.TelefoneCliente, dto.EnderecoEntrega, bairro, dto.MetodoPagamento, dto.TrocoPara, dto.TipoAtendimento, dto.ValorCashbackUsado, dto.SegundoMetodoPagamento, dto.ValorSegundoPagamento);
 
             foreach (var item in dto.Itens)
             {
@@ -156,6 +156,8 @@ public class PedidosController : ControllerBase
             DataHoraPedido  = pedido.DataHoraPedido,
             Status          = pedido.Status,
             MetodoPagamento = pedido.MetodoPagamento,
+            SegundoMetodoPagamento = pedido.SegundoMetodoPagamento,
+            ValorSegundoPagamento = pedido.ValorSegundoPagamento,
             StatusPagamento = pedido.StatusPagamento,
             TipoAtendimento    = pedido.TipoAtendimento,
             LinkPagamento      = pedido.LinkPagamento,

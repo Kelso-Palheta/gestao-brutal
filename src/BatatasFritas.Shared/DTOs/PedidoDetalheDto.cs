@@ -14,6 +14,8 @@ public class PedidoDetalheDto
     public DateTime DataHoraPedido { get; set; }
     public StatusPedido Status { get; set; }
     public MetodoPagamento MetodoPagamento { get; set; }
+    public MetodoPagamento? SegundoMetodoPagamento { get; set; }
+    public decimal? ValorSegundoPagamento { get; set; }
     public StatusPagamento StatusPagamento { get; set; }
     public TipoAtendimento TipoAtendimento { get; set; }
     public string LinkPagamento { get; set; } = string.Empty;

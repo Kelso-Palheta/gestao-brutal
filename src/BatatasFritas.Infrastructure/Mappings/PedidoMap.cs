@@ -19,6 +19,9 @@ public class PedidoMap : ClassMap<Pedido>
         Map(x => x.DataHoraPedido).Not.Nullable().Column("data_hora");
         Map(x => x.Status).CustomType<StatusPedido>().Not.Nullable().Column("status");
         Map(x => x.MetodoPagamento).CustomType<MetodoPagamento>().Not.Nullable().Column("metodo_pagamento");
+        Map(x => x.SegundoMetodoPagamento).CustomType<MetodoPagamento>().Column("segundo_metodo_pagamento").Nullable();
+        Map(x => x.ValorSegundoPagamento).Column("valor_segundo_pagamento").Nullable();
+        Map(x => x.ValorCashbackUsado).Column("valor_cashback_usado").Not.Nullable().Default("0");
         Map(x => x.TrocoPara).Column("troco_para").Nullable();
         Map(x => x.Observacao).Column("observacao").Nullable().Length(500);
 
