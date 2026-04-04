@@ -220,13 +220,13 @@ var senhaPadrao = Environment.GetEnvironmentVariable("KDS_DEFAULT_PASSWORD") ?? 
 
 ### Alta Prioridade
 
-1. **Autenticação JWT na API** — Hoje qualquer pessoa acessa todos os endpoints sem login.
+1. ~~**Autenticação JWT na API**~~ ✅ **IMPLEMENTADO** — JWT já está configurado na API com AuthController, token válido por 8h, e proteção nos endpoints.
 
 2. **Validação de assinatura do webhook InfinitePay** — Risco de fraude (marcar pedido como pago sem ter pago).
 
 3. **Rate limiting** — Sem limite de requisições, a API é vulnerável a flood/DoS. Adicionar `app.UseRateLimiter()` (.NET 7+).
 
-4. **Queries filtradas no banco** — Substituir `GetAllAsync().Where(...)` por queries diretas para as consultas de cashback, configurações e pedidos ativos.
+4. ~~**Queries filtradas no banco**~~ ✅ **IMPLEMENTADO** — O método `FindAsync` já existe no IRepository e está implementado no NHibernateRepository com query filtrada no banco.
 
 ### Média Prioridade
 

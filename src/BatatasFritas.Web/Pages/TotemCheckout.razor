@@ -95,20 +95,62 @@
             
             <div class="totem-options" style="flex-wrap:wrap;">
                 <button class="totem-opt-btn @(pagamento == "Pix" ? "active" : "")" 
-                        @onclick='() => { pagamento = "Pix"; }'>
+                        @onclick='() => { pagamento = "Pix"; segundoPagamento = ""; }'>
                     <span class="totem-opt-icon">📱</span><br>PIX<br><small>QR Code na tela</small>
                 </button>
                 <button class="totem-opt-btn @(pagamento == "Cartao" ? "active" : "")" 
-                        @onclick='() => { pagamento = "Cartao"; }'>
+                        @onclick='() => { pagamento = "Cartao"; segundoPagamento = ""; }'>
                     <span class="totem-opt-icon">💳</span><br>Cartão<br><small>Débito / Crédito</small>
                 </button>
                 <button class="totem-opt-btn @(pagamento == "Dinheiro" ? "active" : "")" 
-                        @onclick='() => { pagamento = "Dinheiro"; }'>
+                        @onclick='() => { pagamento = "Dinheiro"; segundoPagamento = ""; }'>
                     <span class="totem-opt-icon">💵</span><br>Dinheiro<br><small>Pagar no Caixa</small>
                 </button>
             </div>
 
-            <button class="totem-btn-final" disabled="@((string.IsNullOrEmpty(pagamento) && TotalPagar > 0) || enviando)" @onclick="ConfirmarPedido">
+            <!-- DIVISÃO DE PAGAMENTO -->
+            @if (!string.IsNullOrEmpty(pagamento) && TotalPagar > 0)
+            {
+                <div class="totem-dividir-pagamento" style="background:#222; border:2px solid #4CAF50; border-radius:12px; padding:16px; margin-top:20px; text-align:left;">
+                    <h3 style="color:#4CAF50; margin:0 0 10px 0; font-size:1.1rem;">💰 Dividir Pagamento</h3>
+                    <p style="color:#aaa; margin:0 0 15px 0; font-size:0.95rem;">Quer pagar parte com outro método?</p>
+                    
+                    <div style="background:#333; padding:15px; border-radius:8px; margin-bottom:15px;">
+                        <label style="display:block; font-size:1rem; margin-bottom:8px;">Valor do @(pagamento switch { "Pix" => "PIX", "Cartao" => "Cartão", "Dinheiro" => "Dinheiro", _ => "1º Pagamento"}):</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span style="font-size:1.2rem; font-weight:bold;">R$</span>
+                            <input type="number" step="0.01" min="0.01" max="@((TotalPagar - 0.01m).ToString(System.Globalization.CultureInfo.InvariantCulture))" @bind="valorPrimeiroPagamento" @oninput="CalcularSegundoPagamento" style="flex-grow:1; max-width:150px; padding:8px; font-size:1.2rem; font-weight:bold; border:2px solid #4CAF50; border-radius:6px; background:#111; color:#fff;" />
+                            <button @onclick="UsarValorTotalPrimeiro" style="background:#4CAF50; color:#fff; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; cursor:pointer;">TOTAL (@TotalPagar.ToString("C2"))</button>
+                        </div>
+                    </div>
+
+                    @if (valorSegundoPagamento > 0)
+                    {
+                        <div style="border-top:1px solid #555; padding-top:15px;">
+                            <label style="display:block; font-size:1rem; margin-bottom:8px;">2º Método de Pagamento:</label>
+                            <div class="totem-options" style="flex-wrap:wrap; gap:8px;">
+                                <button class="totem-opt-btn @(segundoPagamento == "Pix" ? "active" : "")" 
+                                        @onclick='() => { segundoPagamento = "Pix"; }' style="flex:1; min-width:80px; padding:10px;">
+                                    <span class="totem-opt-icon" style="font-size:1.2rem;">📱</span><br><small>PIX</small>
+                                </button>
+                                <button class="totem-opt-btn @(segundoPagamento == "Cartao" ? "active" : "")" 
+                                        @onclick='() => { segundoPagamento = "Cartao"; }' style="flex:1; min-width:80px; padding:10px;">
+                                    <span class="totem-opt-icon" style="font-size:1.2rem;">💳</span><br><small>Cartão</small>
+                                </button>
+                                <button class="totem-opt-btn @(segundoPagamento == "Dinheiro" ? "active" : "")" 
+                                        @onclick='() => { segundoPagamento = "Dinheiro"; }' style="flex:1; min-width:80px; padding:10px;">
+                                    <span class="totem-opt-icon" style="font-size:1.2rem;">💵</span><br><small>Dinheiro</small>
+                                </button>
+                            </div>
+                            <div style="margin-top:10px; text-align:center;">
+                                <span style="color:#ffb347; font-size:1.1rem;">Restante: <strong>@valorSegundoPagamento.ToString("C2")</strong></span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <button class="totem-btn-final" disabled="@(!PodeFinalizar())" @onclick="ConfirmarPedido">
                 @(enviando ? "Aguarde..." : (TotalPagar > 0 ? "FINALIZAR PEDIDO ✅" : "CONCLUIR COM CASHBACK 🎁"))
             </button>
         }
@@ -157,8 +199,52 @@
     private decimal TotalPagar => Math.Max(0, Carrinho.Subtotal - ValorCashbackAplicado);
 
     private string pagamento = "";
+    private string segundoPagamento = "";
+    private decimal valorPrimeiroPagamento = 0m;
+    private decimal valorSegundoPagamento = 0m;
     private string msgErro = "";
     private bool enviando = false;
+
+    private void CalcularSegundoPagamento(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out decimal valor))
+        {
+            valorPrimeiroPagamento = valor;
+            if (valorPrimeiroPagamento < 0) valorPrimeiroPagamento = 0;
+            if (valorPrimeiroPagamento > TotalPagar) valorPrimeiroPagamento = TotalPagar;
+            valorSegundoPagamento = TotalPagar - valorPrimeiroPagamento;
+            if (valorSegundoPagamento <= 0.01m)
+            {
+                valorSegundoPagamento = 0;
+                segundoPagamento = "";
+            }
+        }
+        else
+        {
+            valorPrimeiroPagamento = 0;
+            valorSegundoPagamento = TotalPagar;
+        }
+    }
+
+    private void UsarValorTotalPrimeiro()
+    {
+        valorPrimeiroPagamento = TotalPagar;
+        valorSegundoPagamento = 0;
+        segundoPagamento = "";
+    }
+
+    private bool PodeFinalizar()
+    {
+        if (enviando) return false;
+        if (TotalPagar == 0) return true; // Cashback cobriu tudo
+        if (string.IsNullOrEmpty(pagamento)) return false;
+        
+        // Se tem divisão de pagamento, precisa do segundo método
+        if (valorSegundoPagamento > 0 && string.IsNullOrEmpty(segundoPagamento))
+            return false;
+        
+        return true;
+    }
 
     protected override void OnInitialized()
     {
@@ -216,12 +302,29 @@
 
         var valorCentavos = (int)(TotalPagar * 100);
 
+        // Mapeia segundo método de pagamento se houver divisão
+        MetodoPagamento? segundoMetodo = null;
+        decimal? valorSegundoPgto = null;
+        
+        if (valorSegundoPagamento > 0 && !string.IsNullOrEmpty(segundoPagamento))
+        {
+            segundoMetodo = segundoPagamento switch
+            {
+                "Pix" => MetodoPagamento.Pix,
+                "Cartao" => MetodoPagamento.InfiniteTap,
+                _ => MetodoPagamento.Dinheiro
+            };
+            valorSegundoPgto = valorSegundoPagamento;
+        }
+
         var dto = new NovoPedidoDto
         {
             NomeCliente = nomeCliente + (ondeComer == "Viagem" ? " (Viagem)" : ""),
             TelefoneCliente = telefoneCliente,
             TipoAtendimento = TipoAtendimento.Totem,
-            MetodoPagamento = TotalPagar == 0 ? MetodoPagamento.Pix : metodo, // Se o total for zero (abatido), assume um pgto dummy
+            MetodoPagamento = TotalPagar == 0 ? MetodoPagamento.Pix : metodo,
+            SegundoMetodoPagamento = segundoMetodo,
+            ValorSegundoPagamento = valorSegundoPgto,
             ValorCashbackUsado = ValorCashbackAplicado,
             Itens = Carrinho.Itens.ToList()
         };

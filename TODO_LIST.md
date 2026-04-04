@@ -4,4 +4,4 @@
 - [x] Atualizar DTOs (NovoPedidoDto) para múltiplos pagamentos
 - [x] Atualizar PedidosController.cs para lidar com múltiplos pagamentos
 - [ ] Atualizar KdsController.cs para usar ValorElegivelCashback
-- [ ] Atualizar frontend (Blazor) para capturar múltiplos pagamentos
+- [x] Atualizar frontend (Blazor) para capturar múltiplos pagamentos

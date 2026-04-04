@@ -14,15 +14,17 @@ public class KdsAuthService
 {
     private readonly IJSRuntime  _js;
     private readonly HttpClient  _http;
+    private readonly AuthStateProvider _authStateProvider;
     private const string TokenKey = "kds_jwt_token";
 
     // Token em memória para leitura síncrona pelo AuthDelegatingHandler
     private string? _token;
 
-    public KdsAuthService(IJSRuntime js, HttpClient http)
+    public KdsAuthService(IJSRuntime js, HttpClient http, AuthStateProvider authStateProvider)
     {
         _js   = js;
         _http = http;
+        _authStateProvider = authStateProvider;
     }
 
     /// <summary>Expõe o token atual de forma síncrona (para o DelegatingHandler).</summary>
@@ -61,6 +63,7 @@ public class KdsAuthService
 
             _token = token;
             await _js.InvokeVoidAsync("sessionStorage.setItem", TokenKey, token);
+            _authStateProvider.MarkUserAsAuthenticated();
             return true;
         }
         catch
@@ -74,5 +77,6 @@ public class KdsAuthService
     {
         _token = null;
         await _js.InvokeVoidAsync("sessionStorage.removeItem", TokenKey);
+        _authStateProvider.MarkUserAsLoggedOut();
     }
 }

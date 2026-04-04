@@ -1,0 +1,87 @@
+@page "/kds/login"
+@layout EmptyLayout
+@using BatatasFritas.Web.Services
+@inject KdsAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<div class="login-container">
+    <div class="login-card">
+        <h1>🔐 Acesso KDS / Admin</h1>
+        <p>Digite a senha para acessar o Painel Admin ou Monitor da Cozinha</p>
+
+        @if (!string.IsNullOrEmpty(msgErro))
+        {
+            <div class="admin-alert admin-alert-erro">❌ @msgErro</div>
+        }
+
+        <EditForm Model="@senhaInput" OnValidSubmit="@EfetuarLogin">
+            <DataAnnotationsValidator />
+            
+            <div class="form-group">
+                <label>Senha:</label>
+                <InputText @bind-Value="senhaInput.Senha" type="password" class="form-control" placeholder="Digite a senha..." />
+                <ValidationMessage For="@(() => senhaInput.Senha)" />
+            </div>
+            
+            <button type="submit" class="btn-login" disabled="@carregando">
+                @(carregando ? "Entrando..." : "🔓 Entrar")
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private LoginModel senhaInput = new();
+    private string msgErro = "";
+    private bool carregando = false;
+
+    private async Task EfetuarLogin()
+    {
+        if (string.IsNullOrWhiteSpace(senhaInput.Senha))
+        {
+            msgErro = "Digite a senha.";
+            return;
+        }
+
+        carregando = true;
+        msgErro = "";
+
+        try
+        {
+            var sucesso = await AuthService.LoginAsync(senhaInput.Senha);
+            if (sucesso)
+            {
+                var uri = new Uri(NavigationManager.Uri);
+                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                var returnUrl = query["returnUrl"];
+                
+                if (!string.IsNullOrEmpty(returnUrl))
+                {
+                    NavigationManager.NavigateTo(returnUrl, forceLoad: true);
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("/admin", forceLoad: true);
+                }
+            }
+            else
+            {
+                msgErro = "Senha incorreta. Tente novamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    public class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "A senha é obrigatória")]
+        public string Senha { get; set; } = "";
+    }
+}
