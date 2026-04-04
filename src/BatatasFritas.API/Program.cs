@@ -115,6 +115,8 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<PedidosHub>("/hubs/pedidos");
 
+app.MapGet("/api/health", () => "OK");
+
 using (var scope = app.Services.CreateScope())
 {
     var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();

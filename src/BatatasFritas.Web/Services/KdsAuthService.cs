@@ -36,6 +36,8 @@ public class KdsAuthService
     public async Task RestaurarSessaoAsync()
     {
         _token = await _js.InvokeAsync<string?>("sessionStorage.getItem", TokenKey);
+        if (!string.IsNullOrEmpty(_token))
+            _authStateProvider.MarkUserAsAuthenticated();
     }
 
     /// <summary>Verifica se há um token válido em memória.</summary>

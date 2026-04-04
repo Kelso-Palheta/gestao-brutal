@@ -44,17 +44,35 @@ public class BairrosController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Post([FromBody] BairroDto dto)
     {
-        var bairros = await _bairroRepository.GetAllAsync();
-        var maxOrdem = bairros.Any() ? bairros.Max(b => b.OrdemExibicao) : -1;
+        if (!ModelState.IsValid)
+        {
+            return BadRequest("Dados inválidos.");
+        }
 
-        var bairro = new Bairro(dto.Nome, dto.TaxaEntrega);
-        bairro.OrdemExibicao = maxOrdem + 1;
-        
-        _uow.BeginTransaction();
-        await _bairroRepository.AddAsync(bairro);
-        await _uow.CommitAsync();
+        if (string.IsNullOrWhiteSpace(dto.Nome))
+        {
+            return BadRequest("O nome do bairro é obrigatório.");
+        }
 
-        return Ok(new { bairro.Id, bairro.Nome });
+        try
+        {
+            var bairros = await _bairroRepository.GetAllAsync();
+            var maxOrdem = bairros.Any() ? bairros.Max(b => b.OrdemExibicao) : -1;
+
+            var bairro = new Bairro(dto.Nome, dto.TaxaEntrega);
+            bairro.OrdemExibicao = maxOrdem + 1;
+            
+            _uow.BeginTransaction();
+            await _bairroRepository.AddAsync(bairro);
+            await _uow.CommitAsync();
+
+            return Ok(new { bairro.Id, bairro.Nome, bairro.TaxaEntrega });
+        }
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest($"Erro ao criar bairro: {ex.Message}");
+        }
     }
 
     // PUT api/bairros/{id} — atualiza nome e taxa de entrega

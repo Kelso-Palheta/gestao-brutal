@@ -38,8 +38,12 @@ public class Program
         builder.Services.AddSingleton<CarrinhoState>();
 
         var host = builder.Build();
-        var kdsAuth = host.Services.GetRequiredService<KdsAuthService>();
-        await kdsAuth.RestaurarSessaoAsync();
+        try
+        {
+            var kdsAuth = host.Services.GetRequiredService<KdsAuthService>();
+            await kdsAuth.RestaurarSessaoAsync();
+        }
+        catch { /* sessionStorage não disponível ou token inválido — app inicia deslogado */ }
 
         await host.RunAsync();
     }
