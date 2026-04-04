@@ -1,0 +1,67 @@
+@page "/dashboard/pedidos"
+@inject HttpClient Http
+@using BatatasFritas.Shared.DTOs
+@using System.Globalization
+
+<h3>Pedidos por Período</h3>
+<div class="mb-3">
+    <label>Data Início:</label>
+    <InputDate @bind-Value="StartDate" class="form-control" />
+</div>
+<div class="mb-3">
+    <label>Data Fim:</label>
+    <InputDate @bind-Value="EndDate" class="form-control" />
+</div>
+<button class="btn btn-primary" @onclick="LoadPedidos">Buscar</button>
+
+@if (Pedidos == null)
+{
+    <p>Carregando...</p>
+}
+else if (!Pedidos.Any())
+{
+    <p>Nenhum pedido encontrado.</p>
+}
+else
+{
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Telefone</th>
+                <th>Valor Total</th>
+                <th>Cashback Usado</th>
+                <th>Data</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Pedidos)
+            {
+                <tr>
+                    <td>@p.Id</td>
+                    <td>@p.NomeCliente</td>
+                    <td>@p.TelefoneCliente</td>
+                    <td>@p.ValorTotal.ToString("C", CultureInfo.CurrentCulture)</td>
+                    <td>@p.ValorCashbackUsado.ToString("C", CultureInfo.CurrentCulture)</td>
+                    <td>@p.DataHoraPedido.ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ListaPedidosDto>? Pedidos;
+    private DateTime? StartDate;
+    private DateTime? EndDate;
+
+    private async Task LoadPedidos()
+    {
+        var query = $"api/pedidos/bydate?";
+        if (StartDate.HasValue) query += $"start={StartDate.Value:yyyy-MM-dd}&";
+        if (EndDate.HasValue) query += $"end={EndDate.Value:yyyy-MM-dd}&";
+        var url = query.TrimEnd('&');
+        Pedidos = await Http.GetFromJsonAsync<List<ListaPedidosDto>>(url);
+    }
+}

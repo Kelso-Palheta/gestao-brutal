@@ -6,190 +6,213 @@
 
 <PageTitle>Cardápio — Palheta Brutal</PageTitle>
 
-<!-- =====================================================================
-     HERO / BANNER
-     ===================================================================== -->
-<section class="cardapio-hero">
-    <div class="cardapio-hero-inner">
-        <h1>🍟 Cardápio Palheta Brutal</h1>
-        <p>Batatas artesanais com ingredientes frescos. Feito na hora, entregue na sua porta.</p>
-    </div>
-</section>
-
-@if (produtos == null)
+@if (!menuDigitalAtivo)
 {
-    <!-- Skeleton Loading Grid -->
-    <div class="skeleton-grid">
-        @for (int i = 0; i < 8; i++)
-        {
-            <div class="skeleton-card">
-                <div class="skeleton-img shimmer"></div>
-                <div class="skeleton-body">
-                    <div class="skeleton-line tag shimmer"></div>
-                    <div class="skeleton-line shimmer"></div>
-                    <div class="skeleton-line short shimmer"></div>
-                    <div class="skeleton-footer">
-                        <div class="skeleton-price shimmer"></div>
-                        <div class="skeleton-btn shimmer"></div>
-                    </div>
-                </div>
-            </div>
-        }
+    <div style="position:fixed; inset:0; z-index:9999; background:#111; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px;">
+        <div style="font-size:6rem; margin-bottom:24px; animation: pulse 2s infinite;">🍟</div>
+        <h1 style="font-size:2.4rem; font-weight:900; color:#ffb347; margin:0 0 16px 0; letter-spacing:-1px;">Palheta Brutal</h1>
+        <div style="background:#1a1a1a; border:1px solid #333; border-radius:16px; padding:32px 40px; max-width:500px;">
+            <div style="font-size:2.5rem; margin-bottom:12px;">🔴</div>
+            <h2 style="color:#e74c3c; font-size:1.5rem; margin:0 0 12px 0;">Atendimento Encerrado</h2>
+            <p style="color:#ccc; font-size:1.1rem; line-height:1.6; margin:0;">@menuDigitalMensagem</p>
+        </div>
+        <p style="color:#444; margin-top:32px; font-size:0.85rem;">Obrigado pela preferência! 💛</p>
     </div>
-}
-else if (!produtos.Any())
-{
-    <div class="cardapio-vazio">
-        <p>😔 Cardápio indisponível no momento. Tente novamente em breve.</p>
-    </div>
+    <style>
+        @@keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.08);} }
+    </style>
 }
 else
 {
     <!-- =====================================================================
-         FILTROS DE CATEGORIA
+         HERO / BANNER
          ===================================================================== -->
-    var categorias = produtos.Select(p => p.CategoriaId).Distinct().OrderBy(c => c).ToList();
+    <section class="cardapio-hero">
+        <div class="cardapio-hero-inner">
+            <h1>🍟 Cardápio Palheta Brutal</h1>
+            <p>Batatas artesanais com ingredientes frescos. Feito na hora, entregue na sua porta.</p>
+        </div>
+    </section>
 
-    <div class="cardapio-filtros">
-        <button class="filtro-btn @(categoriaSelecionada == null ? "ativo" : "")"
-                @onclick="() => categoriaSelecionada = null">
-            Tudo
-        </button>
-        @foreach (var cat in categorias)
-        {
-            var c = cat;
-            <button class="filtro-btn @(categoriaSelecionada == c ? "ativo" : "")"
-                    @onclick="() => categoriaSelecionada = c">
-                @NomeCategoria(c)
-            </button>
-        }
-    </div>
-
-    <!-- =====================================================================
-         GRID DE PRODUTOS
-         ===================================================================== -->
-    var produtosFiltrados = categoriaSelecionada == null
-        ? produtos
-        : produtos.Where(p => p.CategoriaId == categoriaSelecionada).ToArray();
-
-    @if (categoriaSelecionada != null)
+    @if (produtos == null)
     {
-        <h2 class="cardapio-secao-titulo">@NomeCategoria(categoriaSelecionada.Value)</h2>
+        <!-- Skeleton Loading Grid -->
+        <div class="skeleton-grid">
+            @for (int i = 0; i < 8; i++)
+            {
+                <div class="skeleton-card">
+                    <div class="skeleton-img shimmer"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line tag shimmer"></div>
+                        <div class="skeleton-line shimmer"></div>
+                        <div class="skeleton-line short shimmer"></div>
+                        <div class="skeleton-footer">
+                            <div class="skeleton-price shimmer"></div>
+                            <div class="skeleton-btn shimmer"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (!produtos.Any())
+    {
+        <div class="cardapio-vazio">
+            <p>😔 Cardápio indisponível no momento. Tente novamente em breve.</p>
+        </div>
+    }
+    else
+    {
+        <!-- =====================================================================
+             FILTROS DE CATEGORIA
+             ===================================================================== -->
+        var categorias = produtos.Select(p => p.CategoriaId).Distinct().OrderBy(c => c).ToList();
+
+        <div class="cardapio-filtros">
+            <button class="filtro-btn @(categoriaSelecionada == null ? "ativo" : "")"
+                    @onclick="() => categoriaSelecionada = null">
+                Tudo
+            </button>
+            @foreach (var cat in categorias)
+            {
+                var c = cat;
+                <button class="filtro-btn @(categoriaSelecionada == c ? "ativo" : "")"
+                        @onclick="() => categoriaSelecionada = c">
+                    @NomeCategoria(c)
+                </button>
+            }
+        </div>
+
+        <!-- =====================================================================
+             GRID DE PRODUTOS
+             ===================================================================== -->
+        var produtosFiltrados = categoriaSelecionada == null
+            ? produtos
+            : produtos.Where(p => p.CategoriaId == categoriaSelecionada).ToArray();
+
+        @if (categoriaSelecionada != null)
+        {
+            <h2 class="cardapio-secao-titulo">@NomeCategoria(categoriaSelecionada.Value)</h2>
+        }
+
+        <div class="cardapio-grid">
+            @foreach (var p in produtosFiltrados)
+            {
+                <div class="produto-card @(p.CategoriaId == CategoriaEnum.Bebidas ? "produto-card-bebida" : "")">
+                    @if (!string.IsNullOrWhiteSpace(p.ImagemUrl))
+                    {
+                        <div class="produto-img-wrap">
+                            <img src="@p.ImagemUrl" alt="@p.Nome" class="produto-img" loading="lazy" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="produto-img-placeholder">
+                            @(p.CategoriaId == CategoriaEnum.Bebidas ? "🥤" : "🍟")
+                        </div>
+                    }
+
+                    <div class="produto-body">
+                        <div class="produto-categoria-tag">@NomeCategoria(p.CategoriaId)</div>
+                        <h3 class="produto-nome">@p.Nome</h3>
+                        @if (!string.IsNullOrWhiteSpace(p.Descricao))
+                        {
+                            <p class="produto-desc">@p.Descricao</p>
+                        }
+                        <div class="produto-footer">
+                            <span class="preco">R$ @p.PrecoBase.ToString("F2")</span>
+                            <button class="btn-adicionar" @onclick="() => AbrirModal(p)" id="btn-add-@p.Id">
+                                @(p.CategoriaId == CategoriaEnum.Bebidas ? "Adicionar" : "Personalizar")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
     }
 
-    <div class="cardapio-grid">
-        @foreach (var p in produtosFiltrados)
-        {
-            <div class="produto-card @(p.CategoriaId == CategoriaEnum.Bebidas ? "produto-card-bebida" : "")">
-                @if (!string.IsNullOrWhiteSpace(p.ImagemUrl))
+    <!-- =====================================================================
+         MODAL DE PERSONALIZAÇÃO
+         ===================================================================== -->
+    @if (mostrarModal && produtoSelecionado != null)
+    {
+        <div class="modal-overlay" @onclick="FecharModal">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <button class="modal-close-btn" @onclick="FecharModal">✕</button>
+                <h2>🍟 Personalize seu pedido</h2>
+                <p class="modal-nome-produto">@produtoSelecionado.Nome</p>
+
+                @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
                 {
-                    <div class="produto-img-wrap">
-                        <img src="@p.ImagemUrl" alt="@p.Nome" class="produto-img" loading="lazy" />
+                    <div class="opcoes-secao">
+                        <h4>Complementos Gratuitos (Molhos)</h4>
+                        <div class="checkbox-grid">
+                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
+                            {
+                                <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
+                                    <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
+                                </label>
+                            }
+                        </div>
                     </div>
                 }
-                else
+
+                @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
                 {
-                    <div class="produto-img-placeholder">
-                        @(p.CategoriaId == CategoriaEnum.Bebidas ? "🥤" : "🍟")
+                    <div class="opcoes-secao">
+                        <h4>Remoções / Sem</h4>
+                        <div class="checkbox-grid">
+                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
+                            {
+                                <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
+                                    <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
+                                </label>
+                            }
+                        </div>
                     </div>
                 }
 
-                <div class="produto-body">
-                    <div class="produto-categoria-tag">@NomeCategoria(p.CategoriaId)</div>
-                    <h3 class="produto-nome">@p.Nome</h3>
-                    @if (!string.IsNullOrWhiteSpace(p.Descricao))
-                    {
-                        <p class="produto-desc">@p.Descricao</p>
-                    }
-                    <div class="produto-footer">
-                        <span class="preco">R$ @p.PrecoBase.ToString("F2")</span>
-                        <button class="btn-adicionar" @onclick="() => AbrirModal(p)" id="btn-add-@p.Id">
-                            @(p.CategoriaId == CategoriaEnum.Bebidas ? "Adicionar" : "Personalizar")
-                        </button>
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
-}
-
-<!-- =====================================================================
-     MODAL DE PERSONALIZAÇÃO
-     ===================================================================== -->
-@if (mostrarModal && produtoSelecionado != null)
-{
-    <div class="modal-overlay" @onclick="FecharModal">
-        <div class="modal-content" @onclick:stopPropagation="true">
-            <button class="modal-close-btn" @onclick="FecharModal">✕</button>
-            <h2>🍟 Personalize seu pedido</h2>
-            <p class="modal-nome-produto">@produtoSelecionado.Nome</p>
-
-            @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
-            {
-                <div class="opcoes-secao">
-                    <h4>Complementos Gratuitos (Molhos)</h4>
-                    <div class="checkbox-grid">
-                        @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
-                        {
-                            <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
-                                <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
-                            </label>
-                        }
-                    </div>
-                </div>
-            }
-
-            @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
-            {
-                <div class="opcoes-secao">
-                    <h4>Remoções / Sem</h4>
-                    <div class="checkbox-grid">
-                        @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
-                        {
-                            <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
-                                <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
-                            </label>
-                        }
-                    </div>
-                </div>
-            }
-
-            @if (complementosAtivos.Any(x => x.TipoAcao == "AdicionalPago"))
-            {
-                <div class="opcoes-secao">
-                    <h4>Adicionais (+R$)</h4>
-                    <div class="addon-lista">
-                        @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "AdicionalPago"))
-                        {
-                            int qtd = quantidadesAdicionais.ContainsKey(c.Id) ? quantidadesAdicionais[c.Id] : 0;
-                            <div class="addon-contador">
-                                <span class="addon-nome">@c.Nome</span>
-                                <span class="addon-preco">@c.Preco.ToString("C2")</span>
-                                <div class="contador-controles">
-                                    <button @onclick="() => { if (qtd > 0) quantidadesAdicionais[c.Id] = qtd - 1; }">−</button>
-                                    <span>@qtd</span>
-                                    <button @onclick="() => quantidadesAdicionais[c.Id] = qtd + 1">+</button>
+                @if (complementosAtivos.Any(x => x.TipoAcao == "AdicionalPago"))
+                {
+                    <div class="opcoes-secao">
+                        <h4>Adicionais (+R$)</h4>
+                        <div class="addon-lista">
+                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "AdicionalPago"))
+                            {
+                                int qtd = quantidadesAdicionais.ContainsKey(c.Id) ? quantidadesAdicionais[c.Id] : 0;
+                                <div class="addon-contador">
+                                    <span class="addon-nome">@c.Nome</span>
+                                    <span class="addon-preco">@c.Preco.ToString("C2")</span>
+                                    <div class="contador-controles">
+                                        <button @onclick="() => { if (qtd > 0) quantidadesAdicionais[c.Id] = qtd - 1; }">−</button>
+                                        <span>@qtd</span>
+                                        <button @onclick="() => quantidadesAdicionais[c.Id] = qtd + 1">+</button>
+                                    </div>
                                 </div>
-                            </div>
-                        }
+                            }
+                        </div>
                     </div>
-                </div>
-            }
+                }
 
-            <div class="modal-footer">
-                <span class="preco-destaque">Total: R$ @PrecoTotalAtual.ToString("F2")</span>
-                <div class="modal-footer-btns">
-                    <button class="btn-cancelar" @onclick="FecharModal">Cancelar</button>
-                    <button class="btn-confirmar" @onclick="ConfirmarAdicao">✅ Adicionar ao Carrinho</button>
+                <div class="modal-footer">
+                    <span class="preco-destaque">Total: R$ @PrecoTotalAtual.ToString("F2")</span>
+                    <div class="modal-footer-btns">
+                        <button class="btn-cancelar" @onclick="FecharModal">Cancelar</button>
+                        <button class="btn-confirmar" @onclick="ConfirmarAdicao">✅ Adicionar ao Carrinho</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    }
 }
 
 @code {
     private ProdutoDto[]? produtos;
     private CategoriaEnum? categoriaSelecionada = null;
+
+    // Status do cardápio digital
+    private bool menuDigitalAtivo = true;
+    private string menuDigitalMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
 
     // Modal State
     private bool mostrarModal = false;
@@ -227,17 +250,32 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Busca produtos e complementos em paralelo para ganhar tempo na primeira carga
-        var produtosTask = Http.GetFromJsonAsync<ProdutoDto[]>("api/produtos");
-        var complementosTask = Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos/ativos");
+        // Verifica se o cardápio está ativo antes de exibir produtos
+        try
+        {
+            var menuStatus = await Http.GetFromJsonAsync<MenuDigitalStatusDto>("api/configuracoes/menu-digital");
+            if (menuStatus != null)
+            {
+                menuDigitalAtivo    = menuStatus.Ativo;
+                menuDigitalMensagem = menuStatus.Mensagem;
+            }
+        }
+        catch { }
 
-        await Task.WhenAll(produtosTask, complementosTask);
+        if (menuDigitalAtivo)
+        {
+            // Busca produtos e complementos em paralelo para ganhar tempo na primeira carga
+            var produtosTask = Http.GetFromJsonAsync<ProdutoDto[]>("api/produtos");
+            var complementosTask = Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos/ativos");
 
-        var plist = await produtosTask;
-        if (plist != null) produtos = plist.Where(p => p.Ativo).OrderBy(x => x.Ordem).ToArray();
+            await Task.WhenAll(produtosTask, complementosTask);
 
-        var clist = await complementosTask;
-        if (clist != null) todosComplementos = clist;
+            var plist = await produtosTask;
+            if (plist != null) produtos = plist.Where(p => p.Ativo).OrderBy(x => x.Ordem).ToArray();
+
+            var clist = await complementosTask;
+            if (clist != null) todosComplementos = clist;
+        }
     }
 
     private void ToggleGratuito(int id, bool ativo)
