@@ -178,41 +178,66 @@ public class PedidosController : ControllerBase
         return Ok(dto);
     }
 
-    // ── Baixa automática de estoque por receita ───────────────────────────
+    // ── Baixa automática de estoque por receita e produtos finais ───────────
     private async Task BaixarEstoque(List<NovoItemPedidoDto> itens, int pedidoId)
     {
         if (itens == null || !itens.Any()) return;
 
         var receitas = (await _receitaRepository.GetAllAsync()).ToList();
-        if (!receitas.Any()) return; // Nenhuma receita cadastrada — ignora silenciosamente
-
+        
         foreach (var item in itens)
         {
-            var receitasDoProduto = receitas.Where(r => r.Produto.Id == item.ProdutoId).ToList();
-            foreach (var receita in receitasDoProduto)
+            // Subtrai estoque do produto final
+            var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
+            if (produto == null) continue;
+
+            if (produto.EstoqueAtual >= item.Quantidade)
             {
-                var insumo = await _insumoRepository.GetByIdAsync(receita.Insumo.Id);
-                if (insumo == null) continue;
+                produto.AjustarEstoque(-item.Quantidade);
+                await _produtoRepository.UpdateAsync(produto);
 
-                var qtdConsumida = receita.QuantidadePorUnidade * item.Quantidade;
-
-                if (insumo.EstoqueAtual >= qtdConsumida)
+                // Desativa o produto se o estoque chegar a zero
+                if (produto.EstoqueAtual <= 0)
                 {
-                    var mov = new MovimentacaoEstoque(
-                        insumo,
-                        TipoMovimentacao.Saida,
-                        qtdConsumida,
-                        insumo.CustoPorUnidade,
-                        $"Baixa automática — Pedido #{pedidoId}");
-
-                    await _movRepository.AddAsync(mov);
-                    await _insumoRepository.UpdateAsync(insumo);
+                    produto.Desativar();
+                    await _produtoRepository.UpdateAsync(produto);
+                    await _hub.Clients.All.SendAsync("ProdutoDesativado", produto.Id);
                 }
-                else
+            }
+            else
+            {
+                throw new System.Exception($"Estoque insuficiente para o produto {produto.Nome}.");
+            }
+
+            // Subtrai estoque de insumos (se houver receitas)
+            if (receitas.Any())
+            {
+                var receitasDoProduto = receitas.Where(r => r.Produto.Id == item.ProdutoId).ToList();
+                foreach (var receita in receitasDoProduto)
                 {
-                    // Estoque insuficiente: ajusta assim mesmo (vai para negativo) e gera alerta visual
-                    insumo.AjustarEstoque(-qtdConsumida);
-                    await _insumoRepository.UpdateAsync(insumo);
+                    var insumo = await _insumoRepository.GetByIdAsync(receita.Insumo.Id);
+                    if (insumo == null) continue;
+
+                    var qtdConsumida = receita.QuantidadePorUnidade * item.Quantidade;
+
+                    if (insumo.EstoqueAtual >= qtdConsumida)
+                    {
+                        var mov = new MovimentacaoEstoque(
+                            insumo,
+                            TipoMovimentacao.Saida,
+                            qtdConsumida,
+                            insumo.CustoPorUnidade,
+                            $"Baixa automática — Pedido #{pedidoId}");
+
+                        await _movRepository.AddAsync(mov);
+                        await _insumoRepository.UpdateAsync(insumo);
+                    }
+                    else
+                    {
+                        // Estoque insuficiente: ajusta assim mesmo (vai para negativo) e gera alerta visual
+                        insumo.AjustarEstoque(-qtdConsumida);
+                        await _insumoRepository.UpdateAsync(insumo);
+                    }
                 }
             }
         }
