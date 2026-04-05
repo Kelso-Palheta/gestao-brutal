@@ -139,63 +139,13 @@
                 <p class="totem-modal-desc">@produtoSelecionado.Descricao</p>
                 <div class="totem-modal-price">@produtoSelecionado.PrecoBase.ToString("C2")</div>
 
-                @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
-                {
-                    <div class="totem-obs-box">
-                        <label>Molhos incluídos — toque para retirar</label>
-                        <div class="totem-quick-obs">
-                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
-                            {
-                                bool incluido = selecionadosIds.Contains(c.Id);
-                                <button class="totem-chip @(incluido ? "on-green" : "on-red")" @onclick='() => ToggleComplemento(c)'>
-                                    @(incluido ? "✅ " : "✕ ")@c.Nome
-                                </button>
-                            }
-                        </div>
-                    </div>
-                }
-
-                @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
-                {
-                    <div class="totem-obs-box">
-                        <label>Ingredientes — toque para retirar</label>
-                        <div class="totem-quick-obs">
-                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
-                            {
-                                bool incluido = selecionadosIds.Contains(c.Id);
-                                <button class="totem-chip @(incluido ? "on-green" : "on-red")" @onclick='() => ToggleComplemento(c)'>
-                                    @(incluido ? "✅ " : "✕ ")@c.Nome
-                                </button>
-                            }
-                        </div>
-                    </div>
-                }
-
-                @if (complementosAtivos.Any(x => x.TipoAcao == "AdicionalPago"))
-                {
-                    <div class="totem-obs-box">
-                        <label>Adicionais Pagos (+ R$)</label>
-                        <div class="totem-quick-obs">
-                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "AdicionalPago"))
-                            {
-                                var qtd = quantidadesAdicionais.ContainsKey(c.Id) ? quantidadesAdicionais[c.Id] : 0;
-                                <div class="totem-chip @(qtd > 0 ? "on-green" : "")" style="display:flex; align-items:center; gap: 15px; cursor: pointer; user-select:none; padding:10px 20px;">
-                                    <div @onclick='() => AlterarQuantidade(c.Id, 1)' style="flex-grow:1; text-align:left;">
-                                        @(qtd > 0 ? "✅ " : "+ ")@c.Nome (@c.Preco.ToString("C2"))
-                                    </div>
-                                    @if(qtd > 0)
-                                    {
-                                        <div style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.1); border-radius:30px; padding:2px 8px;">
-                                            <button @onclick:stopPropagation="true" @onclick='() => AlterarQuantidade(c.Id, -1)' style="background:transparent; color:inherit; border:none; padding:5px 10px; font-size:1.4rem; font-weight:bold;">−</button>
-                                            <span style="font-size:1.2rem; font-weight:bold;">@qtd</span>
-                                            <button @onclick:stopPropagation="true" @onclick='() => AlterarQuantidade(c.Id, 1)' style="background:transparent; color:inherit; border:none; padding:5px 10px; font-size:1.4rem; font-weight:bold;">+</button>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
+                @* Componente compartilhado de customização *@
+                <CustomizadorItem 
+                    Complementos="@complementosAtivos.ToList()"
+                    SelecionadosIds="@selecionadosIds"
+                    QuantidadesAdicionais="@quantidadesAdicionais"
+                    OnToggleComplemento="@ToggleComplemento"
+                    OnAlterarQuantidade="@AlterarQuantidade" />
 
                 <div class="totem-qty-selector">
                     <span>Quantidade:</span>
@@ -266,8 +216,8 @@
 
         try
         {
-            // Verifica se o cardápio está ativo antes de exibir produtos
-            var menuStatus = await Http.GetFromJsonAsync<MenuDigitalStatusDto>("api/configuracoes/menu-digital");
+            // Verifica se o TOTEM está ativo (separado do Delivery)
+            var menuStatus = await Http.GetFromJsonAsync<TotemStatusDto>("api/configuracoes/totem-status");
             if (menuStatus != null)
             {
                 menuDigitalAtivo    = menuStatus.Ativo;

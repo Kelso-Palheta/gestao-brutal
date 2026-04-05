@@ -534,47 +534,92 @@
         {
             <div class="admin-section">
 
-                <!-- Seção Cardápio Digital -->
+                <!-- Seção Delivery (Cardápio Digital) -->
                 <div class="admin-section-header">
-                    <h2>Cardápio Digital</h2>
+                    <h2>🛵 Cardápio Digital (Delivery)</h2>
                 </div>
                 <div class="admin-form-card" style="margin-bottom: 24px;">
                     <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
-                        <div style="font-size:2.5rem;">@(menuDigitalAtivo ? "🟢" : "🔴")</div>
+                        <div style="font-size:2.5rem;">@(deliveryAtivo ? "🟢" : "🔴")</div>
                         <div>
-                            <h3 style="margin:0 0 4px 0;">@(menuDigitalAtivo ? "Cardápio Aberto" : "Cardápio Encerrado")</h3>
+                            <h3 style="margin:0 0 4px 0;">@(deliveryAtivo ? "Delivery Aberto" : "Delivery Encerrado")</h3>
                             <p style="margin:0; color:#666; font-size:0.85rem;">
-                                @(menuDigitalAtivo
-                                    ? "Os clientes podem ver o cardápio e fazer pedidos normalmente."
-                                    : "O cardápio está exibindo a mensagem de encerramento. Pedidos bloqueados.")
+                                @(deliveryAtivo
+                                    ? "Os clientes podem fazer pedidos pelo cardápio digital."
+                                    : "O delivery está exibindo a mensagem de encerramento. Pedidos bloqueados.")
                             </p>
                         </div>
-                        <button @onclick="ToggleMenuDigital"
-                                disabled="@salvandoMenuDigital"
+                        <button @onclick="ToggleDelivery"
+                                disabled="@salvandoDelivery"
                                 style="margin-left:auto; padding:12px 28px; font-size:1rem; font-weight:bold; border:none; border-radius:8px; cursor:pointer; transition:0.2s;
-                                       background:@(menuDigitalAtivo ? "#e74c3c" : "#27ae60"); color:#fff;">
-                            @if (salvandoMenuDigital) { <text>⌛ Salvando...</text> }
-                            else if (menuDigitalAtivo) { <text>🔴 Encerrar Cardápio</text> }
-                            else { <text>🟢 Abrir Cardápio</text> }
+                                       background:@(deliveryAtivo ? "#e74c3c" : "#27ae60"); color:#fff;">
+                            @if (salvandoDelivery) { <text>⌛ Salvando...</text> }
+                            else if (deliveryAtivo) { <text>🔴 Encerrar Delivery</text> }
+                            else { <text>🟢 Abrir Delivery</text> }
                         </button>
                     </div>
 
                     <div class="admin-field" style="margin-bottom:12px;">
                         <label>Mensagem exibida quando encerrado</label>
-                        <input type="text" @bind="menuDigitalMensagem" maxlength="200"
+                        <input type="text" @bind="deliveryMensagem" maxlength="200"
                                placeholder="Ex: Atendimento encerrado. Voltamos amanhã às 11h! 🍟"
                                style="width:100%;" />
                     </div>
                     <p style="font-size:0.8rem; color:#999; margin:0 0 12px 0;">
-                        Esta mensagem aparece para o cliente na tela do totem quando o cardápio estiver encerrado.
+                        Esta mensagem aparece para o cliente no cardápio digital quando o delivery estiver encerrado.
                     </p>
 
-                    @if (!string.IsNullOrEmpty(msgMenuDigitalOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgMenuDigitalOk</div>  }
-                    @if (!string.IsNullOrEmpty(msgMenuDigitalErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgMenuDigitalErro</div> }
+                    @if (!string.IsNullOrEmpty(msgDeliveryOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgDeliveryOk</div>  }
+                    @if (!string.IsNullOrEmpty(msgDeliveryErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgDeliveryErro</div> }
 
                     <div class="admin-form-actions" style="margin-top:12px;">
-                        <button class="admin-btn-salvar" @onclick="SalvarMensagemMenuDigital" disabled="@salvandoMenuDigital">
-                            💾 Salvar Mensagem
+                        <button class="admin-btn-salvar" @onclick="SalvarDelivery" disabled="@salvandoDelivery">
+                            💾 Salvar Configuração
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Seção Totem (Autoatendimento) -->
+                <div class="admin-section-header">
+                    <h2>📱 Totem de Autoatendimento</h2>
+                </div>
+                <div class="admin-form-card" style="margin-bottom: 24px;">
+                    <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+                        <div style="font-size:2.5rem;">@(totemAtivo ? "🟢" : "🔴")</div>
+                        <div>
+                            <h3 style="margin:0 0 4px 0;">@(totemAtivo ? "Totem Ativo" : "Totem Encerrado")</h3>
+                            <p style="margin:0; color:#666; font-size:0.85rem;">
+                                @(totemAtivo
+                                    ? "O totem está funcionando normalmente para autoatendimento."
+                                    : "O totem está exibindo a mensagem de encerramento. Pedidos bloqueados.")
+                            </p>
+                        </div>
+                        <button @onclick="ToggleTotem"
+                                disabled="@salvandoTotem"
+                                style="margin-left:auto; padding:12px 28px; font-size:1rem; font-weight:bold; border:none; border-radius:8px; cursor:pointer; transition:0.2s;
+                                       background:@(totemAtivo ? "#e74c3c" : "#27ae60"); color:#fff;">
+                            @if (salvandoTotem) { <text>⌛ Salvando...</text> }
+                            else if (totemAtivo) { <text>🔴 Encerrar Totem</text> }
+                            else { <text>🟢 Ativar Totem</text> }
+                        </button>
+                    </div>
+
+                    <div class="admin-field" style="margin-bottom:12px;">
+                        <label>Mensagem exibida quando encerrado</label>
+                        <input type="text" @bind="totemMensagem" maxlength="200"
+                               placeholder="Ex: Atendimento encerrado. Voltamos amanhã às 11h! 🍟"
+                               style="width:100%;" />
+                    </div>
+                    <p style="font-size:0.8rem; color:#999; margin:0 0 12px 0;">
+                        Esta mensagem aparece para o cliente no totem quando estiver encerrado.
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(msgTotemOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgTotemOk</div>  }
+                    @if (!string.IsNullOrEmpty(msgTotemErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgTotemErro</div> }
+
+                    <div class="admin-form-actions" style="margin-top:12px;">
+                        <button class="admin-btn-salvar" @onclick="SalvarTotem" disabled="@salvandoTotem">
+                            💾 Salvar Configuração
                         </button>
                     </div>
                 </div>
@@ -754,11 +799,20 @@
             var cbConfig = await Http.GetFromJsonAsync<CashbackConfigDto>("api/cashback/configuracao");
             if (cbConfig != null) porcentagemCashback = cbConfig.Porcentagem;
 
-            var menuStatus = await Http.GetFromJsonAsync<MenuDigitalStatusDto>("api/configuracoes/menu-digital");
-            if (menuStatus != null)
+            // Carrega status do Delivery
+            var deliveryStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
+            if (deliveryStatus != null)
             {
-                menuDigitalAtivo    = menuStatus.Ativo;
-                menuDigitalMensagem = menuStatus.Mensagem;
+                deliveryAtivo    = deliveryStatus.Ativo;
+                deliveryMensagem = deliveryStatus.Mensagem;
+            }
+
+            // Carrega status do Totem
+            var totemStatus = await Http.GetFromJsonAsync<TotemStatusDto>("api/configuracoes/totem-status");
+            if (totemStatus != null)
+            {
+                totemAtivo    = totemStatus.Ativo;
+                totemMensagem = totemStatus.Mensagem;
             }
         }
         catch (Exception ex)
@@ -1209,40 +1263,76 @@
         }
     }
 
-    // ======================== MENU DIGITAL ========================
+    // ======================== DELIVERY (Cardápio Digital) ========================
 
-    private bool    menuDigitalAtivo    = true;
-    private string  menuDigitalMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
-    private bool    salvandoMenuDigital  = false;
-    private string  msgMenuDigitalOk    = "";
-    private string  msgMenuDigitalErro  = "";
+    private bool    deliveryAtivo    = true;
+    private string  deliveryMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
+    private bool    salvandoDelivery  = false;
+    private string  msgDeliveryOk    = "";
+    private string  msgDeliveryErro  = "";
 
-    private async Task ToggleMenuDigital()
+    private async Task ToggleDelivery()
     {
-        menuDigitalAtivo = !menuDigitalAtivo;
-        await EnviarStatusMenuDigital();
+        deliveryAtivo = !deliveryAtivo;
+        await EnviarStatusDelivery();
     }
 
-    private async Task SalvarMensagemMenuDigital()
+    private async Task SalvarDelivery()
     {
-        await EnviarStatusMenuDigital();
+        await EnviarStatusDelivery();
     }
 
-    private async Task EnviarStatusMenuDigital()
+    private async Task EnviarStatusDelivery()
     {
-        msgMenuDigitalOk = ""; msgMenuDigitalErro = "";
-        salvandoMenuDigital = true;
+        msgDeliveryOk = ""; msgDeliveryErro = "";
+        salvandoDelivery = true;
         try
         {
-            var dto = new MenuDigitalStatusDto { Ativo = menuDigitalAtivo, Mensagem = menuDigitalMensagem };
-            var res = await Http.PostAsJsonAsync("api/configuracoes/menu-digital", dto);
+            var dto = new DeliveryStatusDto { Ativo = deliveryAtivo, Mensagem = deliveryMensagem };
+            var res = await Http.PostAsJsonAsync("api/configuracoes/delivery-status", dto);
             if (res.IsSuccessStatusCode)
-                msgMenuDigitalOk = menuDigitalAtivo ? "Cardápio aberto com sucesso!" : "Cardápio encerrado. Mensagem ativa no totem.";
+                msgDeliveryOk = deliveryAtivo ? "Delivery aberto com sucesso!" : "Delivery encerrado. Mensagem ativa.";
             else
-                msgMenuDigitalErro = await res.Content.ReadAsStringAsync();
+                msgDeliveryErro = await res.Content.ReadAsStringAsync();
         }
-        catch (Exception ex) { msgMenuDigitalErro = $"Erro: {ex.Message}"; }
-        finally { salvandoMenuDigital = false; }
+        catch (Exception ex) { msgDeliveryErro = $"Erro: {ex.Message}"; }
+        finally { salvandoDelivery = false; }
+    }
+
+    // ======================== TOTEM (Autoatendimento) ========================
+
+    private bool    totemAtivo    = true;
+    private string  totemMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
+    private bool    salvandoTotem  = false;
+    private string  msgTotemOk    = "";
+    private string  msgTotemErro  = "";
+
+    private async Task ToggleTotem()
+    {
+        totemAtivo = !totemAtivo;
+        await EnviarStatusTotem();
+    }
+
+    private async Task SalvarTotem()
+    {
+        await EnviarStatusTotem();
+    }
+
+    private async Task EnviarStatusTotem()
+    {
+        msgTotemOk = ""; msgTotemErro = "";
+        salvandoTotem = true;
+        try
+        {
+            var dto = new TotemStatusDto { Ativo = totemAtivo, Mensagem = totemMensagem };
+            var res = await Http.PostAsJsonAsync("api/configuracoes/totem-status", dto);
+            if (res.IsSuccessStatusCode)
+                msgTotemOk = totemAtivo ? "Totem ativado com sucesso!" : "Totem encerrado. Mensagem ativa.";
+            else
+                msgTotemErro = await res.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex) { msgTotemErro = $"Erro: {ex.Message}"; }
+        finally { salvandoTotem = false; }
     }
 
     // ======================== CASHBACK ========================

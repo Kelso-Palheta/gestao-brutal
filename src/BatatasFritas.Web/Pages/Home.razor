@@ -253,7 +253,7 @@ else
         // Verifica se o cardápio está ativo antes de exibir produtos
         try
         {
-            var menuStatus = await Http.GetFromJsonAsync<MenuDigitalStatusDto>("api/configuracoes/menu-digital");
+            var menuStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
             if (menuStatus != null)
             {
                 menuDigitalAtivo    = menuStatus.Ativo;

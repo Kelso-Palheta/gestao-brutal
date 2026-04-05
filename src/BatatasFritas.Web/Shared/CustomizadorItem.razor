@@ -1,0 +1,111 @@
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
+
+@*
+    Componente compartilhado de customização de itens
+    Usado tanto no Totem quanto no Cardápio Delivery
+    Estados visuais:
+      - Inclusões (MolhoGratuito/Remocao): verde com ✅ por padrão, vermelho com ✕ ao clicar para retirar
+      - Adicionais pagos: com controle de quantidade
+*@
+
+<div class="customizador-item">
+    @* Molhos Gratuitos - inclusos por padrão *@
+    @if (Complementos.Any(x => x.TipoAcao == "MolhoGratuito"))
+    {
+        <div class="customizador-secao">
+            <label class="customizador-secao-titulo">
+                @TituloMolhos
+            </label>
+            <div class="customizador-chips">
+                @foreach (var comp in Complementos.Where(x => x.TipoAcao == "MolhoGratuito"))
+                {
+                    bool incluido = SelecionadosIds.Contains(comp.Id);
+                    <button class="customizador-chip @(incluido ? "chip-incluido" : "chip-removido")"
+                            @onclick='() => OnToggleComplemento?.Invoke(comp)'>
+                        <span class="chip-icono">@(incluido ? "✅" : "✕")</span>
+                        <span class="chip-nome">@comp.Nome</span>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+
+    @* Ingredientes para Remoção - inclusos por padrão *@
+    @if (Complementos.Any(x => x.TipoAcao == "Remocao"))
+    {
+        <div class="customizador-secao">
+            <label class="customizador-secao-titulo">
+                @TituloIngredientes
+            </label>
+            <div class="customizador-chips">
+                @foreach (var comp in Complementos.Where(x => x.TipoAcao == "Remocao"))
+                {
+                    bool incluido = SelecionadosIds.Contains(comp.Id);
+                    <button class="customizador-chip @(incluido ? "chip-incluido" : "chip-removido")"
+                            @onclick='() => OnToggleComplemento?.Invoke(comp)'>
+                        <span class="chip-icono">@(incluido ? "✅" : "✕")</span>
+                        <span class="chip-nome">@comp.Nome</span>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+
+    @* Adicionais Pagos - com controle de quantidade *@
+    @if (Complementos.Any(x => x.TipoAcao == "AdicionalPago"))
+    {
+        <div class="customizador-secao">
+            <label class="customizador-secao-titulo">
+                @TituloAdicionais
+            </label>
+            <div class="customizador-chips">
+                @foreach (var comp in Complementos.Where(x => x.TipoAcao == "AdicionalPago"))
+                {
+                    var qtd = QuantidadesAdicionais.ContainsKey(comp.Id) ? QuantidadesAdicionais[comp.Id] : 0;
+                    <div class="customizador-chip @(qtd > 0 ? "chip-incluido" : "chip-opcional")"
+                         style="cursor: pointer; user-select: none;">
+                        <div class="chip-conteudo" @onclick='() => { if (qtd == 0) OnAlterarQuantidade?.Invoke(comp.Id, 1); }'>
+                            <span class="chip-icono">@(qtd > 0 ? "✅" : "+")</span>
+                            <span class="chip-nome">@comp.Nome (@comp.Preco.ToString("C2"))</span>
+                        </div>
+                        @if (qtd > 0)
+                        {
+                            <div class="chip-quantidade">
+                                <button class="chip-qty-btn" @onclick:stopPropagation="true" @onclick='() => OnAlterarQuantidade?.Invoke(comp.Id, -1)'>−</button>
+                                <span class="chip-qty-value">@qtd</span>
+                                <button class="chip-qty-btn" @onclick:stopPropagation="true" @onclick='() => OnAlterarQuantidade?.Invoke(comp.Id, 1)'>+</button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<ComplementoDto> Complementos { get; set; } = new();
+
+    [Parameter]
+    public string TituloMolhos { get; set; } = "Molhos incluídos — toque para retirar";
+
+    [Parameter]
+    public string TituloIngredientes { get; set; } = "Ingredientes — toque para retirar";
+
+    [Parameter]
+    public string TituloAdicionais { get; set; } = "Adicionais Pagos (+ R$)";
+
+    [Parameter]
+    public HashSet<int> SelecionadosIds { get; set; } = new();
+
+    [Parameter]
+    public Dictionary<int, int> QuantidadesAdicionais { get; set; } = new();
+
+    [Parameter]
+    public Action<ComplementoDto>? OnToggleComplemento { get; set; }
+
+    [Parameter]
+    public Action<int, int>? OnAlterarQuantidade { get; set; }
+}

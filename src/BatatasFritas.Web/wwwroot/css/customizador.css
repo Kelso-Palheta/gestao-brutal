@@ -1,0 +1,212 @@
+/* ============================================
+   Customizador de Item - Estilos Compartilhados
+   Totem e Cardápio Delivery
+   ============================================ */
+
+.customizador-item {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px;
+}
+
+.customizador-secao {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.customizador-secao-titulo {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.customizador-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Chip base */
+.customizador-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 2px solid #444;
+    background: #2a2a2a;
+    color: #ccc;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Estado: Incluído (verde com check) */
+.customizador-chip.chip-incluido {
+    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+    border-color: #4CAF50;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.customizador-chip.chip-incluido:hover {
+    background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%);
+    border-color: #66BB6A;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* Estado: Removido (vermelho com X) */
+.customizador-chip.chip-removido {
+    background: linear-gradient(135deg, #b71c1c 0%, #c62828 100%);
+    border-color: #f44336;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+    text-decoration: line-through;
+}
+
+.customizador-chip.chip-removido:hover {
+    background: linear-gradient(135deg, #c62828 0%, #d32f2f 100%);
+    border-color: #ef5350;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+/* Estado: Opcional (não selecionado) */
+.customizador-chip.chip-opcional {
+    background: #2a2a2a;
+    border-color: #555;
+    color: #aaa;
+}
+
+.customizador-chip.chip-opcional:hover {
+    background: #333;
+    border-color: #777;
+    color: #ddd;
+}
+
+/* Ícone do chip */
+.chip-icono {
+    font-size: 1.1rem;
+    margin-right: 8px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.chip-nome {
+    flex: 1;
+}
+
+/* Conteúdo clicável do adicional */
+.chip-conteudo {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    padding: 4px 0;
+}
+
+/* Controle de quantidade */
+.chip-quantidade {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 4px 10px;
+    margin-left: 8px;
+}
+
+.chip-qty-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background 0.2s;
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chip-qty-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.chip-qty-value {
+    font-size: 1rem;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+    color: #fff;
+}
+
+/* ============================================
+   Responsivo para mobile (Delivery)
+   ============================================ */
+@media (max-width: 768px) {
+    .customizador-item {
+        padding: 12px;
+        gap: 16px;
+    }
+
+    .customizador-chips {
+        gap: 8px;
+    }
+
+    .customizador-chip {
+        padding: 10px 14px;
+        font-size: 0.85rem;
+    }
+
+    .chip-icono {
+        font-size: 1rem;
+        min-width: 20px;
+    }
+}
+
+/* ============================================
+   Totem - Ajustes para tela grande
+   ============================================ */
+@media (min-width: 1024px) {
+    .customizador-item {
+        padding: 20px;
+        gap: 24px;
+    }
+
+    .customizador-secao-titulo {
+        font-size: 1.1rem;
+    }
+
+    .customizador-chip {
+        padding: 16px 24px;
+        font-size: 1.1rem;
+        min-height: 56px;
+    }
+
+    .chip-icono {
+        font-size: 1.3rem;
+        min-width: 28px;
+    }
+
+    .chip-qty-btn {
+        font-size: 1.4rem;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .chip-qty-value {
+        font-size: 1.2rem;
+    }
+}
