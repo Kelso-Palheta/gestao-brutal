@@ -142,57 +142,16 @@ else
                 <h2>🍟 Personalize seu pedido</h2>
                 <p class="modal-nome-produto">@produtoSelecionado.Nome</p>
 
-                @if (complementosAtivos.Any(x => x.TipoAcao == "MolhoGratuito"))
-                {
-                    <div class="opcoes-secao">
-                        <h4>Complementos Gratuitos (Molhos)</h4>
-                        <div class="checkbox-grid">
-                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito"))
-                            {
-                                <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
-                                    <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
-                                </label>
-                            }
-                        </div>
-                    </div>
-                }
-
-                @if (complementosAtivos.Any(x => x.TipoAcao == "Remocao"))
-                {
-                    <div class="opcoes-secao">
-                        <h4>Remoções / Sem</h4>
-                        <div class="checkbox-grid">
-                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "Remocao"))
-                            {
-                                <label class="checkbox-item @(ativosGratuitosERemocao.Contains(c.Id) ? "selecionado" : "")">
-                                    <input type="checkbox" checked="@ativosGratuitosERemocao.Contains(c.Id)" @onchange="@(e => ToggleGratuito(c.Id, (bool)e.Value!))" /> @c.Nome
-                                </label>
-                            }
-                        </div>
-                    </div>
-                }
-
-                @if (complementosAtivos.Any(x => x.TipoAcao == "AdicionalPago"))
-                {
-                    <div class="opcoes-secao">
-                        <h4>Adicionais (+R$)</h4>
-                        <div class="addon-lista">
-                            @foreach (var c in complementosAtivos.Where(x => x.TipoAcao == "AdicionalPago"))
-                            {
-                                int qtd = quantidadesAdicionais.ContainsKey(c.Id) ? quantidadesAdicionais[c.Id] : 0;
-                                <div class="addon-contador">
-                                    <span class="addon-nome">@c.Nome</span>
-                                    <span class="addon-preco">@c.Preco.ToString("C2")</span>
-                                    <div class="contador-controles">
-                                        <button @onclick="() => { if (qtd > 0) quantidadesAdicionais[c.Id] = qtd - 1; }">−</button>
-                                        <span>@qtd</span>
-                                        <button @onclick="() => quantidadesAdicionais[c.Id] = qtd + 1">+</button>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
+                @* Componente compartilhado de customização (mesmo do Totem) *@
+                <CustomizadorItem 
+                    Complementos="@complementosAtivos.ToList()"
+                    TituloMolhos="Molhos incluídos — toque para retirar"
+                    TituloIngredientes="Ingredientes — toque para retirar"
+                    TituloAdicionais="Adicionais Pagos (+ R$)"
+                    SelecionadosIds="@selecionadosIds"
+                    QuantidadesAdicionais="@quantidadesAdicionais"
+                    OnToggleComplemento="@ToggleComplemento"
+                    OnAlterarQuantidade="@AlterarQuantidade" />
 
                 <div class="modal-footer">
                     <span class="preco-destaque">Total: R$ @PrecoTotalAtual.ToString("F2")</span>
@@ -235,17 +194,34 @@ else
         }
     }
 
-    private HashSet<int> ativosGratuitosERemocao = new();
+    // Variáveis para o CustomizadorItem (componente compartilhado)
+    private HashSet<int> selecionadosIds = new();
     private Dictionary<int, int> quantidadesAdicionais = new();
 
-    private decimal PrecoTotalAtual
+    // Legado: mantido para compatibilidade (não usado mais)
+    private HashSet<int> ativosGratuitosERemocao = new();
+
+    private decimal precoAdicionais => todosComplementos
+        .Where(c => c.TipoAcao == "AdicionalPago" && quantidadesAdicionais.ContainsKey(c.Id))
+        .Sum(c => c.Preco * quantidadesAdicionais[c.Id]);
+
+    private decimal PrecoTotalAtual => ((produtoSelecionado?.PrecoBase ?? 0) + precoAdicionais);
+
+    private void ToggleComplemento(ComplementoDto c)
     {
-        get
-        {
-            var basico = produtoSelecionado?.PrecoBase ?? 0;
-            var addPreco = quantidadesAdicionais.Sum(kv => kv.Value * (todosComplementos.FirstOrDefault(c => c.Id == kv.Key)?.Preco ?? 0));
-            return basico + addPreco;
-        }
+        if (selecionadosIds.Contains(c.Id))
+            selecionadosIds.Remove(c.Id);
+        else
+            selecionadosIds.Add(c.Id);
+    }
+
+    private void AlterarQuantidade(int id, int delta)
+    {
+        if (!quantidadesAdicionais.ContainsKey(id))
+            quantidadesAdicionais[id] = 0;
+        quantidadesAdicionais[id] += delta;
+        if (quantidadesAdicionais[id] <= 0)
+            quantidadesAdicionais.Remove(id);
     }
 
     protected override async Task OnInitializedAsync()
@@ -292,8 +268,13 @@ else
             return;
         }
         produtoSelecionado = produto;
-        ativosGratuitosERemocao.Clear();
+        selecionadosIds.Clear();
         quantidadesAdicionais.Clear();
+        
+        // Pré-selecionar molhos e ingredientes: verde = incluído por padrão
+        foreach (var comp in complementosAtivos.Where(x => x.TipoAcao == "MolhoGratuito" || x.TipoAcao == "Remocao"))
+            selecionadosIds.Add(comp.Id);
+        
         mostrarModal = true;
     }
 
@@ -307,26 +288,29 @@ else
     {
         if (produtoSelecionado == null) return;
 
-        var objAdics = quantidadesAdicionais
-            .Where(kv => kv.Value > 0)
-            .Select(kv => $"{kv.Value}x {todosComplementos.First(c => c.Id == kv.Key).Nome}")
-            .ToList();
+        var partes = new List<string>();
 
-        var objMolhos = ativosGratuitosERemocao
-            .Select(id => todosComplementos.First(c => c.Id == id).Nome)
-            .ToList();
+        // Molhos retirados (desmarcados = vermelhos)
+        var molhosRetirados = complementosAtivos
+            .Where(c => c.TipoAcao == "MolhoGratuito" && !selecionadosIds.Contains(c.Id))
+            .Select(c => $"Sem {c.Nome}");
+        partes.AddRange(molhosRetirados);
 
-        var obsPartes = new List<string>();
-        if (objMolhos.Any()) obsPartes.Add(string.Join(", ", objMolhos));
-        if (objAdics.Any()) obsPartes.Add(string.Join(", ", objAdics));
+        // Ingredientes retirados (desmarcados = vermelhos)
+        var ingredientesRetirados = complementosAtivos
+            .Where(c => c.TipoAcao == "Remocao" && !selecionadosIds.Contains(c.Id))
+            .Select(c => $"Sem {c.Nome}");
+        partes.AddRange(ingredientesRetirados);
 
-        Carrinho.AdicionarItemComOpcoes(
-            produtoSelecionado,
-            1,
-            PrecoTotalAtual,
-            string.Join(" | ", obsPartes)
-        );
+        // Adicionais pagos incluídos
+        var pagos = complementosAtivos
+            .Where(c => c.TipoAcao == "AdicionalPago" && quantidadesAdicionais.ContainsKey(c.Id))
+            .Select(c => $"{quantidadesAdicionais[c.Id]}x {c.Nome}");
+        partes.AddRange(pagos);
 
+        var observacaoFinal = string.Join(", ", partes);
+
+        Carrinho.AdicionarItemComOpcoes(produtoSelecionado, 1, PrecoTotalAtual, observacaoFinal);
         FecharModal();
     }
 

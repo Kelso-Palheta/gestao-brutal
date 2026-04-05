@@ -4229,6 +4229,104 @@ select.est-input option {
         padding: 20px 16px;
     }
 
+    /* Totem em mobile: empilha grid e sidebar */
+    .totem-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0;
+    }
+
+    .totem-menu-area {
+        padding-bottom: 10px;
+    }
+
+    .totem-sidebar {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #1a1a1a;
+        border-top: 3px solid #ffb347;
+        padding: 10px 16px;
+        z-index: 100;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .totem-sidebar-header {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 0;
+    }
+
+    .totem-sidebar-header h2 {
+        font-size: 1.1rem;
+        margin: 0;
+    }
+
+    .totem-btn-clear {
+        font-size: 0.85rem !important;
+        padding: 6px 12px !important;
+    }
+
+    .totem-cart-items {
+        max-height: 150px;
+        overflow-y: auto;
+    }
+
+    .totem-cart-item {
+        padding: 8px 0;
+        font-size: 0.85rem;
+    }
+
+    .totem-sidebar-footer {
+        padding: 10px 0;
+    }
+
+    .totem-total-line {
+        margin-bottom: 6px;
+    }
+
+    .totem-total-line span {
+        font-size: 0.95rem;
+    }
+
+    .totem-total-line strong {
+        font-size: 1.3rem;
+    }
+
+    .totem-btn-checkout {
+        padding: 10px;
+        font-size: 1rem;
+    }
+
+    /* Modal de personalização em mobile */
+    .totem-modal-overlay {
+        padding: 10px;
+    }
+
+    .totem-modal {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .totem-modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .totem-modal-body {
+        padding: 16px;
+    }
+
+    .totem-modal-footer {
+        padding: 16px;
+    }
+
+    .totem-btn-confirm-add {
+        font-size: 1rem !important;
+        padding: 14px !important;
+    }
+
     /* ── ESTOQUE ── */
     .est-container {
         padding: 12px !important;
