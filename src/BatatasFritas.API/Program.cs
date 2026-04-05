@@ -120,7 +120,39 @@ app.MapGet("/api/health", () => "OK");
 using (var scope = app.Services.CreateScope())
 {
     var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+    var session = scope.ServiceProvider.GetRequiredService<NHibernate.ISession>();
     var produtoRepo = scope.ServiceProvider.GetRequiredService<IRepository<BatatasFritas.Domain.Entities.Produto>>();
+    
+    // ── Migração: Adicionar colunas de estoque se não existirem ──────────────
+    try
+    {
+        var colunas = await session.CreateSQLQuery("PRAGMA table_info(produtos)").ListAsync();
+        bool temEstoqueAtual = false;
+        bool temEstoqueMinimo = false;
+        
+        foreach (System.Collections.IList col in colunas)
+        {
+            if (col[1]?.ToString() == "estoque_atual") temEstoqueAtual = true;
+            if (col[1]?.ToString() == "estoque_minimo") temEstoqueMinimo = true;
+        }
+        
+        if (!temEstoqueAtual)
+        {
+            await session.CreateSQLQuery("ALTER TABLE produtos ADD COLUMN estoque_atual INTEGER DEFAULT 0 NOT NULL").ExecuteUpdateAsync();
+            Console.WriteLine("[MIGRACAO] Coluna estoque_atual adicionada.");
+        }
+        
+        if (!temEstoqueMinimo)
+        {
+            await session.CreateSQLQuery("ALTER TABLE produtos ADD COLUMN estoque_minimo INTEGER DEFAULT 0 NOT NULL").ExecuteUpdateAsync();
+            Console.WriteLine("[MIGRACAO] Coluna estoque_minimo adicionada.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[MIGRACAO] Aviso: {ex.Message}");
+    }
+    
     var bairros = await scope.ServiceProvider.GetRequiredService<IRepository<BatatasFritas.Domain.Entities.Bairro>>().GetAllAsync();
     
     var produtos = await produtoRepo.GetAllAsync();
