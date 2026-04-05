@@ -1,0 +1,634 @@
+@page "/admin/dashboard-analytics"
+@layout EmptyLayout
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Web.Services
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject KdsAuthService KdsAuth
+@inject NavigationManager Nav
+
+<div class="analytics-container">
+    @if (carregando)
+    {
+        <div class="analytics-loading">⏳ Carregando analytics...</div>
+    }
+    else if (dados != null)
+    {
+        <!-- CABEÇALHO -->
+        <div class="analytics-header no-print">
+            <div class="analytics-header-left">
+                <h1>💰 Analytics Financeiro</h1>
+                <p>Visão detalhada por categoria de produto</p>
+            </div>
+            <div class="analytics-header-right">
+                <a href="/admin/dashboard" class="analytics-btn-nav">📊 Dashboard</a>
+                <a href="/admin" class="analytics-btn-nav">⚙️ Admin</a>
+            </div>
+        </div>
+
+        <!-- FILTRO DE PERÍODO -->
+        <div class="analytics-filter-bar no-print">
+            <div class="analytics-filter-item">
+                <label>De:</label>
+                <input type="date" value="@filtroInicioStr" @onchange="@(e => filtroInicioStr = e.Value?.ToString() ?? "")" />
+            </div>
+            <div class="analytics-filter-item">
+                <label>Até:</label>
+                <input type="date" value="@filtroFimStr" @onchange="@(e => filtroFimStr = e.Value?.ToString() ?? "")" />
+            </div>
+            <button class="analytics-btn-filtrar" @onclick="@(() => AplicarFiltro())" disabled="@carregando">
+                @(carregando ? "⌛" : "🔍 Filtrar")
+            </button>
+            @if (filtroAtivo)
+            {
+                <button class="analytics-btn-limpar-filtro" @onclick="@(() => LimparFiltro())">✕ Limpar</button>
+            }
+            <div class="analytics-filter-atalhos">
+                <span style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1px; align-self:center;">Atalhos:</span>
+                <button class="analytics-btn-atalho @(filtroAtalho == "hoje" ? "ativo" : "")" @onclick="@(() => AtalhoHoje())">Hoje</button>
+                <button class="analytics-btn-atalho @(filtroAtalho == "semana" ? "ativo" : "")" @onclick="@(() => AtalhoEstaSemana())">Esta Semana</button>
+                <button class="analytics-btn-atalho @(filtroAtalho == "mes" ? "ativo" : "")" @onclick="@(() => AtalhoEsteMes())">Este Mês</button>
+            </div>
+        </div>
+
+        <!-- PERÍODO SELECIONADO -->
+        @if (filtroAtivo && dados.DataInicio.HasValue)
+        {
+            <div class="analytics-period-label">
+                📅 Período: @(dados.DataInicio.Value.ToString("dd/MM/yyyy")) até @(dados.DataFim?.ToString("dd/MM/yyyy") ?? "Hoje")
+            </div>
+        }
+
+        <!-- CARDS DE RESUMO (Dourado, Azul, Verde) -->
+        <div class="analytics-cards-grid">
+            <!-- CARD DOURADO: BATATAS -->
+            <div class="analytics-card card-dourado">
+                <div class="analytics-card-icon">🍟</div>
+                <div class="analytics-card-content">
+                    <div class="analytics-card-title">Batatas</div>
+                    <div class="analytics-card-value">@dados.ReceitaBatatas.ToString("C2")</div>
+                    <div class="analytics-card-sub">@dados.QuantidadeBatatasVendidas unidades vendidas</div>
+                    <div class="analytics-card-cashback">
+                        <span>💸 Cashback gerado:</span>
+                        <strong>@dados.CashbackGeradoBatatas.ToString("C2")</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD AZUL: BEBIDAS -->
+            <div class="analytics-card card-azul">
+                <div class="analytics-card-icon">🥤</div>
+                <div class="analytics-card-content">
+                    <div class="analytics-card-title">Bebidas</div>
+                    <div class="analytics-card-value">@dados.ReceitaBebidas.ToString("C2")</div>
+                    <div class="analytics-card-sub">@dados.QuantidadeBebidasVendidas unidades vendidas</div>
+                </div>
+            </div>
+
+            <!-- CARD VERDE: ENTREGAS -->
+            <div class="analytics-card card-verde">
+                <div class="analytics-card-icon">🛵</div>
+                <div class="analytics-card-content">
+                    <div class="analytics-card-title">Entregas</div>
+                    <div class="analytics-card-value">@dados.ReceitaEntregas.ToString("C2")</div>
+                    <div class="analytics-card-sub">@dados.TotalEntregas entregas realizadas</div>
+                    <div class="analytics-card-taxa">
+                        <span>Taxa média:</span>
+                        <strong>@dados.TaxaEntregaMedia.ToString("C2")</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESUMO GERAL -->
+        <div class="analytics-resumo-geral">
+            <div class="analytics-resumo-item">
+                <span>💰 Receita Total:</span>
+                <strong class="cor-receita">@dados.ReceitaTotal.ToString("C2")</strong>
+            </div>
+            <div class="analytics-resumo-item">
+                <span>📦 Total Pedidos:</span>
+                <strong>@dados.TotalPedidosFinalizados</strong>
+            </div>
+            <div class="analytics-resumo-item">
+                <span>🎯 Ticket Médio:</span>
+                <strong>@dados.TicketMedio.ToString("C2")</strong>
+            </div>
+        </div>
+
+        <!-- LISTA DE PEDIDOS FINALIZADOS (Rodapé) -->
+        <div class="analytics-pedidos-section">
+            <h2 class="analytics-pedidos-title">📋 Pedidos Finalizados (@dados.PedidosFinalizados.Count)</h2>
+            
+            @if (dados.PedidosFinalizados.Count == 0)
+            {
+                <div class="analytics-pedidos-empty">
+                    Nenhum pedido finalizado no período selecionado.
+                </div>
+            }
+            else
+            {
+                <div class="analytics-pedidos-table-wrapper">
+                    <table class="analytics-pedidos-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Cliente</th>
+                                <th>Data/Hora</th>
+                                <th>Bairro</th>
+                                <th>Batatas</th>
+                                <th>Bebidas</th>
+                                <th>Entrega</th>
+                                <th>Total</th>
+                                <th>Itens</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pedido in dados.PedidosFinalizados)
+                            {
+                                <tr>
+                                    <td><strong>@pedido.Id</strong></td>
+                                    <td>@pedido.NomeCliente</td>
+                                    <td>@pedido.DataHoraPedido.ToString("dd/MM HH:mm")</td>
+                                    <td>@pedido.Bairro</td>
+                                    <td class="cor-batata">@pedido.ValorBatatas.ToString("C2")</td>
+                                    <td class="cor-bebida">@pedido.ValorBebidas.ToString("C2")</td>
+                                    <td class="cor-entrega">@pedido.TaxaEntrega.ToString("C2")</td>
+                                    <td class="cor-total"><strong>@pedido.ValorTotal.ToString("C2")</strong></td>
+                                    <td>@pedido.QtdItens</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+/* ========================================================= 
+   ANALYTICS DASHBOARD STYLES
+   ========================================================= */
+.analytics-container {
+    padding: 30px;
+    background: #111;
+    min-height: 100vh;
+    color: #fff;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+.analytics-loading {
+    text-align: center;
+    padding: 60px;
+    font-size: 18px;
+    color: #aaa;
+}
+
+/* Header */
+.analytics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #333;
+}
+.analytics-header h1 {
+    margin: 0;
+    color: #ffb347;
+    font-size: 28px;
+    font-weight: 800;
+}
+.analytics-header p {
+    margin: 5px 0 0 0;
+    color: #888;
+    font-size: 14px;
+}
+.analytics-header-right {
+    display: flex;
+    gap: 10px;
+}
+.analytics-btn-nav {
+    display: inline-block;
+    padding: 10px 18px;
+    background: #2a2a2a;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: 0.2s;
+    border: 1px solid #444;
+}
+.analytics-btn-nav:hover {
+    background: #3a3a3a;
+    transform: translateY(-2px);
+}
+
+/* Filter Bar */
+.analytics-filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    background: #1a1a1a;
+    padding: 15px 20px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+.analytics-filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.analytics-filter-item label {
+    font-size: 0.75rem;
+    color: #888;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.analytics-filter-item input {
+    background: #000;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.analytics-btn-filtrar {
+    background: #ffb347;
+    color: #000;
+    border: none;
+    padding: 9px 20px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 14px;
+}
+.analytics-btn-filtrar:hover {
+    background: #e09e3f;
+}
+.analytics-btn-limpar-filtro {
+    background: transparent;
+    color: #888;
+    border: 1px solid #444;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.analytics-filter-atalhos {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 10px;
+    padding-left: 15px;
+    border-left: 1px solid #333;
+    flex-wrap: wrap;
+}
+.analytics-btn-atalho {
+    background: #2a2a2a;
+    color: #aaa;
+    border: 1px solid #444;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.analytics-btn-atalho:hover {
+    background: #333;
+    color: #fff;
+    border-color: #ffb347;
+}
+.analytics-btn-atalho.ativo {
+    background: #ffb347;
+    color: #000;
+    border-color: #ffb347;
+}
+
+/* Period Label */
+.analytics-period-label {
+    text-align: center;
+    padding: 10px;
+    background: rgba(255, 179, 71, 0.1);
+    border: 1px solid rgba(255, 179, 71, 0.3);
+    border-radius: 8px;
+    margin-bottom: 25px;
+    font-size: 14px;
+    color: #ffb347;
+    font-weight: 600;
+}
+
+/* Cards Grid */
+.analytics-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+/* Card Base */
+.analytics-card {
+    border-radius: 16px;
+    padding: 25px;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.analytics-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.analytics-card-icon {
+    font-size: 48px;
+    line-height: 1;
+}
+.analytics-card-content {
+    flex: 1;
+}
+.analytics-card-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.analytics-card-value {
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 5px;
+}
+.analytics-card-sub {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+/* Card Dourado - Batatas */
+.card-dourado {
+    background: linear-gradient(135deg, rgba(255, 179, 71, 0.15) 0%, rgba(255, 179, 71, 0.05) 100%);
+    border: 2px solid rgba(255, 179, 71, 0.4);
+    backdrop-filter: blur(10px);
+}
+.card-dourado::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ffb347, #ffd700);
+}
+.card-dourado .analytics-card-title { color: #ffd700; }
+.card-dourado .analytics-card-value { color: #ffb347; }
+.card-dourado .analytics-card-sub { color: rgba(255, 179, 71, 0.7); }
+
+/* Card Azul - Bebidas */
+.card-azul {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border: 2px solid rgba(59, 130, 246, 0.4);
+    backdrop-filter: blur(10px);
+}
+.card-azul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+.card-azul .analytics-card-title { color: #60a5fa; }
+.card-azul .analytics-card-value { color: #3b82f6; }
+.card-azul .analytics-card-sub { color: rgba(59, 130, 246, 0.7); }
+
+/* Card Verde - Entregas */
+.card-verde {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%);
+    border: 2px solid rgba(34, 197, 94, 0.4);
+    backdrop-filter: blur(10px);
+}
+.card-verde::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+.card-verde .analytics-card-title { color: #4ade80; }
+.card-verde .analytics-card-value { color: #22c55e; }
+.card-verde .analytics-card-sub { color: rgba(34, 197, 94, 0.7); }
+
+/* Cashback & Taxa badges */
+.analytics-card-cashback,
+.analytics-card-taxa {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: rgba(255,255,255,0.08);
+}
+.analytics-card-cashback strong { color: #4ade80; }
+.analytics-card-taxa strong { color: #4ade80; }
+
+/* Resumo Geral */
+.analytics-resumo-geral {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 20px;
+    background: #1a1a1a;
+    border-radius: 12px;
+    border: 1px solid #333;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+.analytics-resumo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+}
+.analytics-resumo-item strong {
+    font-size: 20px;
+    font-weight: 800;
+}
+.cor-receita { color: #4caf50 !important; }
+
+/* Pedidos Section */
+.analytics-pedidos-section {
+    background: #1a1a1a;
+    border-radius: 16px;
+    border: 1px solid #333;
+    padding: 25px;
+}
+.analytics-pedidos-title {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    color: #fff;
+    border-bottom: 1px solid #333;
+    padding-bottom: 12px;
+}
+.analytics-pedidos-empty {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+    font-size: 16px;
+}
+
+/* Table */
+.analytics-pedidos-table-wrapper {
+    overflow-x: auto;
+}
+.analytics-pedidos-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.analytics-pedidos-table thead th {
+    background: #222;
+    color: #aaa;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 10px;
+    text-align: left;
+    border-bottom: 2px solid #333;
+    white-space: nowrap;
+}
+.analytics-pedidos-table tbody td {
+    padding: 10px;
+    border-bottom: 1px solid #2a2a2a;
+    white-space: nowrap;
+}
+.analytics-pedidos-table tbody tr:hover {
+    background: rgba(255,255,255,0.03);
+}
+
+/* Cores na tabela */
+.cor-batata { color: #ffb347; }
+.cor-bebida { color: #3b82f6; }
+.cor-entrega { color: #22c55e; }
+.cor-total { color: #4caf50; }
+
+/* Mobile */
+@@media (max-width: 768px) {
+    .analytics-container { padding: 12px; }
+    .analytics-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .analytics-header h1 { font-size: 22px; }
+    .analytics-header-right { flex-wrap: wrap; }
+    .analytics-cards-grid { grid-template-columns: 1fr !important; gap: 12px; }
+    .analytics-card { padding: 16px; }
+    .analytics-card-value { font-size: 28px; }
+    .analytics-resumo-geral { flex-direction: column; gap: 12px; align-items: center; }
+    .analytics-pedidos-table { font-size: 12px; }
+    .analytics-pedidos-table thead th { font-size: 10px; padding: 8px 6px; }
+    .analytics-pedidos-table tbody td { padding: 6px 4px; }
+}
+</style>
+
+@code {
+    private bool carregando = true;
+    private DashboardAnalyticsDto? dados;
+
+    // Filtros
+    private string filtroInicioStr = DateTime.Today.ToString("yyyy-MM-dd");
+    private string filtroFimStr = DateTime.Today.ToString("yyyy-MM-dd");
+    private bool filtroAtivo = false;
+    private string filtroAtalho = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await KdsAuth.EstaAutenticadoAsync())
+        {
+            var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
+            Nav.NavigateTo($"/kds/login?returnUrl={returnUrl}", replace: true);
+            return;
+        }
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        carregando = true;
+        try
+        {
+            string url = "api/financeiro/analytics";
+            if (filtroAtivo && !string.IsNullOrEmpty(filtroInicioStr) && !string.IsNullOrEmpty(filtroFimStr))
+            {
+                url += $"?inicio={filtroInicioStr}&fim={filtroFimStr}";
+            }
+            dados = await Http.GetFromJsonAsync<DashboardAnalyticsDto>(url);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar analytics: {ex.Message}");
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task AplicarFiltro()
+    {
+        filtroAtalho = "";
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
+    private async Task AtalhoHoje()
+    {
+        var hoje = DateTime.Today.ToString("yyyy-MM-dd");
+        filtroInicioStr = hoje;
+        filtroFimStr = hoje;
+        filtroAtalho = "hoje";
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
+    private async Task AtalhoEstaSemana()
+    {
+        var hoje = DateTime.Today;
+        int diasDesdeSegunda = ((int)hoje.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        filtroInicioStr = hoje.AddDays(-diasDesdeSegunda).ToString("yyyy-MM-dd");
+        filtroFimStr = hoje.ToString("yyyy-MM-dd");
+        filtroAtalho = "semana";
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
+    private async Task AtalhoEsteMes()
+    {
+        var hoje = DateTime.Today;
+        filtroInicioStr = new DateTime(hoje.Year, hoje.Month, 1).ToString("yyyy-MM-dd");
+        filtroFimStr = hoje.ToString("yyyy-MM-dd");
+        filtroAtalho = "mes";
+        filtroAtivo = true;
+        await CarregarDados();
+    }
+
+    private async Task LimparFiltro()
+    {
+        filtroInicioStr = DateTime.Today.ToString("yyyy-MM-dd");
+        filtroFimStr = DateTime.Today.ToString("yyyy-MM-dd");
+        filtroAtivo = false;
+        filtroAtalho = "";
+        await CarregarDados();
+    }
+}

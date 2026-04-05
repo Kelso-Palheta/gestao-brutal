@@ -314,4 +314,116 @@ public class FinanceiroController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    /// <summary>
+    /// Endpoint para o Dashboard de Analytics Financeiro com dados separados por categoria.
+    /// Card Dourado (Batatas), Card Azul (Bebidas), Card Verde (Entregas).
+    /// </summary>
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetDashboardAnalytics([FromQuery] DateTime? inicio, [FromQuery] DateTime? fim)
+    {
+        var tzBrasilia = TimeZoneInfo.CreateCustomTimeZone("BRT", TimeSpan.FromHours(-3), "BRT", "BRT");
+        var agora = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzBrasilia);
+        var hoje = agora.Date;
+
+        // Define o período: usa filtro ou hoje por padrão
+        var dataInicio = inicio ?? hoje;
+        var dataFim = fim ?? hoje;
+        var dataFimInclusiva = dataFim.Date.AddDays(1).AddTicks(-1);
+
+        // Busca apenas pedidos pagos (faturamento real)
+        var pedidos = (await _pedidoRepository.GetAllAsync())
+            .Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
+            .ToList();
+
+        // Filtra pelo período
+        var pedidosPeriodo = pedidos
+            .Where(p => {
+                var d = TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tzBrasilia);
+                return d >= dataInicio && d <= dataFimInclusiva;
+            })
+            .ToList();
+
+        // === QUERY LINQ: Soma separada de Batatas e Bebidas ===
+        // Teste de validação: soma itens por categoria de produto
+        var itensBatatas = pedidosPeriodo
+            .SelectMany(p => p.Itens)
+            .Where(i => i.Produto.CategoriaId == CategoriaEnum.Batatas)
+            .ToList();
+
+        var itensBebidas = pedidosPeriodo
+            .SelectMany(p => p.Itens)
+            .Where(i => i.Produto.CategoriaId == CategoriaEnum.Bebidas)
+            .ToList();
+
+        // Soma de batatas: precoUnitario * quantidade
+        var receitaBatatas = itensBatatas.Sum(i => i.PrecoUnitario * i.Quantidade);
+        var qtdBatatasVendidas = itensBatatas.Sum(i => i.Quantidade);
+
+        // Soma de bebidas: precoUnitario * quantidade
+        var receitaBebidas = itensBebidas.Sum(i => i.PrecoUnitario * i.Quantidade);
+        var qtdBebidasVendidas = itensBebidas.Sum(i => i.Quantidade);
+
+        // Cashback: 5% sobre o valor das batatas (apenas batatas geram cashback)
+        var cashbackGeradoBatatas = receitaBatatas * 0.05m;
+
+        // Entregas: pedidos com bairro (delivery)
+        var pedidosDelivery = pedidosPeriodo
+            .Where(p => p.BairroEntrega != null)
+            .ToList();
+
+        var receitaEntregas = pedidosDelivery.Sum(p => p.TaxaEntrega);
+        var totalEntregas = pedidosDelivery.Count;
+        var taxaEntregaMedia = totalEntregas > 0 ? receitaEntregas / totalEntregas : 0m;
+
+        // Lista de pedidos finalizados para o rodapé
+        var pedidosFinalizados = pedidosPeriodo
+            .OrderByDescending(p => p.DataHoraPedido)
+            .Select(p => new PedidoResumoDto
+            {
+                Id = p.Id,
+                NomeCliente = p.NomeCliente,
+                DataHoraPedido = TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tzBrasilia),
+                Bairro = p.BairroEntrega?.Nome ?? "Retirada",
+                ValorBatatas = p.Itens
+                    .Where(i => i.Produto.CategoriaId == CategoriaEnum.Batatas)
+                    .Sum(i => i.PrecoUnitario * i.Quantidade),
+                ValorBebidas = p.Itens
+                    .Where(i => i.Produto.CategoriaId == CategoriaEnum.Bebidas)
+                    .Sum(i => i.PrecoUnitario * i.Quantidade),
+                TaxaEntrega = p.TaxaEntrega,
+                ValorTotal = p.ValorTotal,
+                QtdItens = p.Itens.Sum(i => i.Quantidade)
+            })
+            .ToList();
+
+        var dto = new DashboardAnalyticsDto
+        {
+            // Card Dourado - Batatas
+            ReceitaBatatas = receitaBatatas,
+            QuantidadeBatatasVendidas = qtdBatatasVendidas,
+            CashbackGeradoBatatas = cashbackGeradoBatatas,
+
+            // Card Azul - Bebidas
+            ReceitaBebidas = receitaBebidas,
+            QuantidadeBebidasVendidas = qtdBebidasVendidas,
+
+            // Card Verde - Entregas
+            ReceitaEntregas = receitaEntregas,
+            TotalEntregas = totalEntregas,
+            TaxaEntregaMedia = taxaEntregaMedia,
+
+            // Resumo Geral
+            TotalPedidosFinalizados = pedidosPeriodo.Count,
+
+            // Período
+            DataInicio = dataInicio,
+            DataFim = dataFim,
+
+            // Lista de Pedidos
+            PedidosFinalizados = pedidosFinalizados
+        };
+
+        return Ok(dto);
+    }
 }
