@@ -153,6 +153,22 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine($"[MIGRACAO] Aviso: {ex.Message}");
     }
     
+    // ── Migração: Garantir estoque mínimo de 50 para todos os produtos ──────
+    try
+    {
+        var produtosSemEstoque = await session.CreateSQLQuery("SELECT COUNT(*) FROM produtos WHERE estoque_atual <= 0").UniqueResultAsync();
+        var count = Convert.ToInt32(produtosSemEstoque);
+        if (count > 0)
+        {
+            await session.CreateSQLQuery("UPDATE produtos SET estoque_atual = 50, ativo = 1 WHERE estoque_atual <= 0").ExecuteUpdateAsync();
+            Console.WriteLine($"[MIGRACAO] {count} produto(s) com estoque zerado foram atualizados para 50 unidades e reativados.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[MIGRACAO] Aviso ao atualizar estoque: {ex.Message}");
+    }
+    
     var bairros = await scope.ServiceProvider.GetRequiredService<IRepository<BatatasFritas.Domain.Entities.Bairro>>().GetAllAsync();
     
     var produtos = await produtoRepo.GetAllAsync();
