@@ -64,6 +64,25 @@ public class PedidosController : ControllerBase
         {
             System.Console.WriteLine($"DTO RECEBIDO: Nome={dto.NomeCliente}, Telefone={dto.TelefoneCliente}, Endereco={dto.EnderecoEntrega}, BairroId={dto.BairroEntregaId}, Pag={dto.MetodoPagamento}, Troco={dto.TrocoPara}, QtdItens={dto.Itens?.Count}, Cashback={dto.ValorCashbackUsado}");
 
+            // ── PRÉ-CHECK de estoque (ANTES da transação) ───────────────────────
+            // Força leitura fresca do banco via SQL direto para evitar cache L1 do NHibernate
+            foreach (var item in dto.Itens)
+            {
+                var estoqueAtual = await _session
+                    .CreateSQLQuery("SELECT estoque_atual FROM produtos WHERE id = :id")
+                    .SetParameter("id", item.ProdutoId)
+                    .UniqueResultAsync<int>();
+
+                if (estoqueAtual < item.Quantidade)
+                {
+                    var nomeProduto = await _session
+                        .CreateSQLQuery("SELECT nome FROM produtos WHERE id = :id")
+                        .SetParameter("id", item.ProdutoId)
+                        .UniqueResultAsync<string>();
+                    return BadRequest($"Estoque insuficiente para o produto {nomeProduto}. Disponível: {estoqueAtual}, Solicitado: {item.Quantidade}.");
+                }
+            }
+
             var bairro = await _bairroRepository.GetByIdAsync(dto.BairroEntregaId);
             var pedido = new Pedido(dto.NomeCliente, dto.TelefoneCliente, dto.EnderecoEntrega, bairro, dto.MetodoPagamento, dto.TrocoPara, dto.TipoAtendimento, dto.ValorCashbackUsado, dto.SegundoMetodoPagamento, dto.ValorSegundoPagamento);
 
@@ -190,6 +209,9 @@ public class PedidosController : ControllerBase
             // Subtrai estoque do produto final
             var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
             if (produto == null) continue;
+
+            // Força leitura fresca do banco, descartando cache L1 do NHibernate
+            await _session.RefreshAsync(produto);
 
             if (produto.EstoqueAtual >= item.Quantidade)
             {

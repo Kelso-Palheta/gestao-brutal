@@ -121,11 +121,20 @@ public class ProdutosController : ControllerBase
 
         try
         {
+            // Não permite reativar produto sem estoque — o admin deve repor via PUT antes de ativar
+            if (produto.EstoqueAtual <= 0)
+                return BadRequest($"Não é possível ativar '{produto.Nome}' com estoque zerado. Acesse 'Editar Produto' e atualize o estoque antes de reativar.");
+
             produto.Ativar();
+
             _uow.BeginTransaction();
             await _produtoRepository.UpdateAsync(produto);
             await _uow.CommitAsync();
-            return Ok(new { produto.Id, produto.Ativo });
+
+            // Notifica o Totem/Cardápio Digital via SignalR
+            await _hub.Clients.All.SendAsync("ProdutoReativado", new { produto.Id, produto.Nome, produto.EstoqueAtual });
+
+            return Ok(new { produto.Id, produto.Ativo, produto.EstoqueAtual });
         }
         catch (Exception ex)
         {
