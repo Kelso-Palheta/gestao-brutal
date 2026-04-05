@@ -14,10 +14,12 @@ public class Produto : EntityBase
     public virtual int Ordem { get; set; } = 0;
     /// <summary>Lista de IDs de complementos delimitados por vírgula. Se vazio, aceita comportamento padrão por categoria.</summary>
     public virtual string ComplementosPermitidos { get; protected set; } = string.Empty;
+    public virtual int EstoqueAtual { get; set; } = 0;
+    public virtual int EstoqueMinimo { get; set; } = 0;
 
     protected Produto() { } // NHibernate
 
-    public Produto(string nome, string descricao, CategoriaEnum categoria, decimal precoBase, string imagemUrl = "", string complementosPermitidos = "")
+    public Produto(string nome, string descricao, CategoriaEnum categoria, decimal precoBase, string imagemUrl = "", string complementosPermitidos = "", int estoqueAtual = 0, int estoqueMinimo = 0)
     {
         Nome = nome;
         Descricao = descricao;
@@ -26,6 +28,8 @@ public class Produto : EntityBase
         ImagemUrl = imagemUrl;
         ComplementosPermitidos = complementosPermitidos;
         Ativo = true;
+        EstoqueAtual = estoqueAtual;
+        EstoqueMinimo = estoqueMinimo;
     }
 
     public virtual void Atualizar(string nome, string descricao, CategoriaEnum categoria, decimal precoBase, string imagemUrl, string complementosPermitidos = "")
@@ -40,5 +44,6 @@ public class Produto : EntityBase
 
     public virtual void Ativar() => Ativo = true;
     public virtual void Desativar() => Ativo = false;
+    public virtual void AjustarEstoque(int quantidade) => EstoqueAtual += quantidade;
 }
 

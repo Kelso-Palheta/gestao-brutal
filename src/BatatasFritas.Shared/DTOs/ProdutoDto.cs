@@ -13,8 +13,9 @@ public class ProdutoDto
     public bool Ativo { get; set; } = true;
     public int Ordem { get; set; } = 0;
     public string ComplementosPermitidos { get; set; } = string.Empty;
+    public int EstoqueAtual { get; set; } = 0;
+    public int EstoqueMinimo { get; set; } = 0;
 }
 
 /// <summary>Item para reordenação batch de produtos.</summary>
 public record ReordenarProdutoItem(int Id, int Ordem);
-

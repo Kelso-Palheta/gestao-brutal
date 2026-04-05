@@ -1,8 +1,10 @@
+using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,17 +19,20 @@ public class ProdutosController : ControllerBase
     private readonly IRepository<ItemReceita> _receitaRepository;
     private readonly IRepository<Insumo> _insumoRepository;
     private readonly IUnitOfWork _uow;
+    private readonly IHubContext<PedidosHub> _hub;
 
     public ProdutosController(
         IRepository<Produto> produtoRepository, 
         IRepository<ItemReceita> receitaRepository,
         IRepository<Insumo> insumoRepository,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IHubContext<PedidosHub> hub)
     {
         _produtoRepository = produtoRepository;
         _receitaRepository = receitaRepository;
         _insumoRepository = insumoRepository;
         _uow = uow;
+        _hub = hub;
     }
 
     // GET api/produtos — retorna todos, ordenados pelo campo Ordem
@@ -45,7 +50,9 @@ public class ProdutosController : ControllerBase
             ImagemUrl = p.ImagemUrl,
             Ativo = p.Ativo,
             Ordem = p.Ordem,
-            ComplementosPermitidos = p.ComplementosPermitidos
+            ComplementosPermitidos = p.ComplementosPermitidos,
+            EstoqueAtual = p.EstoqueAtual,
+            EstoqueMinimo = p.EstoqueMinimo
         }).OrderBy(p => p.Ordem).ThenBy(p => p.CategoriaId).ThenBy(p => p.Nome).ToList();
 
         return Ok(dtos);
@@ -57,7 +64,7 @@ public class ProdutosController : ControllerBase
     {
         try
         {
-            var produto = new Produto(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl, dto.ComplementosPermitidos);
+            var produto = new Produto(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl, dto.ComplementosPermitidos, dto.EstoqueAtual, dto.EstoqueMinimo);
             _uow.BeginTransaction();
             await _produtoRepository.AddAsync(produto);
             await _uow.CommitAsync();
@@ -80,10 +87,23 @@ public class ProdutosController : ControllerBase
         try
         {
             produto.Atualizar(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl, dto.ComplementosPermitidos);
+            
+            // Atualiza estoque
+            bool estavaSemEstoque = produto.EstoqueAtual <= 0;
+            produto.EstoqueAtual = dto.EstoqueAtual;
+            produto.EstoqueMinimo = dto.EstoqueMinimo;
+            
+            // Se o produto estava desativado por falta de estoque e agora tem estoque, reativa automaticamente
+            if (estavaSemEstoque && produto.EstoqueAtual > 0 && !produto.Ativo)
+            {
+                produto.Ativar();
+                await _hub.Clients.All.SendAsync("ProdutoReativado", new { produto.Id, produto.Nome, produto.EstoqueAtual });
+            }
+            
             _uow.BeginTransaction();
             await _produtoRepository.UpdateAsync(produto);
             await _uow.CommitAsync();
-            return Ok(new { produto.Id, produto.Nome });
+            return Ok(new { produto.Id, produto.Nome, produto.EstoqueAtual, produto.Ativo });
         }
         catch (Exception ex)
         {
