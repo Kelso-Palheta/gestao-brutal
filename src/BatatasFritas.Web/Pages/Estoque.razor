@@ -550,14 +550,30 @@
             var de  = filtroInicioStr;
             var ate = filtroFimStr;
 
-            dashboard     = await Http.GetFromJsonAsync<EstoqueDashboardDto>($"api/insumos/dashboard?de={de}&ate={ate}");
-            
+            // Verifica autenticação antes de carregar
+            var dashResp = await Http.GetAsync($"api/insumos/dashboard?de={de}&ate={ate}");
+            if (dashResp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                // Sessão expirada — redireciona para login
+                Nav.NavigateTo("/kds/login?returnUrl=/admin/estoque", replace: true);
+                return;
+            }
+            if (dashResp.IsSuccessStatusCode)
+                dashboard = await dashResp.Content.ReadFromJsonAsync<EstoqueDashboardDto>();
+
             var endpoint = mostrarInativos ? "api/insumos/todos" : "api/insumos";
-            insumos       = await Http.GetFromJsonAsync<List<InsumoDto>>(endpoint) ?? new();
-            
-            movimentacoes = await Http.GetFromJsonAsync<List<MovimentacaoDto>>($"api/insumos/movimentacoes?de={de}&ate={ate}") ?? new();
+            var insumosResp = await Http.GetAsync(endpoint);
+            if (insumosResp.IsSuccessStatusCode)
+                insumos = await insumosResp.Content.ReadFromJsonAsync<List<InsumoDto>>() ?? new();
+
+            var movsResp = await Http.GetAsync($"api/insumos/movimentacoes?de={de}&ate={ate}");
+            if (movsResp.IsSuccessStatusCode)
+                movimentacoes = await movsResp.Content.ReadFromJsonAsync<List<MovimentacaoDto>>() ?? new();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            msgErro = $"Erro ao carregar dados: {ex.Message}";
+        }
         finally { carregando = false; }
     }
 
@@ -602,8 +618,26 @@
         else
             resp = await Http.PutAsJsonAsync($"api/insumos/{editandoInsumo.Id}", editandoInsumo);
 
-        if (resp.IsSuccessStatusCode) { msgSucesso = "Insumo salvo!"; editandoInsumo = new(); await CarregarTudo(); }
-        else msgErro = await resp.Content.ReadAsStringAsync();
+        if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            // Sessão expirada — avisa e redireciona
+            await JS.InvokeVoidAsync("alert", "Sessão expirada! Você será redirecionado para o login.");
+            Nav.NavigateTo("/kds/login?returnUrl=/admin/estoque", replace: true);
+            return;
+        }
+
+        if (resp.IsSuccessStatusCode)
+        {
+            msgSucesso = "Insumo salvo com sucesso!";
+            editandoInsumo = new();
+            await CarregarTudo();
+        }
+        else
+        {
+            var erro = await resp.Content.ReadAsStringAsync();
+            msgErro = string.IsNullOrWhiteSpace(erro) ? $"Erro {(int)resp.StatusCode} ao salvar insumo." : erro;
+            await JS.InvokeVoidAsync("alert", $"Erro ao salvar: {msgErro}");
+        }
     }
 
     private async Task DeletarInsumo(InsumoDto i)
@@ -633,6 +667,12 @@
         if (novaMovimentacao.Quantidade <= 0) { msgErro = "Informe a quantidade."; return; }
 
         var r = await Http.PostAsJsonAsync("api/insumos/movimentar", novaMovimentacao);
+        if (r.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            await JS.InvokeVoidAsync("alert", "Sessão expirada! Você será redirecionado para o login.");
+            Nav.NavigateTo("/kds/login?returnUrl=/admin/estoque", replace: true);
+            return;
+        }
         if (r.IsSuccessStatusCode)
         {
             msgSucesso = "Entrada registrada com sucesso!";
@@ -673,6 +713,12 @@
         LimparMensagens();
         if (entradaRapida.Quantidade <= 0) { msgErro = "Informe a quantidade."; return; }
         var r = await Http.PostAsJsonAsync("api/insumos/movimentar", entradaRapida);
+        if (r.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            await JS.InvokeVoidAsync("alert", "Sessão expirada! Você será redirecionado para o login.");
+            Nav.NavigateTo("/kds/login?returnUrl=/admin/estoque", replace: true);
+            return;
+        }
         if (r.IsSuccessStatusCode)
         {
             msgSucesso = $"Entrada de {entradaRapida.Quantidade} {insumoEntrada?.Unidade} registrada!";
@@ -697,10 +743,17 @@
     {
         LimparMensagens();
         if (insumoAjuste == null) return;
-        
+
         var req = new AjusteSaldoRequest { NovoSaldo = novoSaldoDesejado, Motivo = motivoAjuste };
         var r = await Http.PatchAsJsonAsync($"api/insumos/{insumoAjuste.Id}/ajustar-saldo", req);
-        
+
+        if (r.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            await JS.InvokeVoidAsync("alert", "Sessão expirada! Você será redirecionado para o login.");
+            Nav.NavigateTo("/kds/login?returnUrl=/admin/estoque", replace: true);
+            return;
+        }
+
         if (r.IsSuccessStatusCode)
         {
             msgSucesso = "Saldo ajustado com sucesso!";
