@@ -65,21 +65,30 @@ public class PedidosController : ControllerBase
             System.Console.WriteLine($"DTO RECEBIDO: Nome={dto.NomeCliente}, Telefone={dto.TelefoneCliente}, Endereco={dto.EnderecoEntrega}, BairroId={dto.BairroEntregaId}, Pag={dto.MetodoPagamento}, Troco={dto.TrocoPara}, QtdItens={dto.Itens?.Count}, Cashback={dto.ValorCashbackUsado}");
 
             // ── PRÉ-CHECK de estoque (ANTES da transação) ───────────────────────
-            // Força leitura fresca do banco via SQL direto para evitar cache L1 do NHibernate
+            // Produtos com receitas (insumos) são validados pelos insumos — não pelo produto.estoque_atual.
+            // Produtos SEM receita usam o estoque direto do produto.
             foreach (var item in dto.Itens)
             {
-                var estoqueAtual = await _session
-                    .CreateSQLQuery("SELECT estoque_atual FROM produtos WHERE id = :id")
+                var temReceita = Convert.ToInt64(await _session
+                    .CreateSQLQuery("SELECT COUNT(*) FROM itens_receita WHERE produto_id = :id")
                     .SetParameter("id", item.ProdutoId)
-                    .UniqueResultAsync<int>();
+                    .UniqueResultAsync()) > 0;
 
-                if (estoqueAtual < item.Quantidade)
+                if (!temReceita)
                 {
-                    var nomeProduto = await _session
-                        .CreateSQLQuery("SELECT nome FROM produtos WHERE id = :id")
+                    var estoqueAtual = Convert.ToInt32(await _session
+                        .CreateSQLQuery("SELECT estoque_atual FROM produtos WHERE id = :id")
                         .SetParameter("id", item.ProdutoId)
-                        .UniqueResultAsync<string>();
-                    return BadRequest($"Estoque insuficiente para o produto {nomeProduto}. Disponível: {estoqueAtual}, Solicitado: {item.Quantidade}.");
+                        .UniqueResultAsync());
+
+                    if (estoqueAtual < item.Quantidade)
+                    {
+                        var nomeProduto = await _session
+                            .CreateSQLQuery("SELECT nome FROM produtos WHERE id = :id")
+                            .SetParameter("id", item.ProdutoId)
+                            .UniqueResultAsync<string>();
+                        return BadRequest($"Estoque insuficiente para o produto {nomeProduto}. Disponível: {estoqueAtual}, Solicitado: {item.Quantidade}.");
+                    }
                 }
             }
 
@@ -206,36 +215,42 @@ public class PedidosController : ControllerBase
         
         foreach (var item in itens)
         {
-            // Subtrai estoque do produto final
             var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
             if (produto == null) continue;
 
-            // Força leitura fresca do banco, descartando cache L1 do NHibernate
-            await _session.RefreshAsync(produto);
+            // Separa receitas deste produto específico
+            var receitasDoProduto = receitas.Where(r => r.Produto.Id == item.ProdutoId).ToList();
 
-            if (produto.EstoqueAtual >= item.Quantidade)
+            if (receitasDoProduto.Any())
             {
-                produto.AjustarEstoque(-item.Quantidade);
-                await _produtoRepository.UpdateAsync(produto);
-
-                // Desativa o produto se o estoque chegar a zero
-                if (produto.EstoqueAtual <= 0)
-                {
-                    produto.Desativar();
-                    await _produtoRepository.UpdateAsync(produto);
-                    await _hub.Clients.All.SendAsync("ProdutoDesativado", produto.Id);
-                }
+                // ── Produto com Receita: estoque controlado pelos Insumos ──────────
+                // Não usa produto.EstoqueAtual — a baixa acontece nos insumos abaixo.
             }
             else
             {
-                throw new System.Exception($"Estoque insuficiente para o produto {produto.Nome}.");
+                // ── Produto sem Receita: usa estoque direto do produto ─────────────
+                await _session.RefreshAsync(produto);
+
+                if (produto.EstoqueAtual >= item.Quantidade)
+                {
+                    produto.AjustarEstoque(-item.Quantidade);
+                    await _produtoRepository.UpdateAsync(produto);
+
+                    if (produto.EstoqueAtual <= 0)
+                    {
+                        produto.Desativar();
+                        await _produtoRepository.UpdateAsync(produto);
+                        await _hub.Clients.All.SendAsync("ProdutoDesativado", produto.Id);
+                    }
+                }
+                else
+                {
+                    throw new System.Exception($"Estoque insuficiente para o produto {produto.Nome}. Disponível: {produto.EstoqueAtual}, Solicitado: {item.Quantidade}.");
+                }
             }
 
-            // Subtrai estoque de insumos (se houver receitas)
-            if (receitas.Any())
-            {
-                var receitasDoProduto = receitas.Where(r => r.Produto.Id == item.ProdutoId).ToList();
-                foreach (var receita in receitasDoProduto)
+            // ── Subtrai insumos da receita (se houver) ────────────────────────────
+            foreach (var receita in receitasDoProduto)
                 {
                     var insumo = await _insumoRepository.GetByIdAsync(receita.Insumo.Id);
                     if (insumo == null) continue;
@@ -261,7 +276,6 @@ public class PedidosController : ControllerBase
                         await _insumoRepository.UpdateAsync(insumo);
                     }
                 }
-            }
         }
     }
 
