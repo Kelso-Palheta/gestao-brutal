@@ -1007,11 +1007,24 @@
         if (response.IsSuccessStatusCode)
         {
             msgSucesso = ativar ? $"'{p.Nome}' ativado no cardápio!" : $"'{p.Nome}' removido do cardápio!";
+            
+            // Exibe aviso de estoque zerado caso a API retorne
+            try
+            {
+                var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                if (body.TryGetProperty("aviso", out var aviso) && aviso.GetString() is string avisoStr && !string.IsNullOrEmpty(avisoStr))
+                {
+                    msgSucesso += $" ⚠️ {avisoStr}";
+                }
+            }
+            catch { }
+            
             await CarregarTudo();
         }
         else
         {
-            msgErro = "Erro ao alterar status do produto.";
+            var erro = await response.Content.ReadAsStringAsync();
+            msgErro = !string.IsNullOrWhiteSpace(erro) ? erro : "Erro ao alterar status do produto.";
         }
     }
 
