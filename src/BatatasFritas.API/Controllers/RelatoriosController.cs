@@ -187,11 +187,10 @@ public class RelatoriosController : ControllerBase
             var total    = p.ValorTotal; // já desconta cashback corretamente
             var pagamento = p.MetodoPagamento switch
             {
-                MetodoPagamento.Dinheiro      => "Dinheiro",
-                MetodoPagamento.CartaoCredito => "Cartão Crédito",
-                MetodoPagamento.CartaoDebito  => "Cartão Débito",
-                MetodoPagamento.Pix           => "PIX",
-                _                             => p.MetodoPagamento.ToString()
+                MetodoPagamento.Dinheiro => "Dinheiro",
+                MetodoPagamento.Cartao   => "Cartão",
+                MetodoPagamento.Pix      => "PIX",
+                _                        => p.MetodoPagamento.ToString()
             };
 
             sb.AppendLine(string.Join(";",
