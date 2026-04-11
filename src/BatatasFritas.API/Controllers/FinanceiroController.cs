@@ -94,7 +94,7 @@ public class FinanceiroController : ControllerBase
             totalPedidosPeriodo = pPeriodo.Count;
 
             pixPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
-            cartaoPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal);
+            cartaoPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal);
             dinheiroPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
         }
 
@@ -108,7 +108,7 @@ public class FinanceiroController : ControllerBase
 
         // --- DETALHES DO MÊS ---
         var pixMes      = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
-        var cartaoMes   = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal);
+        var cartaoMes   = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal);
         var dinheiroMes = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
 
         var despFuncMes    = despesasMes.Where(d => d.Categoria == "Funcionario").Sum(d => d.Valor);
@@ -147,7 +147,7 @@ public class FinanceiroController : ControllerBase
 
             // Métodos Hoje
             PixHoje     = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal),
-            CartaoHoje  = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.InfiniteTap || p.MetodoPagamento == MetodoPagamento.InfinitePayOnline).Sum(p => p.ValorTotal),
+            CartaoHoje  = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal),
             DinheiroHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal),
 
             MetaDiaria = metaDiaria,
