@@ -34,7 +34,7 @@
         <div class="kds-column-body">
             @foreach (var p in pedidosRecebidos)
             {
-                <div class="kds-card @(idsNovos.Contains(p.Id) ? "kds-card-novo" : "")">
+                <div @key="p.Id" class="kds-card @(idsNovos.Contains(p.Id) ? "kds-card-novo" : "")">
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
                         <span class="kds-time">@p.DataHoraPedido.ToString("HH:mm")</span>
@@ -82,7 +82,7 @@
         <div class="kds-column-body">
             @foreach (var p in pedidosAceitos)
             {
-                <div class="kds-card border-aceito">
+                <div @key="p.Id" class="kds-card border-aceito">
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
@@ -135,7 +135,7 @@
         <div class="kds-column-body">
             @foreach (var p in pedidosEmPreparo)
             {
-                <div class="kds-card border-preparo">
+                <div @key="p.Id" class="kds-card border-preparo">
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
@@ -185,7 +185,7 @@
         <div class="kds-column-body">
             @foreach (var p in pedidosProntos)
             {
-                <div class="kds-card border-pronto">
+                <div @key="p.Id" class="kds-card border-pronto">
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
                     </div>
@@ -238,7 +238,7 @@
                                 Despachar ✅
                             </button>
                         }
-                        else if (p.MetodoPagamento == MetodoPagamento.Dinheiro || p.MetodoPagamento == MetodoPagamento.InfiniteTap)
+                        else if (p.MetodoPagamento == MetodoPagamento.Dinheiro)
                         {
                             <button class="kds-btn kds-btn-entregue" style="border-color: #ff9800; color: #ff9800;" title="Pagamento será realizado na entrega" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
                                 Despachar no Motoboy 🛵
@@ -380,6 +380,7 @@
     // ── SignalR ───────────────────────────────────────────────────────────
     private HubConnection? _hubConnection;
     private string signalrStatus = "Conectando...";
+    private bool isLoading = false;
 
     private RenderFragment ExibirBadgesPedido(PedidoDetalheDto p) => __builder =>
     {
@@ -500,6 +501,9 @@
 
     private async Task LoadPedidos(bool primeiraVez = false)
     {
+        if (isLoading) return;
+        isLoading = true;
+
         try
         {
             var ativos = await Http.GetFromJsonAsync<List<PedidoDetalheDto>>("api/kds/ativos");
@@ -533,10 +537,15 @@
 
             // Atualiza os IDs conhecidos (apenas "Recebido" — as outras colunas não alertam)
             idsConhecidos = idsRecebidosAgora;
+            await InvokeAsync(StateHasChanged);
         }
         catch
         {
             // Falha passageira de rede — ignora para não travar o polling
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
@@ -661,8 +670,7 @@
     {
         MetodoPagamento.Pix => "PIX",
         MetodoPagamento.Dinheiro => "DINHEIRO",
-        MetodoPagamento.InfiniteTap => "CARTÃO",
-        MetodoPagamento.InfinitePayOnline => "ONLINE",
+        MetodoPagamento.Cartao => "CARTÃO",
         _ => m.ToString().ToUpper()
     };
 

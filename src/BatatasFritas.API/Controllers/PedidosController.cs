@@ -22,7 +22,6 @@ public class PedidosController : ControllerBase
     private readonly IRepository<Insumo> _insumoRepository;
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
     private readonly IRepository<CarteiraCashback> _carteiraRepository;
-    private readonly BatatasFritas.API.Services.IInfinitePayService _infinitePayService;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
     private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
@@ -36,7 +35,6 @@ public class PedidosController : ControllerBase
         IRepository<Insumo> insumoRepository,
         IRepository<MovimentacaoEstoque> movRepository,
         IRepository<CarteiraCashback> carteiraRepository,
-        BatatasFritas.API.Services.IInfinitePayService infinitePayService,
         Microsoft.Extensions.Configuration.IConfiguration config,
         NHibernate.ISession session,
         IUnitOfWork uow,
@@ -49,7 +47,6 @@ public class PedidosController : ControllerBase
         _insumoRepository   = insumoRepository;
         _movRepository      = movRepository;
         _carteiraRepository = carteiraRepository;
-        _infinitePayService = infinitePayService;
         _config             = config;
         _session            = session;
         _uow                = uow;
@@ -132,21 +129,6 @@ public class PedidosController : ControllerBase
                 {
                     transacao.PedidoReferenciaId = pedido.Id;
                     await _carteiraRepository.UpdateAsync(carteiraCashback);
-                }
-            }
-
-            // ── InfinitePay: Gerar Link para Pagamento Online ────────────────
-            if (pedido.MetodoPagamento == MetodoPagamento.InfinitePayOnline)
-            {
-                var infiniteTag = _config["InfinitePay:InfiniteTag"];
-                if (!string.IsNullOrEmpty(infiniteTag))
-                {
-                    var link = await _infinitePayService.GerarLinkPagamento(pedido, infiniteTag);
-                    if (!string.IsNullOrEmpty(link))
-                    {
-                        pedido.SetLinkPagamento(link);
-                        await _pedidoRepository.UpdateAsync(pedido);
-                    }
                 }
             }
 

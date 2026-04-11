@@ -85,9 +85,8 @@
                 <select @bind="Carrinho.TempPagamento" style="padding: 10px; border: 2px solid #000; color: #000; background-color: #fff;">
                     <option value="" disabled selected>Forma de Pagamento...</option>
                     <option value="1">Dinheiro</option>
-                    <option value="2">Cartão (Na Maquininha do Motoboy)</option>
+                    <option value="2">Cartão (Crédito/Débito)</option>
                     <option value="4">PIX (Pagar Agora)</option>
-                    <option value="5">💳 Pagar Agora (Cartão/PIX Online)</option>
                 </select>
 
                 @if (saldoCashback > 0)
@@ -140,7 +139,6 @@
                         "1" => "Dinheiro",
                         "2" => "Cartão",
                         "4" => "PIX",
-                        "5" => "Cartão/PIX Online",
                         _ => "1º Pagamento"
                     };
 
@@ -167,11 +165,9 @@
                                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                     @foreach (var opt in new[] { "2", "4", "1" }.Where(o => o != Carrinho.TempPagamento))
                                     {
-                                        var label = opt switch { "1" => "Dinheiro", "2" => "Cartão", "4" => "PIX", _ => "" };
-                                        var icon = opt switch { "1" => "💵", "2" => "💳", "4" => "📱", _ => "" };
                                         <button class="totem-opt-btn @(segundoPagamento == opt ? "active" : "")" 
                                                 @onclick='() => { segundoPagamento = opt; }' style="flex:1; min-width:70px; padding:8px; background:#333; color:#fff; border:2px solid @(segundoPagamento == opt ? "#4CAF50" : "#555"); border-radius:8px; cursor:pointer; text-align:center;">
-                                            <span style="font-size:1.1rem;">@icon</span><br><small>@label</small>
+                                            <span style="font-size:1.1rem;">@(opt == "1" ? "💵" : opt == "2" ? "💳" : "📱")</span><br><small>@(opt == "1" ? "Dinheiro" : opt == "2" ? "Cartão" : "PIX")</small>
                                         </button>
                                     }
                                 </div>
@@ -252,10 +248,6 @@
                 {
                     <text>Seu pedido foi recebido, mas <b>só começaremos a preparar após a confirmação do PIX e recebimento da sua localização pelo WhatsApp.</b></text>
                 }
-                else if (metodo == MetodoPagamento.InfinitePayOnline)
-                {
-                    <text>Seu pedido foi recebido! <b>Chame no WhatsApp agora mesmo para solicitar seu Link de Pagamento e enviar a sua localização atual de entrega.</b></text>
-                }
                 else
                 {
                     <text>Seu pedido foi recebido! <b>Por favor, envie sua localização atual pelo WhatsApp para facilitar a entrega pelo nosso motoboy.</b></text>
@@ -287,10 +279,6 @@
                 {
                     <text>⚠️ Envie o <u>Comprovante</u> E sua <u>Localização Atual</u> pelo WhatsApp:</text>
                 }
-                else if (metodo == MetodoPagamento.InfinitePayOnline)
-                {
-                    <text>⚠️ Peça o <u>Link de Pagamento</u> E envie sua <u>Localização Atual</u>:</text>
-                }
                 else
                 {
                     <text>⚠️ Facilite a entrega! Envie sua <u>Localização Atual</u> pelo WhatsApp:</text>
@@ -301,8 +289,7 @@
                 string msgStatus = "";
                 if (metodo == MetodoPagamento.Pix) msgStatus = $"Aqui está o comprovante do PIX no valor de R$ {valorFinalDoPedido:N2} e minha localização para a entrega.";
                 else if (metodo == MetodoPagamento.Dinheiro) msgStatus = $"O pagamento será em Dinheiro (Total: R$ {valorFinalDoPedido:N2}). Segue minha localização para a entrega.";
-                else if (metodo == MetodoPagamento.InfiniteTap) msgStatus = $"O pagamento será no Cartão na Maquininha do motoboy (Total: R$ {valorFinalDoPedido:N2}). Segue minha localização para a entrega.";
-                else if (metodo == MetodoPagamento.InfinitePayOnline) msgStatus = $"Gostaria de pagar com Link de Débito/Crédito (Total: R$ {valorFinalDoPedido:N2}). Segue minha localização para a entrega.";
+                else if (metodo == MetodoPagamento.Cartao) msgStatus = $"O pagamento será no Cartão Crédito/Débito (Total: R$ {valorFinalDoPedido:N2}). Segue minha localização para a entrega.";
                 
                 var textoWhats = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. {msgStatus}";
                 var linkWhats = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(textoWhats)}";
@@ -635,39 +622,22 @@
             {
                 var responseContent = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
                 
-                string linkPagamento = "";
-                if (responseContent.TryGetProperty("linkPagamento", out var linkProp))
+                int idRecebido = 0;
+                if (responseContent.TryGetProperty("pedidoId", out var idProp))
                 {
-                    linkPagamento = linkProp.GetString() ?? "";
+                    idRecebido = idProp.GetInt32();
                 }
 
-                if (!string.IsNullOrEmpty(linkPagamento))
-                {
-                    mensagemSucesso = "Pedido recebido! Redirecionando para o pagamento online...";
-                    Carrinho.LimparCarrinho();
-                    pedidoDto = new NovoPedidoDto();
-                    // Redirecionar para o InfinitePay
-                    Navigation.NavigateTo(linkPagamento);
-                }
-                else
-                {
-                    int idRecebido = 0;
-                    if (responseContent.TryGetProperty("pedidoId", out var idProp))
-                    {
-                        idRecebido = idProp.GetInt32();
-                    }
+                idPedidoConfirmado = idRecebido;
+                valorFinalDoPedido = ValorTotalPedido;
+                resumoItensPedido = string.Join(", ", Carrinho.Itens.Select(i => $"{i.Quantidade}x {i.NomeProduto}"));
+                metodoPagamentoEscolhido = pedidoDto.MetodoPagamento;
+                
+                mostrarModalConfirmacao = true;
+                mensagemSucesso = "Pedido recebido! Veja as instruções abaixo.";
 
-                    idPedidoConfirmado = idRecebido;
-                    valorFinalDoPedido = ValorTotalPedido;
-                    resumoItensPedido = string.Join(", ", Carrinho.Itens.Select(i => $"{i.Quantidade}x {i.NomeProduto}"));
-                    metodoPagamentoEscolhido = pedidoDto.MetodoPagamento;
-                    
-                    mostrarModalConfirmacao = true;
-                    mensagemSucesso = "Pedido recebido! Veja as instruções abaixo.";
-
-                    Carrinho.LimparCarrinho();
-                    pedidoDto = new NovoPedidoDto(); // Reset backend ref
-                }
+                Carrinho.LimparCarrinho();
+                pedidoDto = new NovoPedidoDto(); // Reset backend ref
             }
             else
             {

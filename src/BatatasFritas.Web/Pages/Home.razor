@@ -61,6 +61,13 @@ else
             <p>😔 Cardápio indisponível no momento. Tente novamente em breve.</p>
         </div>
     }
+    else if (!string.IsNullOrEmpty(erroCarregamento))
+    {
+        <div class="cardapio-vazio" style="color: #e74c3c;">
+            <p>❌ @erroCarregamento</p>
+            <button class="btn-confirmar" style="margin-top: 20px; padding: 10px 20px;" @onclick="CarregarDados">Tentar Novamente</button>
+        </div>
+    }
     else
     {
         <!-- =====================================================================
@@ -172,6 +179,7 @@ else
     // Status do cardápio digital
     private bool menuDigitalAtivo = true;
     private string menuDigitalMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
+    private string? erroCarregamento;
 
     // Modal State
     private bool mostrarModal = false;
@@ -240,6 +248,15 @@ else
 
         if (menuDigitalAtivo)
         {
+            await CarregarDados();
+        }
+    }
+
+    private async Task CarregarDados()
+    {
+        try
+        {
+            erroCarregamento = null;
             // Busca produtos e complementos em paralelo para ganhar tempo na primeira carga
             var produtosTask = Http.GetFromJsonAsync<ProdutoDto[]>("api/produtos");
             var complementosTask = Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos/ativos");
@@ -251,6 +268,11 @@ else
 
             var clist = await complementosTask;
             if (clist != null) todosComplementos = clist;
+        }
+        catch (Exception ex)
+        {
+            erroCarregamento = "Não foi possível carregar o cardápio. Verifique sua conexão.";
+            Console.WriteLine($"Erro ao carregar dados: {ex.Message}");
         }
     }
 

@@ -83,12 +83,6 @@ if (string.IsNullOrWhiteSpace(connectionString))
 var databaseProvider = builder.Configuration["DatabaseProvider"] ?? "sqlite";
 builder.Services.AddInfrastructure(connectionString, databaseProvider);
 
-// ── Serviços de domínio ──────────────────────────────────────────────────────
-builder.Services.AddHttpClient<BatatasFritas.API.Services.IInfinitePayService, BatatasFritas.API.Services.InfinitePayService>(client =>
-{
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
-
 // ── CORS ─────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
