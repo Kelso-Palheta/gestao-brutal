@@ -83,3 +83,6 @@ api_log.txt
 src/BatatasFritas.API/appsettings.Development.json
 src/BatatasFritas.API/appsettings.Production.json
 src/BatatasFritas.API/appsettings.Staging.json
+
+# Node
+node_modules/

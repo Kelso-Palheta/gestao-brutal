@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "batata-palheta-mcp": {
+      "command": "node",
+      "args": ["/Users/kelsopalheta/Developer/Saas - Palheta Brutal/BatatasFritas/mcp_server.js"],
+      "cwd": "/Users/kelsopalheta/Developer/Saas - Palheta Brutal/BatatasFritas",
+      "env": {
+        "SKILLS_PATH": "/Users/kelsopalheta/Developer/Saas - Palheta Brutal/BatatasFritas/skills",
+        "RAG_PATH": "/Users/kelsopalheta/Developer/Saas - Palheta Brutal/BatatasFritas/rag_sources",
+        "PROJECT_NAME": "Batata Palheta Brutal",
+        "RESPONSE_MODE": "caveman-ultra",
+        "CAVEMAN_DEFAULT_MODE": "ultra"
+      }
+    }
+  }
+}
