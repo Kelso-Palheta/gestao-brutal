@@ -6,9 +6,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentMigrator" Version="5.0.0" />
+    <PackageReference Include="FluentMigrator.Runner" Version="5.0.0" />
+    <PackageReference Include="FluentMigrator.Runner.Postgres" Version="5.0.0" />
+    <PackageReference Include="FluentMigrator.Runner.SQLite" Version="5.0.0" />
     <PackageReference Include="FluentNHibernate" Version="3.4.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="NHibernate" Version="5.5.0" />
     <PackageReference Include="Npgsql" Version="8.0.2" />
     <PackageReference Include="System.Data.SQLite" Version="2.0.2" />

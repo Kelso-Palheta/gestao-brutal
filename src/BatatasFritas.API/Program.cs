@@ -1,5 +1,5 @@
 using BatatasFritas.API.Hubs;
-using BatatasFritas.API.Services;
+using FluentMigrator.Runner;
 using BatatasFritas.Infrastructure;
 using BatatasFritas.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,10 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Polly;
-using Polly.Extensions.Http;
 using System;
-using System.Net.Http;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -85,10 +82,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ── Mercado Pago ─────────────────────────────────────────────────────────────
-builder.Services.Configure<MercadoPagoOptions>(
-    builder.Configuration.GetSection(MercadoPagoOptions.Section));
-
 // Em produção, WebhookSecret é obrigatório — sem ele, qualquer um pode marcar pedido pago
 if (builder.Environment.IsProduction())
 {
@@ -97,11 +90,6 @@ if (builder.Environment.IsProduction())
         throw new InvalidOperationException(
             "MercadoPago:WebhookSecret é obrigatório em Production. Defina via env MercadoPago__WebhookSecret.");
 }
-
-builder.Services.AddHttpClient<IMercadoPagoService, MercadoPagoService>()
-    .AddPolicyHandler(HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))));
 
 // ── SignalR ──────────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
@@ -165,49 +153,19 @@ app.MapGet("/api/health", () => "OK");
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 
+// ── FluentMigrator: executa migrations versionadas ───────────────────────────
+using (var migrationScope = app.Services.CreateScope())
+{
+    var runner = migrationScope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+    runner.MigrateUp();
+    Console.WriteLine("[MIGRACAO] FluentMigrator: migrations aplicadas com sucesso.");
+}
+
 using (var scope = app.Services.CreateScope())
 {
     var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
     var session = scope.ServiceProvider.GetRequiredService<NHibernate.ISession>();
     var produtoRepo = scope.ServiceProvider.GetRequiredService<IRepository<BatatasFritas.Domain.Entities.Produto>>();
-    
-    // ── Migração SQLite-only (PRAGMA não existe em Postgres) ─────────────────
-    var providerNoStartup = builder.Configuration["DatabaseProvider"] ?? "sqlite";
-    if (providerNoStartup.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
-    {
-        try
-        {
-            var colunas = await session.CreateSQLQuery("PRAGMA table_info(produtos)").ListAsync();
-            bool temEstoqueAtual = false;
-            bool temEstoqueMinimo = false;
-
-            foreach (System.Collections.IList col in colunas)
-            {
-                if (col[1]?.ToString() == "estoque_atual") temEstoqueAtual = true;
-                if (col[1]?.ToString() == "estoque_minimo") temEstoqueMinimo = true;
-            }
-
-            if (!temEstoqueAtual)
-            {
-                await session.CreateSQLQuery("ALTER TABLE produtos ADD COLUMN estoque_atual INTEGER DEFAULT 0 NOT NULL").ExecuteUpdateAsync();
-                Console.WriteLine("[MIGRACAO] Coluna estoque_atual adicionada.");
-            }
-
-            if (!temEstoqueMinimo)
-            {
-                await session.CreateSQLQuery("ALTER TABLE produtos ADD COLUMN estoque_minimo INTEGER DEFAULT 0 NOT NULL").ExecuteUpdateAsync();
-                Console.WriteLine("[MIGRACAO] Coluna estoque_minimo adicionada.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[MIGRACAO] Aviso: {ex.Message}");
-        }
-    }
-    else
-    {
-        Console.WriteLine($"[MIGRACAO] Skipping migrações SQLite-only (provider={providerNoStartup}). Use migrations versionadas (DbUp/FluentMigrator) em prod.");
-    }
 
     // ── Aviso de estoque zerado (compatível com SQLite e Postgres) ────────
     try
