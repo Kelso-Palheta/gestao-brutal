@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,10 +18,13 @@ namespace BatatasFritas.API.Controllers;
 public class AuthController : ControllerBase
 {
     private const string ChaveSenhaKds = "senha_kds_hash";
-    private const string SenhaPadrao   = "palheta2025"; // Fallback apenas se nunca foi definida
+    private const string LITERAL_REJEITADO = "palheta2025";
 
     private readonly IRepository<Configuracao> _repo;
     private readonly IConfiguration _config;
+
+    private static string? SenhaPadrao =>
+        Environment.GetEnvironmentVariable("KDS_DEFAULT_PASSWORD");
 
     public AuthController(IRepository<Configuracao> repo, IConfiguration config)
     {
@@ -51,9 +55,20 @@ public class AuthController : ControllerBase
 
     private async Task<bool> VerificarSenha(string senha)
     {
+        // Bloqueia o literal antigo em qualquer cenário (defesa contra reuso)
+        if (senha == LITERAL_REJEITADO) return false;
+
         var config = await _repo.FindAsync(c => c.Chave == ChaveSenhaKds);
         if (config == null)
-            return senha == SenhaPadrao;
+        {
+            // Sem senha persistida: aceita apenas se KDS_DEFAULT_PASSWORD estiver setada
+            // e não for o literal antigo. Comparação constant-time.
+            var padrao = SenhaPadrao;
+            if (string.IsNullOrEmpty(padrao) || padrao == LITERAL_REJEITADO) return false;
+            return CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(senha),
+                Encoding.UTF8.GetBytes(padrao));
+        }
 
         return BCrypt.Net.BCrypt.Verify(senha, config.Valor);
     }

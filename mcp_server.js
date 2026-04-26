@@ -18,6 +18,24 @@ const PROJECT_DIR = __dirname;
 const SKILLS_DIR = path.join(PROJECT_DIR, 'skills');
 const RAG_DIR = path.join(PROJECT_DIR, 'rag_sources');
 
+// ─── path-traversal containment ─────────────────────────────────────────────
+
+const SAFE_SEGMENT = /^[A-Za-z0-9_.\-]+$/;
+
+function isSafeSegment(seg) {
+  return typeof seg === 'string' && seg.length > 0 && SAFE_SEGMENT.test(seg) && seg !== '.' && seg !== '..';
+}
+
+function safeJoin(baseDir, ...segments) {
+  for (const seg of segments) {
+    if (!isSafeSegment(seg)) return null;
+  }
+  const resolved = path.resolve(baseDir, ...segments);
+  const baseResolved = path.resolve(baseDir) + path.sep;
+  if (!(resolved + path.sep).startsWith(baseResolved)) return null;
+  return resolved;
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function readFileText(filePath) {
@@ -181,7 +199,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // get_skill
     if (name === 'get_skill') {
       const skillName = args.name;
-      const skillDir = path.join(SKILLS_DIR, skillName);
+      const skillDir = safeJoin(SKILLS_DIR, skillName);
+      if (!skillDir) {
+        return {
+          content: [{ type: 'text', text: `Nome de skill inválido: "${skillName}".` }],
+          isError: true,
+        };
+      }
 
       if (!fs.existsSync(skillDir)) {
         const available = getSkillList().join(', ');
@@ -220,7 +244,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // list_rag_files
     if (name === 'list_rag_files') {
-      const catDir = path.join(RAG_DIR, args.category);
+      const catDir = safeJoin(RAG_DIR, args.category);
+      if (!catDir) {
+        return {
+          content: [{ type: 'text', text: `Categoria inválida: "${args.category}".` }],
+          isError: true,
+        };
+      }
       if (!fs.existsSync(catDir)) {
         return {
           content: [{ type: 'text', text: `Categoria "${args.category}" não encontrada.` }],
@@ -240,7 +270,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // read_rag_file
     if (name === 'read_rag_file') {
-      const filePath = path.join(RAG_DIR, args.category, args.filename);
+      const filePath = safeJoin(RAG_DIR, args.category, args.filename);
+      if (!filePath) {
+        return {
+          content: [{ type: 'text', text: `Categoria/arquivo inválido(s).` }],
+          isError: true,
+        };
+      }
       if (!fs.existsSync(filePath)) {
         return {
           content: [{ type: 'text', text: `Arquivo "${args.filename}" não encontrado em "${args.category}".` }],

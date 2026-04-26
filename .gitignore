@@ -86,3 +86,9 @@ src/BatatasFritas.API/appsettings.Staging.json
 
 # Node
 node_modules/
+
+# Env files (secrets locais)
+.env
+.env.local
+*.env
+!.env.example
