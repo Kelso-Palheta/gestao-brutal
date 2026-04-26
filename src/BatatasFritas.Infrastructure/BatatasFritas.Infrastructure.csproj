@@ -14,8 +14,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
-    <PackageReference Include="NHibernate" Version="5.5.0" />
-    <PackageReference Include="Npgsql" Version="8.0.2" />
+    <PackageReference Include="NHibernate" Version="5.5.3" />
+    <PackageReference Include="Npgsql" Version="8.0.9" />
     <PackageReference Include="System.Data.SQLite" Version="2.0.2" />
   </ItemGroup>
 
