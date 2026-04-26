@@ -1,0 +1,42 @@
+name: CI — .NET Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore BatatasFritas.sln
+
+      - name: Build
+        run: dotnet build BatatasFritas.sln --configuration Release --no-restore
+
+      - name: Test Domain (unitários puros)
+        run: >
+          dotnet test tests/BatatasFritas.Domain.Tests/BatatasFritas.Domain.Tests.csproj
+          --configuration Release
+          --no-build
+          --verbosity normal
+          --collect:"XPlat Code Coverage"
+
+      - name: Test Infrastructure (migrations SQLite in-memory)
+        run: >
+          dotnet test tests/BatatasFritas.Infrastructure.Tests/BatatasFritas.Infrastructure.Tests.csproj
+          --configuration Release
+          --no-build
+          --verbosity normal
+          --collect:"XPlat Code Coverage"

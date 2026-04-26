@@ -1,0 +1,27 @@
+{
+  "name": "batata-palheta-brutal",
+  "version": "1.1.0",
+  "description": "Batata Palheta Brutal - MCP Server com 12 skills e Caveman ULTRA",
+  "main": "mcp_server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node mcp_server.js",
+    "test": "echo 'Running tests...'",
+    "verify": "bash VERIFY_CAVEMAN_CONFIG.sh"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "skills",
+    "rag",
+    "caveman"
+  ],
+  "author": "Kelso Palheta",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}

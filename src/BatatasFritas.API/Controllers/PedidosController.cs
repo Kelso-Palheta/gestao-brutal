@@ -1,5 +1,6 @@
 using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
+using BatatasFritas.Domain.Interfaces;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
@@ -26,6 +27,7 @@ public class PedidosController : ControllerBase
     private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
     private readonly IHubContext<PedidosHub> _hub;
+    private readonly IMercadoPagoService _mercadoPago;
 
     public PedidosController(
         IRepository<Pedido> pedidoRepository,
@@ -38,7 +40,8 @@ public class PedidosController : ControllerBase
         Microsoft.Extensions.Configuration.IConfiguration config,
         NHibernate.ISession session,
         IUnitOfWork uow,
-        IHubContext<PedidosHub> hub)
+        IHubContext<PedidosHub> hub,
+        IMercadoPagoService mercadoPago)
     {
         _pedidoRepository   = pedidoRepository;
         _bairroRepository   = bairroRepository;
@@ -51,6 +54,7 @@ public class PedidosController : ControllerBase
         _session            = session;
         _uow                = uow;
         _hub                = hub;
+        _mercadoPago        = mercadoPago;
     }
 
     // ── POST api/pedidos — cria pedido + dispara baixa de estoque ──────────
@@ -136,6 +140,31 @@ public class PedidosController : ControllerBase
             await BaixarEstoque(dto.Itens, pedido.Id);
 
             await _uow.CommitAsync();
+
+            // ── Pix: gera preferência MP após commit (API externa fora da transação) ──
+            if (dto.MetodoPagamento == MetodoPagamento.Pix)
+            {
+                try
+                {
+                    var notificationUrl = _config["MercadoPago:NotificationUrl"] ?? string.Empty;
+                    var mpRequest = new PreferenciaMPRequest(
+                        PedidoId: pedido.Id,
+                        ValorTotal: pedido.ValorTotal,
+                        Descricao: "Pedido BatatasFritas",
+                        EmailCliente: "cliente@batatasfritas.com.br",
+                        NotificationUrl: notificationUrl
+                    );
+                    var mpResponse = await _mercadoPago.CriarPreferenciaAsync(mpRequest);
+                    pedido.SetLinkPagamento(mpResponse.InitPointUrl);
+                    _uow.BeginTransaction();
+                    await _pedidoRepository.UpdateAsync(pedido);
+                    await _uow.CommitAsync();
+                }
+                catch (System.Exception ex)
+                {
+                    System.Console.WriteLine($"[MP] Falha ao gerar link Pix para pedido {pedido.Id}: {ex.Message}");
+                }
+            }
 
             // Notifica o KDS em tempo real via SignalR
             await _hub.Clients.All.SendAsync("NovoPedido", pedido.Id);
