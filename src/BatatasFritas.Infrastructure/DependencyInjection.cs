@@ -1,19 +1,23 @@
 using FluentMigrator.Runner;
 using FluentNHibernate.Cfg;
 using FluentNHibernate.Cfg.Db;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NHibernate;
+using BatatasFritas.Domain.Interfaces;
+using BatatasFritas.Infrastructure.Options;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Infrastructure.Mappings;
 using BatatasFritas.Infrastructure.Migrations;
+using BatatasFritas.Infrastructure.Services;
 using System;
 
 namespace BatatasFritas.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, string databaseProvider = "sqlite")
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, string databaseProvider = "sqlite", IConfiguration? configuration = null)
         {
             Console.WriteLine($"[INFRA] Inicializando Infraestrutura. Provider: {databaseProvider}");
 
@@ -69,6 +73,14 @@ namespace BatatasFritas.Infrastructure
                 if (ex.InnerException != null) Console.WriteLine($"[INFRA] Inner Exception: {ex.InnerException.Message}");
                 throw;
             }
+
+            // ── Mercado Pago ──────────────────────────────────────────────────
+            if (configuration != null)
+                services.Configure<MercadoPagoOptions>(configuration.GetSection("MercadoPago"));
+            else
+                services.Configure<MercadoPagoOptions>(_ => { });
+
+            services.AddScoped<IMercadoPagoService, MercadoPagoService>();
 
             return services;
         }

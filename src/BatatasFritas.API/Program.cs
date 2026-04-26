@@ -100,7 +100,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new System.Exception("Connection string 'DefaultConnection' não encontrada.");
 
 var databaseProvider = builder.Configuration["DatabaseProvider"] ?? "sqlite";
-builder.Services.AddInfrastructure(connectionString, databaseProvider);
+builder.Services.AddInfrastructure(connectionString, databaseProvider, builder.Configuration);
 
 // ── Health Checks ────────────────────────────────────────────────────────────
 builder.Services.AddHealthChecks()
