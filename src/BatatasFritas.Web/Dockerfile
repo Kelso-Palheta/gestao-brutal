@@ -25,7 +25,7 @@ COPY ["src/BatatasFritas.Shared/BatatasFritas.Shared.csproj", "src/BatatasFritas
 COPY ["src/BatatasFritas.Web/BatatasFritas.Web.csproj", "src/BatatasFritas.Web/"]
 
 # Restore dependencies
-RUN dotnet restore "BatatasFritas.sln"
+RUN dotnet restore "src/BatatasFritas.Web/BatatasFritas.Web.csproj"
 
 # Copy the remaining source code
 COPY . .
