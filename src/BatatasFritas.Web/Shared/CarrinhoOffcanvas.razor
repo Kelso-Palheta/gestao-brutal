@@ -692,6 +692,15 @@ else if (mostrarModalConfirmacao)
             pedidoDto.SegundoMetodoPagamento = (MetodoPagamento)int.Parse(segundoPagamento);
             pedidoDto.ValorSegundoPagamento = valorSegundoPagamento;
         }
+
+        // FASE 6: auto-derivar momento do pagamento (Pix=Online, demais=NaEntrega)
+        pedidoDto.MomentoPagamento = pedidoDto.MetodoPagamento == MetodoPagamento.Pix
+            ? BatatasFritas.Shared.Enums.MomentoPagamento.Online
+            : BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega;
+        if (pedidoDto.SegundoMetodoPagamento.HasValue)
+            pedidoDto.SegundoMomentoPagamento = pedidoDto.SegundoMetodoPagamento == MetodoPagamento.Pix
+                ? BatatasFritas.Shared.Enums.MomentoPagamento.Online
+                : BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega;
         
         if (pedidoDto.MetodoPagamento == MetodoPagamento.Dinheiro && !string.IsNullOrWhiteSpace(Carrinho.TempTroco))
         {
