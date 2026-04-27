@@ -244,7 +244,11 @@
             <p style="color: #ffb347; font-weight: 700; margin-bottom: 20px;">Pedido #@idPedidoConfirmado.ToString("D3")</p>
             
             <p style="font-size: 1.1rem; margin-bottom: 15px; line-height: 1.4;">
-                @if (metodo == MetodoPagamento.Pix)
+                @if (metodo == MetodoPagamento.Pix && !string.IsNullOrWhiteSpace(linkPagamentoMP))
+                {
+                    <text>Pague pelo Mercado Pago. <b>Seu pedido será preparado automaticamente após a confirmação.</b></text>
+                }
+                else if (metodo == MetodoPagamento.Pix)
                 {
                     <text>Seu pedido foi recebido, mas <b>só começaremos a preparar após a confirmação do PIX e recebimento da sua localização pelo WhatsApp.</b></text>
                 }
@@ -294,12 +298,32 @@
                 var textoWhats = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. {msgStatus}";
                 var linkWhats = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(textoWhats)}";
             }
-            <a href="@linkWhats" 
-               target="_blank" 
-               class="btn-confirmar" 
-               style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; border-radius: 12px; padding: 18px; font-size: 1.2rem; background: #25D366; border: none; color: #fff; text-decoration: none; font-weight: 900; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);">
-                <span>ENVIAR NO WHATSAPP</span> ✅
-            </a>
+            @if (metodo == MetodoPagamento.Pix && !string.IsNullOrWhiteSpace(linkPagamentoMP))
+            {
+                <a href="@linkPagamentoMP"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="btn-confirmar"
+                   style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; border-radius: 12px; padding: 18px; font-size: 1.2rem; background: #009EE3; border: none; color: #fff; text-decoration: none; font-weight: 900; box-shadow: 0 4px 15px rgba(0, 158, 227, 0.4); margin-bottom: 12px;">
+                    <span>💳 PAGAR COM MERCADO PAGO</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; opacity: 0.95;">Pix instantâneo · Cartão</span>
+                </a>
+                <a href="@linkWhats"
+                   target="_blank"
+                   class="btn-confirmar"
+                   style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; border-radius: 12px; padding: 14px; font-size: 1rem; background: #25D366; border: none; color: #fff; text-decoration: none; font-weight: 700; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);">
+                    <span>Já paguei — enviar comprovante pelo WhatsApp</span>
+                </a>
+            }
+            else
+            {
+                <a href="@linkWhats"
+                   target="_blank"
+                   class="btn-confirmar"
+                   style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; border-radius: 12px; padding: 18px; font-size: 1.2rem; background: #25D366; border: none; color: #fff; text-decoration: none; font-weight: 900; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);">
+                    <span>ENVIAR NO WHATSAPP</span> ✅
+                </a>
+            }
 
             <button class="btn-cancelar" style="margin-top: 20px; text-decoration: none; background: transparent; border: 1px solid #ddd; width: 100%; color: #999; padding: 10px; border-radius: 8px; font-weight: 600;" @onclick="@FecharModalConfirmacao">Já enviei / Fechar</button>
         </div>
@@ -339,6 +363,7 @@
     private int idPedidoConfirmado = 0;
     private string resumoItensPedido = "";
     private MetodoPagamento metodoPagamentoEscolhido = MetodoPagamento.Dinheiro;
+    private string? linkPagamentoMP = null;
     private string sugestaoTipo = "";
     private List<BairroDto> bairrosDisponiveis = new();
     private List<ProdutoDto> produtosLoja = new(); // Used for checking "Apples to Apples" stock
@@ -626,6 +651,15 @@
                 if (responseContent.TryGetProperty("pedidoId", out var idProp))
                 {
                     idRecebido = idProp.GetInt32();
+                }
+
+                // Captura link de pagamento do Mercado Pago (somente para Pix)
+                linkPagamentoMP = null;
+                if (responseContent.TryGetProperty("linkPagamento", out var linkProp) && linkProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    var link = linkProp.GetString();
+                    if (!string.IsNullOrWhiteSpace(link))
+                        linkPagamentoMP = link;
                 }
 
                 idPedidoConfirmado = idRecebido;
