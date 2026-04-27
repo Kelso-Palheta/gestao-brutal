@@ -36,6 +36,11 @@ public class Pedido : EntityBase
     public virtual StatusPagamento StatusPagamento { get; set; } = StatusPagamento.Pendente;
     public virtual TipoAtendimento TipoAtendimento { get; protected set; } = TipoAtendimento.Delivery;
 
+    // -- FASE 5: Pix Direto (PaymentClient MP) --
+    public virtual string? QrCodeBase64 { get; protected set; }
+    public virtual string? QrCodeTexto { get; protected set; }
+    public virtual long? MpPagamentoId { get; protected set; }
+
     public virtual IList<ItemPedido> Itens { get; protected set; } = new List<ItemPedido>();
 
     /// <summary>
@@ -65,6 +70,13 @@ public class Pedido : EntityBase
     public virtual void SetLinkPagamento(string link)
     {
         LinkPagamento = link;
+    }
+
+    public virtual void SetPagamentoPix(string qrCodeBase64, string qrCodeTexto, long mpPagamentoId)
+    {
+        QrCodeBase64 = qrCodeBase64;
+        QrCodeTexto = qrCodeTexto;
+        MpPagamentoId = mpPagamentoId;
     }
 
 

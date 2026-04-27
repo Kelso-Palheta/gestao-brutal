@@ -29,6 +29,11 @@ public class PedidoMap : ClassMap<Pedido>
         Map(x => x.StatusPagamento).CustomType<StatusPagamento>().Not.Nullable().Column("status_pagamento").Default("1");
         Map(x => x.TipoAtendimento).CustomType<TipoAtendimento>().Not.Nullable().Column("tipo_atendimento").Default("1");
 
+        // FASE 5: Pix Direto
+        Map(x => x.QrCodeBase64).Column("qr_code_base64").Nullable().CustomSqlType("text");
+        Map(x => x.QrCodeTexto).Column("qr_code_texto").Nullable().CustomSqlType("text");
+        Map(x => x.MpPagamentoId).Column("mp_pagamento_id").Nullable();
+
         HasMany(x => x.Itens)
             .KeyColumn("pedido_id")
             .Inverse()

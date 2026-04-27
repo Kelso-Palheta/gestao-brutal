@@ -2,11 +2,13 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Domain.Interfaces;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace BatatasFritas.API.Controllers;
@@ -19,17 +21,20 @@ public class WebhookController : ControllerBase
     private readonly IRepository<Pedido> _pedidoRepo;
     private readonly IUnitOfWork _uow;
     private readonly ILogger<WebhookController> _logger;
+    private readonly IHubContext<PedidosHub> _hub;
 
     public WebhookController(
         IMercadoPagoService mercadoPagoService,
         IRepository<Pedido> pedidoRepo,
         IUnitOfWork uow,
-        ILogger<WebhookController> logger)
+        ILogger<WebhookController> logger,
+        IHubContext<PedidosHub> hub)
     {
         _mercadoPagoService = mercadoPagoService;
         _pedidoRepo = pedidoRepo;
         _uow = uow;
         _logger = logger;
+        _hub = hub;
     }
 
     [HttpPost("mercadopago")]
@@ -81,7 +86,8 @@ public class WebhookController : ControllerBase
             {
                 var pedidos = await _pedidoRepo.GetAllAsync();
                 var pedido = System.Linq.Enumerable.FirstOrDefault(pedidos,
-                    p => p.LinkPagamento != null && p.LinkPagamento.Contains(pagamentoId.ToString()));
+                    p => p.MpPagamentoId == pagamentoId
+                      || (p.LinkPagamento != null && p.LinkPagamento.Contains(pagamentoId.ToString())));
 
                 if (pedido != null && pedido.StatusPagamento != StatusPagamento.Aprovado)
                 {
@@ -89,6 +95,9 @@ public class WebhookController : ControllerBase
                     pedido.StatusPagamento = StatusPagamento.Aprovado;
                     await _uow.CommitAsync();
                     _logger.LogInformation("Pedido {PedidoId} aprovado via webhook MP", pedido.Id);
+
+                    // Notifica frontend específico via SignalR (grupo "pedido-{id}")
+                    await _hub.Clients.Group($"pedido-{pedido.Id}").SendAsync("PagamentoAprovado", pedido.Id);
                 }
             }
         }

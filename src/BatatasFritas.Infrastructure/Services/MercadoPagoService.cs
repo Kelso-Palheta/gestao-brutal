@@ -69,6 +69,39 @@ public class MercadoPagoService : IMercadoPagoService
         );
     }
 
+    public async Task<PagamentoPixResponse> CriarPagamentoPixAsync(PagamentoPixRequest request)
+    {
+        var client = new PaymentClient();
+
+        var paymentRequest = new PaymentCreateRequest
+        {
+            TransactionAmount = request.Valor,
+            Description = request.Descricao,
+            PaymentMethodId = "pix",
+            ExternalReference = request.PedidoId.ToString(),
+            NotificationUrl = string.IsNullOrWhiteSpace(request.NotificationUrl) ? null : request.NotificationUrl,
+            Payer = new PaymentPayerRequest
+            {
+                Email = request.EmailPagador
+            }
+        };
+
+        var payment = await client.CreateAsync(paymentRequest);
+
+        var qrBase64 = payment.PointOfInteraction?.TransactionData?.QrCodeBase64 ?? string.Empty;
+        var qrTexto = payment.PointOfInteraction?.TransactionData?.QrCode ?? string.Empty;
+        var expira = payment.DateOfExpiration ?? System.DateTime.UtcNow.AddMinutes(30);
+
+        _logger.LogInformation("Pagamento Pix MP criado: {Id} para pedido {PedidoId}", payment.Id, request.PedidoId);
+
+        return new PagamentoPixResponse(
+            PagamentoId: payment.Id ?? 0,
+            QrCodeBase64: qrBase64,
+            QrCodeTexto: qrTexto,
+            ExpiraEm: expira
+        );
+    }
+
     public async Task<PagamentoMpStatus> ConsultarPagamentoAsync(long pagamentoId)
     {
         var client = new PaymentClient();

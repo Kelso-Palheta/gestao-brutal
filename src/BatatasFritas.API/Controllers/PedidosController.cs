@@ -141,35 +141,43 @@ public class PedidosController : ControllerBase
 
             await _uow.CommitAsync();
 
-            // ── Pix: gera preferência MP após commit (API externa fora da transação) ──
+            // ── Pix: gera pagamento direto MP (QR + copia-e-cola) após commit ──
             if (dto.MetodoPagamento == MetodoPagamento.Pix)
             {
                 try
                 {
                     var notificationUrl = _config["MercadoPago:NotificationUrl"] ?? string.Empty;
-                    var mpRequest = new PreferenciaMPRequest(
+                    var pixRequest = new PagamentoPixRequest(
                         PedidoId: pedido.Id,
-                        ValorTotal: pedido.ValorTotal,
-                        Descricao: "Pedido BatatasFritas",
-                        EmailCliente: "cliente@batatasfritas.com.br",
+                        Valor: pedido.ValorTotal,
+                        Descricao: $"Pedido #{pedido.Id} - BatatasFritas",
+                        EmailPagador: "cliente@batatasfritas.com.br",
                         NotificationUrl: notificationUrl
                     );
-                    var mpResponse = await _mercadoPago.CriarPreferenciaAsync(mpRequest);
-                    pedido.SetLinkPagamento(mpResponse.InitPointUrl);
+                    var pixResponse = await _mercadoPago.CriarPagamentoPixAsync(pixRequest);
+                    pedido.SetPagamentoPix(pixResponse.QrCodeBase64, pixResponse.QrCodeTexto, pixResponse.PagamentoId);
                     _uow.BeginTransaction();
                     await _pedidoRepository.UpdateAsync(pedido);
                     await _uow.CommitAsync();
                 }
                 catch (System.Exception ex)
                 {
-                    System.Console.WriteLine($"[MP] Falha ao gerar link Pix para pedido {pedido.Id}: {ex.Message}");
+                    System.Console.WriteLine($"[MP] Falha ao gerar Pix para pedido {pedido.Id}: {ex.Message}");
                 }
             }
 
             // Notifica o KDS em tempo real via SignalR
             await _hub.Clients.All.SendAsync("NovoPedido", pedido.Id);
 
-            return Ok(new { PedidoId = pedido.Id, Status = pedido.Status.ToString(), LinkPagamento = pedido.LinkPagamento });
+            return Ok(new
+            {
+                PedidoId = pedido.Id,
+                Status = pedido.Status.ToString(),
+                LinkPagamento = pedido.LinkPagamento,
+                QrCodeBase64 = pedido.QrCodeBase64,
+                QrCodeTexto = pedido.QrCodeTexto,
+                MpPagamentoId = pedido.MpPagamentoId
+            });
         }
         catch (System.Exception ex)
         {
