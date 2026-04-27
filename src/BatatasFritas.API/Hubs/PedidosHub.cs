@@ -15,8 +15,16 @@ public class PedidosHub : Hub
         await base.OnConnectedAsync();
     }
 
-    // Eventos emitidos pelo servidor para todos os clientes:
-    //   "NovoPedido"       → int pedidoId
-    //   "StatusAtualizado" → int pedidoId, string novoStatus
-    //   "PedidoCancelado"  → int pedidoId
+    // Cliente entra no grupo de um pedido específico (para receber updates de pagamento)
+    public Task JoinPedidoGroup(int pedidoId)
+        => Groups.AddToGroupAsync(Context.ConnectionId, $"pedido-{pedidoId}");
+
+    public Task LeavePedidoGroup(int pedidoId)
+        => Groups.RemoveFromGroupAsync(Context.ConnectionId, $"pedido-{pedidoId}");
+
+    // Eventos emitidos pelo servidor:
+    //   "NovoPedido"        → int pedidoId (broadcast - KDS)
+    //   "StatusAtualizado"  → int pedidoId, string novoStatus
+    //   "PedidoCancelado"   → int pedidoId
+    //   "PagamentoAprovado" → int pedidoId (grupo "pedido-{id}")
 }

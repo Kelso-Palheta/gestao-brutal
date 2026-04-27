@@ -5,9 +5,12 @@
 @using System.Net.Http.Json
 @using System.Linq
 @using System
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 @inject CarrinhoState Carrinho
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject Microsoft.JSInterop.IJSRuntime JS
 
 <div class="carrinho-container">
     <h2>Seu Carrinho</h2>
@@ -231,12 +234,58 @@
     }
 </div>
 
-@if (mostrarModalConfirmacao)
+@if (mostrarModalConfirmacao && metodoPagamentoEscolhido == MetodoPagamento.Pix && !string.IsNullOrWhiteSpace(qrCodeBase64))
+{
+    <div class="modal-overlay" style="align-items: center; padding: 20px; background: rgba(0,0,0,0.85);">
+        <div class="modal-content" style="text-align: center; max-width: 500px; padding: 28px; border-radius: 16px; border: 3px solid #ffb347; box-shadow: 0 10px 50px rgba(0,0,0,0.5);">
+            @if (pagamentoAprovado)
+            {
+                <div style="font-size: 5rem; margin-bottom: 10px;">✅</div>
+                <h2 style="color: #25D366; font-weight: 900; margin-bottom: 10px; text-transform: uppercase;">Pagamento confirmado!</h2>
+                <p style="color: #555; font-size: 1.1rem; margin-bottom: 20px;">Seu pedido já foi enviado para a cozinha.</p>
+                <p style="color: #ffb347; font-weight: 700;">Pedido #@idPedidoConfirmado.ToString("D3")</p>
+                <button class="btn-confirmar" style="margin-top: 20px; width: 100%; border-radius: 12px; padding: 16px; font-size: 1.1rem; background: #25D366; border: none; color: #fff; font-weight: 900;" @onclick="@FecharModalConfirmacao">Voltar ao cardápio</button>
+            }
+            else
+            {
+                <h2 style="color: #000; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; font-size: 1.4rem;">PIX · PAGAMENTO INSTANTÂNEO</h2>
+                <p style="color: #ffb347; font-weight: 700; margin-bottom: 14px;">Pedido #@idPedidoConfirmado.ToString("D3") · R$ @valorFinalDoPedido.ToString("N2")</p>
+
+                <div style="display:flex; justify-content:center; margin-bottom:14px;">
+                    <img src="data:image/png;base64,@qrCodeBase64" alt="QR Code Pix"
+                         style="width: 220px; height: 220px; border: 8px solid #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);" />
+                </div>
+
+                <p style="font-size: 0.95rem; color:#555; margin-bottom: 14px;">Escaneie o QR Code com o app do seu banco</p>
+
+                <div style="display:flex; align-items:center; gap:10px; margin: 10px 0 14px;">
+                    <hr style="flex:1; border: none; border-top: 1px solid #ddd;" />
+                    <span style="color:#888; font-size:0.85rem; font-weight:600;">ou copie e cole</span>
+                    <hr style="flex:1; border: none; border-top: 1px solid #ddd;" />
+                </div>
+
+                <textarea readonly
+                          style="width: 100%; max-width: 100%; min-height: 70px; font-family: ui-monospace, Menlo, monospace; font-size: 0.72rem; padding: 12px; border: 2px dashed #ffb347; background: #fff; color:#333; border-radius: 8px; resize: none; margin-bottom: 12px;">@qrCodeTexto</textarea>
+
+                <button class="btn-confirmar"
+                        style="display:flex; align-items:center; justify-content:center; gap:8px; width: 100%; border-radius: 12px; padding: 16px; font-size: 1.1rem; background: #009EE3; border: none; color: #fff; font-weight: 900; box-shadow: 0 4px 15px rgba(0,158,227,0.4); cursor:pointer;"
+                        @onclick="@CopiarCodigoPixAsync">
+                    <span>@(codigoCopiado ? "✓ Código Pix copiado!" : "📋 Copiar código Pix")</span>
+                </button>
+
+                <p style="margin-top: 16px; font-size: 0.85rem; color: #888; font-style: italic;">O pagamento é confirmado automaticamente em segundos.</p>
+
+                <button class="btn-cancelar" style="margin-top: 12px; background: transparent; border: 1px solid #ddd; width: 100%; color: #999; padding: 10px; border-radius: 8px; font-weight: 600;" @onclick="@FecharModalConfirmacao">Cancelar pedido</button>
+            }
+        </div>
+    </div>
+}
+else if (mostrarModalConfirmacao)
 {
     var metodo = metodoPagamentoEscolhido;
     string icone = metodo == MetodoPagamento.Pix ? "🛡️" : (metodo == MetodoPagamento.Dinheiro ? "💵" : "💳");
     string titulo = metodo == MetodoPagamento.Pix ? "Aguardando Pagamento" : "Pedido em Processamento";
-    
+
     <div class="modal-overlay" style="align-items: center; padding: 20px; background: rgba(0,0,0,0.8);">
         <div class="modal-content" style="text-align: center; max-width: 500px; padding: 30px; border-radius: 16px; border: 3px solid #ffb347; box-shadow: 0 10px 50px rgba(0,0,0,0.5);">
             <div style="font-size: 4rem; margin-bottom: 10px;">@icone</div>
@@ -364,6 +413,12 @@
     private string resumoItensPedido = "";
     private MetodoPagamento metodoPagamentoEscolhido = MetodoPagamento.Dinheiro;
     private string? linkPagamentoMP = null;
+    private string? qrCodeBase64 = null;
+    private string? qrCodeTexto = null;
+    private bool pagamentoAprovado = false;
+    private bool codigoCopiado = false;
+    private HubConnection? hubConnection;
+    private System.Threading.CancellationTokenSource? pollingCts;
     private string sugestaoTipo = "";
     private List<BairroDto> bairrosDisponiveis = new();
     private List<ProdutoDto> produtosLoja = new(); // Used for checking "Apples to Apples" stock
@@ -653,8 +708,12 @@
                     idRecebido = idProp.GetInt32();
                 }
 
-                // Captura link de pagamento do Mercado Pago (somente para Pix)
+                // Captura link de pagamento (legacy) e QR Pix (FASE 5)
                 linkPagamentoMP = null;
+                qrCodeBase64 = null;
+                qrCodeTexto = null;
+                pagamentoAprovado = false;
+
                 if (responseContent.TryGetProperty("linkPagamento", out var linkProp) && linkProp.ValueKind == System.Text.Json.JsonValueKind.String)
                 {
                     var link = linkProp.GetString();
@@ -662,13 +721,33 @@
                         linkPagamentoMP = link;
                 }
 
+                if (responseContent.TryGetProperty("qrCodeBase64", out var qrProp) && qrProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    var qr = qrProp.GetString();
+                    if (!string.IsNullOrWhiteSpace(qr))
+                        qrCodeBase64 = qr;
+                }
+
+                if (responseContent.TryGetProperty("qrCodeTexto", out var qrTxtProp) && qrTxtProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    var qrTxt = qrTxtProp.GetString();
+                    if (!string.IsNullOrWhiteSpace(qrTxt))
+                        qrCodeTexto = qrTxt;
+                }
+
                 idPedidoConfirmado = idRecebido;
                 valorFinalDoPedido = ValorTotalPedido;
                 resumoItensPedido = string.Join(", ", Carrinho.Itens.Select(i => $"{i.Quantidade}x {i.NomeProduto}"));
                 metodoPagamentoEscolhido = pedidoDto.MetodoPagamento;
-                
+
                 mostrarModalConfirmacao = true;
                 mensagemSucesso = "Pedido recebido! Veja as instruções abaixo.";
+
+                // Conecta SignalR + polling fallback se for Pix com QR
+                if (metodoPagamentoEscolhido == MetodoPagamento.Pix && !string.IsNullOrWhiteSpace(qrCodeBase64))
+                {
+                    _ = ConectarSignalREPollingAsync(idPedidoConfirmado);
+                }
 
                 Carrinho.LimparCarrinho();
                 pedidoDto = new NovoPedidoDto(); // Reset backend ref
@@ -688,16 +767,122 @@
         }
     }
 
-    private void FecharModalConfirmacao()
+    private async Task FecharModalConfirmacao()
     {
         mostrarModalConfirmacao = false;
+        await DesconectarPagamentoAsync();
         Navigation.NavigateTo("/");
     }
 
     private void VoltarCardapio()
     {
-        // A simple navigation to home will close the offcanvas if it's route-based, 
+        // A simple navigation to home will close the offcanvas if it's route-based,
         // or the user can just use the standard layout close if it's CSS-based.
         Navigation.NavigateTo("/");
+    }
+
+    private async Task ConectarSignalREPollingAsync(int pedidoId)
+    {
+        try
+        {
+            var hubUrl = Navigation.ToAbsoluteUri("/hubs/pedidos");
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On<int>("PagamentoAprovado", id =>
+            {
+                if (id == pedidoId)
+                {
+                    pagamentoAprovado = true;
+                    InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await hubConnection.StartAsync();
+            await hubConnection.InvokeAsync("JoinPedidoGroup", pedidoId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SignalR] Falha ao conectar: {ex.Message}");
+        }
+
+        // Polling fallback a cada 5s (até 30min ou pagamento aprovado)
+        pollingCts = new System.Threading.CancellationTokenSource();
+        var token = pollingCts.Token;
+        _ = Task.Run(async () =>
+        {
+            var fim = DateTime.UtcNow.AddMinutes(30);
+            while (!token.IsCancellationRequested && !pagamentoAprovado && DateTime.UtcNow < fim)
+            {
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), token);
+                    if (pagamentoAprovado || token.IsCancellationRequested) break;
+
+                    var resp = await Http.GetAsync($"api/pedidos/{pedidoId}");
+                    if (resp.IsSuccessStatusCode)
+                    {
+                        var json = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                        if (json.TryGetProperty("statusPagamento", out var spProp))
+                        {
+                            // StatusPagamento.Aprovado = 2 (enum)
+                            var sp = spProp.ValueKind == System.Text.Json.JsonValueKind.Number ? spProp.GetInt32() : -1;
+                            if (sp == (int)StatusPagamento.Aprovado)
+                            {
+                                pagamentoAprovado = true;
+                                await InvokeAsync(StateHasChanged);
+                                break;
+                            }
+                        }
+                    }
+                }
+                catch (TaskCanceledException) { break; }
+                catch { /* ignora erros transitórios */ }
+            }
+        }, token);
+    }
+
+    private async Task DesconectarPagamentoAsync()
+    {
+        try { pollingCts?.Cancel(); } catch { }
+
+        if (hubConnection is not null)
+        {
+            try
+            {
+                if (idPedidoConfirmado > 0)
+                    await hubConnection.InvokeAsync("LeavePedidoGroup", idPedidoConfirmado);
+                await hubConnection.DisposeAsync();
+            }
+            catch { }
+            hubConnection = null;
+        }
+    }
+
+    private async Task CopiarCodigoPixAsync()
+    {
+        if (string.IsNullOrWhiteSpace(qrCodeTexto)) return;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", qrCodeTexto);
+            codigoCopiado = true;
+            StateHasChanged();
+            _ = Task.Delay(2500).ContinueWith(_ =>
+            {
+                codigoCopiado = false;
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Clipboard] Falha: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DesconectarPagamentoAsync();
     }
 }

@@ -22,9 +22,25 @@ public record PagamentoMpStatus(
     string StatusDetail
 );
 
+public record PagamentoPixRequest(
+    long PedidoId,
+    decimal Valor,
+    string Descricao,
+    string EmailPagador,
+    string NotificationUrl
+);
+
+public record PagamentoPixResponse(
+    long PagamentoId,
+    string QrCodeBase64,
+    string QrCodeTexto,
+    System.DateTime ExpiraEm
+);
+
 public interface IMercadoPagoService
 {
     Task<PreferenciaMPResponse> CriarPreferenciaAsync(PreferenciaMPRequest request);
+    Task<PagamentoPixResponse> CriarPagamentoPixAsync(PagamentoPixRequest request);
     Task<PagamentoMpStatus> ConsultarPagamentoAsync(long pagamentoId);
     // resourceId = data.id do body do webhook (NÃO o header x-request-id)
     Task<bool> ValidarAssinaturaWebhookAsync(string xSignature, string resourceId);
