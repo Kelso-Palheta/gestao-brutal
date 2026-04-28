@@ -23,8 +23,10 @@ public class PedidosHub : Hub
         => Groups.RemoveFromGroupAsync(Context.ConnectionId, $"pedido-{pedidoId}");
 
     // Eventos emitidos pelo servidor:
-    //   "NovoPedido"        → int pedidoId (broadcast - KDS)
-    //   "StatusAtualizado"  → int pedidoId, string novoStatus
-    //   "PedidoCancelado"   → int pedidoId
-    //   "PagamentoAprovado" → int pedidoId (grupo "pedido-{id}")
+    //   "NovoPedido"                → int pedidoId (broadcast - KDS)
+    //   "StatusAtualizado"          → int pedidoId, string novoStatus
+    //   "PedidoCancelado"           → int pedidoId
+    //   "PagamentoAprovado"         → int pedidoId (grupo "pedido-{id}" — frontend checkout Pix)
+    //   "ProdutoDesativado"         → int produtoId (broadcast)
+    //   "ImprimirPedido"            → int pedidoId (broadcast — PrintAgent escuta e imprime cupom térmico)
 }

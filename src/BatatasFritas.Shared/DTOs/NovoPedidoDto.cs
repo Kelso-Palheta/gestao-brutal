@@ -16,6 +16,10 @@ public class NovoPedidoDto
     public TipoAtendimento TipoAtendimento { get; set; } = TipoAtendimento.Delivery;
     public decimal ValorCashbackUsado { get; set; } = 0m;
     public List<NovoItemPedidoDto> Itens { get; set; } = new();
+
+    // FASE 6: momento do pagamento
+    public MomentoPagamento MomentoPagamento { get; set; } = MomentoPagamento.NaEntrega;
+    public MomentoPagamento? SegundoMomentoPagamento { get; set; }
 }
 
 public class NovoItemPedidoDto

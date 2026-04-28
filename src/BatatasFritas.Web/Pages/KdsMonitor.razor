@@ -238,6 +238,12 @@
                                 Despachar ✅
                             </button>
                         }
+                        else if (p.StatusPagamento == StatusPagamento.PagamentoParcial)
+                        {
+                            <button class="kds-btn" style="background:#111; color:#d4ac0d; border-color:#d4ac0d; cursor:not-allowed;" title="Aguardando confirmação do pagamento na entrega" disabled>
+                                🚫 Aguarda Pgto Entrega
+                            </button>
+                        }
                         else if (p.MetodoPagamento == MetodoPagamento.Dinheiro)
                         {
                             <button class="kds-btn kds-btn-entregue" style="border-color: #ff9800; color: #ff9800;" title="Pagamento será realizado na entrega" @onclick="() => MoverStatus(p.Id, StatusPedido.Entregue)">
@@ -403,16 +409,24 @@
 
     private RenderFragment ExibirBotoesPagamento(PedidoDetalheDto p) => __builder =>
     {
-        @if (p.StatusPagamento != StatusPagamento.Aprovado && p.StatusPagamento != StatusPagamento.Presencial)
+        @if (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
         {
-            <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto; border-color:#d68910;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
-                ⚠️ Pendente
+            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto; border-color:#229954;" @onclick="() => DesfazerPagamento(p.Id)" title="Desfazer Pagamento">
+                ✅ Pago
+            </button>
+        }
+        else if (p.StatusPagamento == StatusPagamento.PagamentoParcial)
+        {
+            <button class="kds-btn" style="background:#2980b9; color:#fff; flex: 0 0 auto; border-color:#2471a3;"
+                    @onclick="() => ConfirmarPagamentoEntrega(p.Id)"
+                    title="Confirmar recebimento do pagamento na entrega">
+                💵 Confirmar pagto. entrega
             </button>
         }
         else
         {
-            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto; border-color:#229954;" @onclick="() => DesfazerPagamento(p.Id)" title="Desfazer Pagamento">
-                ✅ Pago
+            <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto; border-color:#d68910;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
+                ⚠️ Pendente
             </button>
         }
     };
@@ -656,14 +670,28 @@
         catch { }
     }
 
+    // ── FASE 6: confirmar pagamento recebido na entrega (2ª parte do split) ──
+    private async Task ConfirmarPagamentoEntrega(int id)
+    {
+        try
+        {
+            var response = await Http.PostAsync($"api/pedidos/{id}/confirmar-pagamento-entrega", null);
+            if (response.IsSuccessStatusCode)
+                await LoadPedidos();
+        }
+        catch { }
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // HELPERS
     // ────────────────────────────────────────────────────────────────────
     private static (string texto, string estilo) BadgePagamento(PedidoDetalheDto p)
     {
         if (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
-            return ("✅ PAGO", "background:#27ae60; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
-        return ("⏳ PENDENTE", "background:#f39c12; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
+            return ("✅ PAGO",    "background:#27ae60; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
+        if (p.StatusPagamento == StatusPagamento.PagamentoParcial)
+            return ("🟡 PARCIAL", "background:#d4ac0d; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
+        return ("⏳ PENDENTE",    "background:#f39c12; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
     }
 
     private static string NomeMetodo(MetodoPagamento m) => m switch

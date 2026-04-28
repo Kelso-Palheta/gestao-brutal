@@ -94,7 +94,11 @@ public class PedidosController : ControllerBase
             }
 
             var bairro = await _bairroRepository.GetByIdAsync(dto.BairroEntregaId);
-            var pedido = new Pedido(dto.NomeCliente, dto.TelefoneCliente, dto.EnderecoEntrega, bairro, dto.MetodoPagamento, dto.TrocoPara, dto.TipoAtendimento, dto.ValorCashbackUsado, dto.SegundoMetodoPagamento, dto.ValorSegundoPagamento);
+            var pedido = new Pedido(
+                dto.NomeCliente, dto.TelefoneCliente, dto.EnderecoEntrega, bairro,
+                dto.MetodoPagamento, dto.TrocoPara, dto.TipoAtendimento,
+                dto.ValorCashbackUsado, dto.SegundoMetodoPagamento, dto.ValorSegundoPagamento,
+                dto.MomentoPagamento, dto.SegundoMomentoPagamento);
 
             foreach (var item in dto.Itens)
             {
@@ -168,6 +172,13 @@ public class PedidosController : ControllerBase
 
             // Notifica o KDS em tempo real via SignalR
             await _hub.Clients.All.SendAsync("NovoPedido", pedido.Id);
+
+            // ── FASE 6: imprimir se pagamento é na entrega (não precisa esperar webhook) ──
+            // Pix/Online → PrintAgent aguarda sinal do webhook via ImprimirPedido
+            // Dinheiro/Cartão na entrega → imprime agora
+            var deveImprimirAgora = dto.MomentoPagamento == BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega;
+            if (deveImprimirAgora)
+                await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
 
             return Ok(new
             {
@@ -295,6 +306,34 @@ public class PedidosController : ControllerBase
                         await _insumoRepository.UpdateAsync(insumo);
                     }
                 }
+        }
+    }
+
+    // ── POST api/pedidos/{id}/confirmar-pagamento-entrega ──────────────
+    // Chamado pelo operador KDS quando recebe o pagamento em mãos (2ª parte ou único na entrega).
+    [HttpPost("{id}/confirmar-pagamento-entrega")]
+    public async Task<IActionResult> ConfirmarPagamentoEntrega(int id)
+    {
+        try
+        {
+            var pedido = await _pedidoRepository.GetByIdAsync(id);
+            if (pedido == null) return NotFound();
+
+            _uow.BeginTransaction();
+            pedido.ConfirmarPagamentoEntrega();
+            await _pedidoRepository.UpdateAsync(pedido);
+            await _uow.CommitAsync();
+
+            // Notifica KDS + PrintAgent (caso seja pagamento NaEntrega puro — sem webhook anterior)
+            await _hub.Clients.All.SendAsync("StatusAtualizado", pedido.Id, pedido.StatusPagamento.ToString());
+            await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
+
+            return Ok(new { mensagem = "Pagamento confirmado.", StatusPagamento = pedido.StatusPagamento.ToString() });
+        }
+        catch (System.Exception ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
         }
     }
 

@@ -89,15 +89,32 @@ public class WebhookController : ControllerBase
                     p => p.MpPagamentoId == pagamentoId
                       || (p.LinkPagamento != null && p.LinkPagamento.Contains(pagamentoId.ToString())));
 
-                if (pedido != null && pedido.StatusPagamento != StatusPagamento.Aprovado)
+                if (pedido != null && pedido.StatusPagamento != StatusPagamento.Aprovado
+                                  && pedido.StatusPagamento != StatusPagamento.PagamentoParcial)
                 {
                     _uow.BeginTransaction();
-                    pedido.StatusPagamento = StatusPagamento.Aprovado;
-                    await _uow.CommitAsync();
-                    _logger.LogInformation("Pedido {PedidoId} aprovado via webhook MP", pedido.Id);
 
-                    // Notifica frontend específico via SignalR (grupo "pedido-{id}")
+                    // Split payment: se existe 2ª parte na entrega → PagamentoParcial; caso contrário → Aprovado
+                    var temSegundaParteEntrega = pedido.SegundoMetodoPagamento.HasValue
+                        && pedido.SegundoMomentoPagamento == BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega;
+
+                    if (temSegundaParteEntrega)
+                        pedido.ConfirmarPagamentoParcial();
+                    else
+                        pedido.ConfirmarPagamento();
+
+                    await _uow.CommitAsync();
+                    _logger.LogInformation("Pedido {PedidoId} status={Status} via webhook MP",
+                        pedido.Id, pedido.StatusPagamento);
+
+                    // Notifica frontend (grupo do pedido) — tela de checkout Pix
                     await _hub.Clients.Group($"pedido-{pedido.Id}").SendAsync("PagamentoAprovado", pedido.Id);
+
+                    // Notifica KDS (broadcast)
+                    await _hub.Clients.All.SendAsync("StatusAtualizado", pedido.Id, pedido.StatusPagamento.ToString());
+
+                    // FASE 6: sinaliza PrintAgent para imprimir cupom térmico
+                    await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
                 }
             }
         }

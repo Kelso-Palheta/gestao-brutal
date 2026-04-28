@@ -34,6 +34,10 @@ public class PedidoMap : ClassMap<Pedido>
         Map(x => x.QrCodeTexto).Column("qr_code_texto").Nullable().CustomSqlType("text");
         Map(x => x.MpPagamentoId).Column("mp_pagamento_id").Nullable();
 
+        // FASE 6: Momento do pagamento
+        Map(x => x.MomentoPagamento).CustomType<MomentoPagamento>().Not.Nullable().Column("momento_pagamento").Default("2");
+        Map(x => x.SegundoMomentoPagamento).CustomType<MomentoPagamento>().Column("segundo_momento_pagamento").Nullable();
+
         HasMany(x => x.Itens)
             .KeyColumn("pedido_id")
             .Inverse()

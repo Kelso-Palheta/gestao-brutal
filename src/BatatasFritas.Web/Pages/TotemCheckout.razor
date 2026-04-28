@@ -361,16 +361,26 @@
             valorSegundoPgto = valorSegundoPagamento;
         }
 
+        var metodoFinal = TotalPagar == 0 ? MetodoPagamento.Pix : metodo;
         var dto = new NovoPedidoDto
         {
             NomeCliente = nomeCliente + (ondeComer == "Viagem" ? " (Viagem)" : ""),
             TelefoneCliente = telefoneCliente,
             TipoAtendimento = TipoAtendimento.Totem,
-            MetodoPagamento = TotalPagar == 0 ? MetodoPagamento.Pix : metodo,
+            MetodoPagamento = metodoFinal,
             SegundoMetodoPagamento = segundoMetodo,
             ValorSegundoPagamento = valorSegundoPgto,
             ValorCashbackUsado = ValorCashbackAplicado,
-            Itens = Carrinho.Itens.ToList()
+            Itens = Carrinho.Itens.ToList(),
+            // FASE 6: auto-derivar momento do pagamento (Pix=Online, demais=NaEntrega)
+            MomentoPagamento = metodoFinal == MetodoPagamento.Pix
+                ? BatatasFritas.Shared.Enums.MomentoPagamento.Online
+                : BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega,
+            SegundoMomentoPagamento = segundoMetodo.HasValue
+                ? (segundoMetodo == MetodoPagamento.Pix
+                    ? BatatasFritas.Shared.Enums.MomentoPagamento.Online
+                    : BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega)
+                : null
         };
 
         try
