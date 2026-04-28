@@ -98,6 +98,13 @@ public class Pedido : EntityBase
         StatusPagamento = StatusPagamento.Pendente; // aguardando confirmação webhook
     }
 
+    // FASE 7 — Checkout transparente cartão: status vem da resposta síncrona do MP
+    public virtual void SetPagamentoCartao(long pagamentoId, StatusPagamento status)
+    {
+        MpPagamentoId   = pagamentoId;
+        StatusPagamento = status;
+    }
+
     /// <summary>
     /// Chamado quando o 1º pagamento online é aprovado mas existe 2ª parte na entrega.
     /// </summary>

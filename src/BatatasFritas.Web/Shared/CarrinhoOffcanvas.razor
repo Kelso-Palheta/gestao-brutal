@@ -404,6 +404,76 @@ else if (mostrarModalConfirmacao)
     </div>
 }
 
+@* ── FASE 7: Modal MP Bricks — Checkout Transparente Cartão ── *@
+@if (mostrarModalCartao)
+{
+    <div class="modal-overlay" style="align-items: center; padding: 20px; background: rgba(0,0,0,0.88);">
+        <div class="modal-content" style="text-align: center; max-width: 520px; padding: 28px; border-radius: 16px; border: 3px solid #009EE3; box-shadow: 0 10px 50px rgba(0,0,0,0.5);">
+            @if (cartaoStatusFinal == null)
+            {
+                <h2 style="color: #000; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; font-size: 1.3rem;">💳 PAGAMENTO COM CARTÃO</h2>
+                <p style="color: #009EE3; font-weight: 700; margin-bottom: 20px;">
+                    Pedido #@idPedidoConfirmado.ToString("D3") &nbsp;·&nbsp; R$ @valorFinalDoPedido.ToString("N2")
+                </p>
+
+                @if (cartaoErroCritico != null)
+                {
+                    <div style="background:#3a0000; border:1px solid #ff4444; color:#ff6b6b; padding:12px; border-radius:8px; margin-bottom:14px; font-size:0.9rem;">
+                        ⚠️ @cartaoErroCritico
+                    </div>
+                }
+
+                <div id="mp-card-brick-container" style="min-height: 200px;"></div>
+
+                @if (isSubmittingCartao)
+                {
+                    <p style="margin-top:14px; color:#555; font-size:0.9rem;">⏳ Processando pagamento…</p>
+                }
+
+                <button style="margin-top:18px; background:transparent; border:1px solid #ddd; width:100%; color:#999; padding:10px; border-radius:8px; font-weight:600; cursor:pointer;"
+                        @onclick="@FecharModalCartao" disabled="@isSubmittingCartao">
+                    Cancelar
+                </button>
+            }
+            else if (cartaoStatusFinal == "approved")
+            {
+                @{
+                    var msgCartaoAprov = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. Paguei R$ {valorFinalDoPedido:N2} no cartão ✅. Segue minha localização para a entrega.";
+                    var linkWhatsCartao = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(msgCartaoAprov)}";
+                }
+                <div style="font-size:4rem; margin-bottom:8px;">✅</div>
+                <h2 style="color:#25D366; font-weight:900; margin-bottom:4px; text-transform:uppercase;">Pagamento aprovado!</h2>
+                <p style="color:#ffb347; font-weight:700; margin-bottom:16px;">Pedido #@idPedidoConfirmado.ToString("D3")</p>
+                <p style="font-size:1rem; margin-bottom:18px; line-height:1.4; color:#333;">
+                    Seu cartão foi cobrado! Envie sua <b>localização pelo WhatsApp</b> para facilitar a entrega.
+                </p>
+                <a href="@linkWhatsCartao" target="_blank" class="btn-confirmar"
+                   style="display:flex; align-items:center; justify-content:center; gap:10px; width:100%; border-radius:12px; padding:18px; font-size:1.15rem; background:#25D366; border:none; color:#fff; text-decoration:none; font-weight:900; box-shadow:0 4px 15px rgba(37,211,102,0.4);">
+                    ENVIAR LOCALIZAÇÃO NO WHATSAPP ✅
+                </a>
+                <button style="margin-top:16px; background:transparent; border:1px solid #ddd; width:100%; color:#999; padding:10px; border-radius:8px; font-weight:600;" @onclick="@FecharModalCartao">Já enviei / Fechar</button>
+            }
+            else
+            {
+                <div style="font-size:4rem; margin-bottom:8px;">❌</div>
+                <h2 style="color:#d9534f; font-weight:900; margin-bottom:4px; text-transform:uppercase;">Cartão recusado</h2>
+                <p style="font-size:0.95rem; margin-bottom:20px; color:#555; line-height:1.4;">
+                    @(cartaoStatusDetalhe == "insufficient_amount"
+                        ? "Saldo insuficiente no cartão."
+                        : cartaoStatusDetalhe == "cc_rejected_call_for_authorize"
+                            ? "Banco recusou. Ligue para autorizar."
+                            : "Tente outro cartão ou entre em contato com seu banco.")
+                </p>
+                <button class="btn-confirmar" style="background:#009EE3; border:none; width:100%; border-radius:12px; padding:16px; font-size:1.1rem; color:#fff; font-weight:900; cursor:pointer;"
+                        @onclick="@TentarNovamenteCartao">
+                    Tentar outro cartão
+                </button>
+                <button style="margin-top:12px; background:transparent; border:1px solid #ddd; width:100%; color:#999; padding:10px; border-radius:8px; font-weight:600;" @onclick="@FecharModalCartao">Cancelar pedido</button>
+            }
+        </div>
+    </div>
+}
+
 @if (mostrarModalSugestao)
 {
     <div class="modal-overlay">
@@ -427,7 +497,7 @@ else if (mostrarModalConfirmacao)
 
 @code {
     private NovoPedidoDto pedidoDto = new NovoPedidoDto();
-    
+
     private string mensagemSucesso = "";
     private string mensagemErro = "";
     private bool isSubmitting = false;
@@ -445,6 +515,16 @@ else if (mostrarModalConfirmacao)
     private HubConnection? hubConnection;
     private System.Threading.CancellationTokenSource? pollingCts;
     private string sugestaoTipo = "";
+
+    // FASE 7: Checkout Transparente Cartão
+    private bool mostrarModalCartao = false;
+    private bool cardBrickInitialized = false;
+    private bool isSubmittingCartao = false;
+    private string? cartaoStatusFinal = null;       // "approved" | "rejected" | null
+    private string? cartaoStatusDetalhe = null;
+    private string? cartaoErroCritico = null;
+    private string? mpPublicKey = null;
+    private DotNetObjectReference<CarrinhoOffcanvas>? _dotnetRef;
     private List<BairroDto> bairrosDisponiveis = new();
     private List<ProdutoDto> produtosLoja = new(); // Used for checking "Apples to Apples" stock
 
@@ -654,6 +734,13 @@ else if (mostrarModalConfirmacao)
             return;
         }
 
+        // FASE 7: cartão → mostrar Brick antes de criar pedido
+        if (Carrinho.TempPagamento == "2")
+        {
+            await AbrirModalCartaoAsync();
+            return;
+        }
+
         await ProcessarPedidoRealmente();
     }
 
@@ -666,7 +753,166 @@ else if (mostrarModalConfirmacao)
     private async Task RecusarSugestao()
     {
         mostrarModalSugestao = false;
+        if (Carrinho.TempPagamento == "2")
+        {
+            await AbrirModalCartaoAsync();
+            return;
+        }
         await ProcessarPedidoRealmente();
+    }
+
+    // ── FASE 7: Métodos MP Bricks ────────────────────────────────────────────
+
+    private async Task AbrirModalCartaoAsync()
+    {
+        // Busca PublicKey do backend (apenas 1x por sessão)
+        if (string.IsNullOrWhiteSpace(mpPublicKey))
+        {
+            try
+            {
+                var resp = await Http.GetAsync("api/pedidos/mp-public-key");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var json = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+                    if (json.TryGetProperty("publicKey", out var pk))
+                        mpPublicKey = pk.GetString();
+                }
+            }
+            catch { }
+        }
+
+        if (string.IsNullOrWhiteSpace(mpPublicKey))
+        {
+            mensagemErro = "Pagamento com cartão indisponível no momento. Escolha outra forma.";
+            return;
+        }
+
+        cartaoStatusFinal    = null;
+        cartaoStatusDetalhe  = null;
+        cartaoErroCritico    = null;
+        cardBrickInitialized = false;
+        isSubmittingCartao   = false;
+        idPedidoConfirmado   = 0;
+        valorFinalDoPedido   = ValorTotalPedido;
+        resumoItensPedido    = string.Join(", ", Carrinho.Itens.Select(i => $"{i.Quantidade}x {i.NomeProduto}"));
+
+        mostrarModalCartao = true;
+        StateHasChanged(); // renderiza o modal + container div
+
+        _dotnetRef = DotNetObjectReference.Create(this);
+        // Aguarda render para que o #mp-card-brick-container exista no DOM
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("mpBricksInterop.initCardBrick",
+            "mp-card-brick-container",
+            (double)ValorTotalPedido,
+            mpPublicKey,
+            _dotnetRef);
+        cardBrickInitialized = true;
+    }
+
+    [Microsoft.JSInterop.JSInvokable]
+    public async Task OnCardBrickSubmit(string token, string paymentMethodId, int installments, string email)
+    {
+        if (isSubmittingCartao) return;
+        isSubmittingCartao = true;
+        cartaoErroCritico  = null;
+        StateHasChanged();
+
+        try
+        {
+            // Monta pedidoDto com token
+            pedidoDto = new NovoPedidoDto();
+            pedidoDto.Itens               = Carrinho.Itens.ToList();
+            pedidoDto.NomeCliente         = Carrinho.TempNome;
+            pedidoDto.TelefoneCliente     = Carrinho.TempTelefone;
+            pedidoDto.EnderecoEntrega     = $"{Carrinho.TempRuaAvenida}, Nº {Carrinho.TempNumeroLocal} - {Carrinho.TempComplementoLocal}".TrimEnd(' ', '-');
+            pedidoDto.MetodoPagamento     = MetodoPagamento.Cartao;
+            pedidoDto.BairroEntregaId     = int.Parse(Carrinho.TempBairro);
+            pedidoDto.ValorCashbackUsado  = ValorCashbackAplicado;
+            pedidoDto.MomentoPagamento    = BatatasFritas.Shared.Enums.MomentoPagamento.Online; // cartão online
+            pedidoDto.CardToken           = token;
+            pedidoDto.CardPaymentMethodId = paymentMethodId;
+            pedidoDto.CardInstallments    = installments > 0 ? installments : 1;
+            pedidoDto.CardEmailPagador    = string.IsNullOrWhiteSpace(email)
+                                            ? "cliente@batatasfritas.com.br"
+                                            : email;
+
+            var response = await Http.PostAsJsonAsync("api/pedidos", pedidoDto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+
+                if (json.TryGetProperty("pedidoId", out var idProp))
+                    idPedidoConfirmado = idProp.GetInt32();
+
+                string status = "pending";
+                if (json.TryGetProperty("cartaoStatus", out var csProp) && csProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                    status = csProp.GetString() ?? "pending";
+
+                if (json.TryGetProperty("cartaoStatusDetalhe", out var cdProp) && cdProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                    cartaoStatusDetalhe = cdProp.GetString();
+
+                cartaoStatusFinal = status;
+
+                if (status == "approved")
+                {
+                    Carrinho.LimparCarrinho();
+                    pedidoDto = new NovoPedidoDto();
+                }
+                // rejected → mostra tela de erro no próprio modal
+            }
+            else
+            {
+                var erro = await response.Content.ReadAsStringAsync();
+                cartaoErroCritico = $"Erro ao criar pedido: {erro}";
+            }
+        }
+        catch (Exception ex)
+        {
+            cartaoErroCritico = $"Erro de conexão: {ex.Message}";
+        }
+        finally
+        {
+            isSubmittingCartao = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task FecharModalCartao()
+    {
+        mostrarModalCartao   = false;
+        cardBrickInitialized = false;
+        cartaoStatusFinal    = null;
+        cartaoStatusDetalhe  = null;
+        cartaoErroCritico    = null;
+        isSubmittingCartao   = false;
+
+        try { await JS.InvokeVoidAsync("mpBricksInterop.destroyCardBrick"); } catch { }
+        _dotnetRef?.Dispose();
+        _dotnetRef = null;
+
+        if (idPedidoConfirmado > 0)
+            Navigation.NavigateTo("/");
+    }
+
+    private async Task TentarNovamenteCartao()
+    {
+        cartaoStatusFinal   = null;
+        cartaoStatusDetalhe = null;
+        cartaoErroCritico   = null;
+        idPedidoConfirmado  = 0;
+        cardBrickInitialized = false;
+        StateHasChanged();
+
+        await Task.Delay(80);
+        _dotnetRef ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("mpBricksInterop.initCardBrick",
+            "mp-card-brick-container",
+            (double)valorFinalDoPedido,
+            mpPublicKey,
+            _dotnetRef);
+        cardBrickInitialized = true;
     }
 
     private async Task ProcessarPedidoRealmente()
@@ -918,5 +1164,7 @@ else if (mostrarModalConfirmacao)
     public async ValueTask DisposeAsync()
     {
         await DesconectarPagamentoAsync();
+        try { await JS.InvokeVoidAsync("mpBricksInterop.destroyCardBrick"); } catch { }
+        _dotnetRef?.Dispose();
     }
 }
