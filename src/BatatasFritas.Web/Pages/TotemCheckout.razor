@@ -390,9 +390,18 @@
             {
                 var responseContent = await r.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
                 int idRecebido = responseContent.GetProperty("pedidoId").GetInt32();
-                
+
                 Carrinho.LimparCarrinho();
-                Nav.NavigateTo($"/totem/sucesso/{idRecebido}?tipo={pagamento}&amount={valorCentavos}", forceLoad: true);
+
+                // Cartão no totem → maquininha (MP Point Smart 2)
+                if (pagamento == "Cartao")
+                {
+                    Nav.NavigateTo($"/totem/pagamento-point/{idRecebido}/{valorCentavos}");
+                }
+                else
+                {
+                    Nav.NavigateTo($"/totem/sucesso/{idRecebido}?tipo={pagamento}&amount={valorCentavos}", forceLoad: true);
+                }
             }
             else msgErro = "Erro ao enviar pedido: " + await r.Content.ReadAsStringAsync();
         }

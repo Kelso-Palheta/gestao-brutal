@@ -54,6 +54,16 @@ public record PagamentoCartaoResponse(
     string StatusDetail
 );
 
+// FASE 8 — MP Point Smart 2 (maquininha física / totem)
+public record PointIntentResponse(string IntentId, string DeviceId);
+
+public record PointIntentStatusResponse(
+    string State,           // OPEN | PROCESSING | PROCESSED | ABANDONED | CANCELED | ERROR
+    long?  PagamentoMpId,
+    string? Status,         // approved | rejected | ...
+    string? StatusDetail
+);
+
 public interface IMercadoPagoService
 {
     Task<PreferenciaMPResponse> CriarPreferenciaAsync(PreferenciaMPRequest request);
@@ -62,4 +72,9 @@ public interface IMercadoPagoService
     Task<PagamentoMpStatus> ConsultarPagamentoAsync(long pagamentoId);
     // resourceId = data.id do body do webhook (NÃO o header x-request-id)
     Task<bool> ValidarAssinaturaWebhookAsync(string xSignature, string resourceId);
+
+    // FASE 8 — Point Smart 2
+    Task<PointIntentResponse> CriarIntentPointAsync(long pedidoId, decimal valor);
+    Task<PointIntentStatusResponse> ConsultarIntentPointAsync(string intentId);
+    Task CancelarIntentPointAsync(string intentId);
 }

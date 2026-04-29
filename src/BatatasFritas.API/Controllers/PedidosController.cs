@@ -394,6 +394,63 @@ public class PedidosController : ControllerBase
         }
     }
 
+    // ── POST api/pedidos/{id}/iniciar-point ────────────────────────────
+    // Cria payment intent no MP Point (maquininha física do totem).
+    [HttpPost("{id}/iniciar-point")]
+    public async Task<IActionResult> IniciarPagamentoPoint(int id)
+    {
+        try
+        {
+            var pedido = await _pedidoRepository.GetByIdAsync(id);
+            if (pedido == null) return NotFound();
+
+            var intent = await _mercadoPago.CriarIntentPointAsync(pedido.Id, pedido.ValorTotal);
+            return Ok(new { intentId = intent.IntentId, deviceId = intent.DeviceId });
+        }
+        catch (System.Exception ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+
+    // ── GET api/pedidos/point-intent/{intentId}/status ─────────────────
+    // Proxy de polling para o status do intent Point (usado pelo totem).
+    [HttpGet("point-intent/{intentId}/status")]
+    public async Task<IActionResult> StatusIntentPoint(string intentId)
+    {
+        try
+        {
+            var status = await _mercadoPago.ConsultarIntentPointAsync(intentId);
+            return Ok(new
+            {
+                state        = status.State,
+                pagamentoId  = status.PagamentoMpId,
+                status       = status.Status,
+                statusDetail = status.StatusDetail
+            });
+        }
+        catch (System.Exception ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+
+    // ── DELETE api/pedidos/point-intent/{intentId} ─────────────────────
+    // Cancela intent Point (chamado quando o cliente abandona a tela do totem).
+    [HttpDelete("point-intent/{intentId}")]
+    public async Task<IActionResult> CancelarIntentPoint(string intentId)
+    {
+        try
+        {
+            await _mercadoPago.CancelarIntentPointAsync(intentId);
+            return Ok();
+        }
+        catch (System.Exception ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+
     // ── DELETE api/pedidos/limpar-tudo ─────────────────────────────────
     [HttpDelete("limpar-tudo")]
     public async Task<IActionResult> LimparTudo()
