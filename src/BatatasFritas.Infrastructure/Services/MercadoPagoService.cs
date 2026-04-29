@@ -102,6 +102,35 @@ public class MercadoPagoService : IMercadoPagoService
         );
     }
 
+    // FASE 7 — Checkout transparente cartão via token MP Bricks
+    public async Task<PagamentoCartaoResponse> CriarPagamentoCartaoAsync(PagamentoCartaoRequest request)
+    {
+        var client = new PaymentClient();
+
+        var paymentRequest = new PaymentCreateRequest
+        {
+            TransactionAmount = request.Valor,
+            Token             = request.Token,
+            PaymentMethodId   = request.PaymentMethodId,
+            Installments      = request.Installments,
+            ExternalReference = request.PedidoId.ToString(),
+            NotificationUrl   = string.IsNullOrWhiteSpace(request.NotificationUrl) ? null : request.NotificationUrl,
+            Payer             = new PaymentPayerRequest { Email = request.EmailPagador }
+        };
+
+        var payment = await client.CreateAsync(paymentRequest);
+
+        _logger.LogInformation(
+            "Pagamento Cartão MP criado: {Id}, status={Status}, pedido={PedidoId}",
+            payment.Id, payment.Status, request.PedidoId);
+
+        return new PagamentoCartaoResponse(
+            PagamentoId: payment.Id ?? 0,
+            Status:      payment.Status ?? string.Empty,
+            StatusDetail: payment.StatusDetail ?? string.Empty
+        );
+    }
+
     public async Task<PagamentoMpStatus> ConsultarPagamentoAsync(long pagamentoId)
     {
         var client = new PaymentClient();

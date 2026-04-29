@@ -37,10 +37,28 @@ public record PagamentoPixResponse(
     System.DateTime ExpiraEm
 );
 
+// FASE 7 — Checkout Transparente Cartão
+public record PagamentoCartaoRequest(
+    long PedidoId,
+    decimal Valor,
+    string Token,
+    string PaymentMethodId,
+    int Installments,
+    string EmailPagador,
+    string NotificationUrl
+);
+
+public record PagamentoCartaoResponse(
+    long PagamentoId,
+    string Status,       // "approved" | "pending" | "rejected"
+    string StatusDetail
+);
+
 public interface IMercadoPagoService
 {
     Task<PreferenciaMPResponse> CriarPreferenciaAsync(PreferenciaMPRequest request);
     Task<PagamentoPixResponse> CriarPagamentoPixAsync(PagamentoPixRequest request);
+    Task<PagamentoCartaoResponse> CriarPagamentoCartaoAsync(PagamentoCartaoRequest request);
     Task<PagamentoMpStatus> ConsultarPagamentoAsync(long pagamentoId);
     // resourceId = data.id do body do webhook (NÃO o header x-request-id)
     Task<bool> ValidarAssinaturaWebhookAsync(string xSignature, string resourceId);

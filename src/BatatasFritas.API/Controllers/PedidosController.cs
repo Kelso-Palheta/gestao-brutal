@@ -1,11 +1,13 @@
 using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
 using BatatasFritas.Domain.Interfaces;
+using BatatasFritas.Infrastructure.Options;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using NHibernate;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,6 +26,7 @@ public class PedidosController : ControllerBase
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
     private readonly IRepository<CarteiraCashback> _carteiraRepository;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
+    private readonly MercadoPagoOptions _mpOptions;
     private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
     private readonly IHubContext<PedidosHub> _hub;
@@ -38,6 +41,7 @@ public class PedidosController : ControllerBase
         IRepository<MovimentacaoEstoque> movRepository,
         IRepository<CarteiraCashback> carteiraRepository,
         Microsoft.Extensions.Configuration.IConfiguration config,
+        IOptions<MercadoPagoOptions> mpOptions,
         NHibernate.ISession session,
         IUnitOfWork uow,
         IHubContext<PedidosHub> hub,
@@ -51,11 +55,17 @@ public class PedidosController : ControllerBase
         _movRepository      = movRepository;
         _carteiraRepository = carteiraRepository;
         _config             = config;
+        _mpOptions          = mpOptions.Value;
         _session            = session;
         _uow                = uow;
         _hub                = hub;
         _mercadoPago        = mercadoPago;
     }
+
+    // ── GET api/pedidos/mp-public-key — expõe chave pública MP ao frontend ──
+    [HttpGet("mp-public-key")]
+    public IActionResult GetMpPublicKey()
+        => Ok(new { PublicKey = _mpOptions.PublicKey });
 
     // ── POST api/pedidos — cria pedido + dispara baixa de estoque ──────────
     [HttpPost]
@@ -173,21 +183,68 @@ public class PedidosController : ControllerBase
             // Notifica o KDS em tempo real via SignalR
             await _hub.Clients.All.SendAsync("NovoPedido", pedido.Id);
 
+            // ── FASE 7: Checkout transparente cartão via token MP Bricks ──────────
+            string? cartaoStatusPagamento = null;
+            string? cartaoStatusDetalhe = null;
+            if (dto.MetodoPagamento == MetodoPagamento.Cartao && !string.IsNullOrWhiteSpace(dto.CardToken))
+            {
+                try
+                {
+                    var notifUrl = _config["MercadoPago:NotificationUrl"] ?? string.Empty;
+                    var cartaoReq = new PagamentoCartaoRequest(
+                        PedidoId:       pedido.Id,
+                        Valor:          pedido.ValorTotal,
+                        Token:          dto.CardToken,
+                        PaymentMethodId: dto.CardPaymentMethodId ?? string.Empty,
+                        Installments:   dto.CardInstallments > 0 ? dto.CardInstallments : 1,
+                        EmailPagador:   dto.CardEmailPagador ?? "cliente@batatasfritas.com.br",
+                        NotificationUrl: notifUrl
+                    );
+                    var cartaoResp = await _mercadoPago.CriarPagamentoCartaoAsync(cartaoReq);
+
+                    var statusPag = cartaoResp.Status == "approved"
+                        ? StatusPagamento.Aprovado
+                        : cartaoResp.Status == "rejected"
+                            ? StatusPagamento.Recusado
+                            : StatusPagamento.Pendente;
+
+                    pedido.SetPagamentoCartao(cartaoResp.PagamentoId, statusPag);
+                    _uow.BeginTransaction();
+                    await _pedidoRepository.UpdateAsync(pedido);
+                    await _uow.CommitAsync();
+
+                    cartaoStatusPagamento = cartaoResp.Status;
+                    cartaoStatusDetalhe   = cartaoResp.StatusDetail;
+
+                    // Cartão aprovado online → imprime agora (sem esperar entrega)
+                    if (statusPag == StatusPagamento.Aprovado)
+                        await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
+                }
+                catch (System.Exception ex)
+                {
+                    System.Console.WriteLine($"[MP] Falha pagamento cartão pedido {pedido.Id}: {ex.Message}");
+                }
+            }
+
             // ── FASE 6: imprimir se pagamento é na entrega (não precisa esperar webhook) ──
             // Pix/Online → PrintAgent aguarda sinal do webhook via ImprimirPedido
-            // Dinheiro/Cartão na entrega → imprime agora
-            var deveImprimirAgora = dto.MomentoPagamento == BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega;
+            // Cartão físico na entrega (sem token Bricks) → imprime agora
+            var deveImprimirAgora = dto.MomentoPagamento == BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega
+                                    && string.IsNullOrWhiteSpace(dto.CardToken); // Bricks já imprimiu acima se aprovado
             if (deveImprimirAgora)
                 await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
 
             return Ok(new
             {
-                PedidoId = pedido.Id,
-                Status = pedido.Status.ToString(),
-                LinkPagamento = pedido.LinkPagamento,
-                QrCodeBase64 = pedido.QrCodeBase64,
-                QrCodeTexto = pedido.QrCodeTexto,
-                MpPagamentoId = pedido.MpPagamentoId
+                PedidoId              = pedido.Id,
+                Status                = pedido.Status.ToString(),
+                StatusPagamento       = pedido.StatusPagamento.ToString(),
+                LinkPagamento         = pedido.LinkPagamento,
+                QrCodeBase64          = pedido.QrCodeBase64,
+                QrCodeTexto           = pedido.QrCodeTexto,
+                MpPagamentoId         = pedido.MpPagamentoId,
+                CartaoStatus          = cartaoStatusPagamento,
+                CartaoStatusDetalhe   = cartaoStatusDetalhe
             });
         }
         catch (System.Exception ex)

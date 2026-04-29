@@ -20,6 +20,12 @@ public class NovoPedidoDto
     // FASE 6: momento do pagamento
     public MomentoPagamento MomentoPagamento { get; set; } = MomentoPagamento.NaEntrega;
     public MomentoPagamento? SegundoMomentoPagamento { get; set; }
+
+    // FASE 7: Checkout Transparente Cartão (MP Bricks) — null quando não aplicável
+    public string? CardToken { get; set; }
+    public string? CardPaymentMethodId { get; set; }
+    public int CardInstallments { get; set; } = 1;
+    public string? CardEmailPagador { get; set; }
 }
 
 public class NovoItemPedidoDto
