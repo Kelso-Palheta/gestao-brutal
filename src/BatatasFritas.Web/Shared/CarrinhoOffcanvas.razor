@@ -437,10 +437,8 @@ else if (mostrarModalConfirmacao)
             }
             else if (cartaoStatusFinal == "approved")
             {
-                @{
-                    var msgCartaoAprov = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. Paguei R$ {valorFinalDoPedido:N2} no cartão ✅. Segue minha localização para a entrega.";
-                    var linkWhatsCartao = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(msgCartaoAprov)}";
-                }
+                var msgCartaoAprov = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. Paguei R$ {valorFinalDoPedido:N2} no cartão ✅. Segue minha localização para a entrega.";
+                var linkWhatsCartao = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(msgCartaoAprov)}";
                 <div style="font-size:4rem; margin-bottom:8px;">✅</div>
                 <h2 style="color:#25D366; font-weight:900; margin-bottom:4px; text-transform:uppercase;">Pagamento aprovado!</h2>
                 <p style="color:#ffb347; font-weight:700; margin-bottom:16px;">Pedido #@idPedidoConfirmado.ToString("D3")</p>
