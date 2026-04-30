@@ -24,6 +24,8 @@ public class PedidoDetalheDto
     public decimal TaxaEntrega { get; set; }
     public decimal ValorCashbackUsado { get; set; }
     public decimal ValorTotal { get; set; }
+    public MomentoPagamento MomentoPagamento { get; set; }
+    public MomentoPagamento? SegundoMomentoPagamento { get; set; }
     public List<ItemPedidoDetalheDto> Itens { get; set; } = new();
 }
 

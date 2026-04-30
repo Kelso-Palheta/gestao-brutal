@@ -423,6 +423,14 @@
                 💵 Confirmar pgto entrega
             </button>
         }
+        else if (p.MomentoPagamento == MomentoPagamento.NaEntrega && p.StatusPagamento != StatusPagamento.Aprovado)
+        {
+            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto; border-color:#1e8449;"
+                    @onclick="() => ConfirmarPagamentoEntrega(p.Id)"
+                    title="Confirmar recebimento do pagamento na entrega">
+                💵 Confirmar pgto entrega
+            </button>
+        }
         else
         {
             <button class="kds-btn" style="background:#f39c12; color:#fff; flex: 0 0 auto; border-color:#d68910;" @onclick="() => MarcarPago(p.Id)" title="Marcar como Pago">
