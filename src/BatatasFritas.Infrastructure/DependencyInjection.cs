@@ -80,7 +80,9 @@ namespace BatatasFritas.Infrastructure
             else
                 services.Configure<MercadoPagoOptions>(_ => { });
 
-            services.AddHttpClient(); // necessário para IHttpClientFactory (Point Smart 2)
+            // Cliente nomeado com Polly retry (3x, exponential backoff) para MP Point Smart 2
+            services.AddHttpClient("MercadoPagoPoint")
+                    .AddStandardResilienceHandler();
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
 
             return services;
