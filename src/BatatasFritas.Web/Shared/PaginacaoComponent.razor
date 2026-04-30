@@ -1,0 +1,81 @@
+@* Componente reutilizável de paginação server-side.
+   Uso:
+     <PaginacaoComponent PaginaAtual="@paginaAtual"
+                         TotalPaginas="@totalPaginas"
+                         TotalRegistros="@totalRegistros"
+                         OnPaginaMudou="@CarregarPagina" />
+*@
+
+@if (TotalPaginas > 1)
+{
+    <div style="display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap;">
+        <button class="btn-pag"
+                disabled="@(PaginaAtual <= 1)"
+                @onclick="() => Navegar(PaginaAtual - 1)">
+            ← Anterior
+        </button>
+
+        <span style="color:#aaa; font-size:13px;">
+            Página <strong style="color:#fff;">@PaginaAtual</strong> de
+            <strong style="color:#fff;">@TotalPaginas</strong>
+            @if (TotalRegistros > 0)
+            {
+                <span> (@TotalRegistros registros)</span>
+            }
+        </span>
+
+        <button class="btn-pag"
+                disabled="@(PaginaAtual >= TotalPaginas)"
+                @onclick="() => Navegar(PaginaAtual + 1)">
+            Próxima →
+        </button>
+    </div>
+}
+else if (TotalRegistros > 0)
+{
+    <div style="color:#666; font-size:12px; margin-top:8px;">
+        @TotalRegistros registro@(TotalRegistros != 1 ? "s" : "")
+    </div>
+}
+
+<style>
+    .btn-pag {
+        background: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 6px;
+        color: #ccc;
+        cursor: pointer;
+        font-size: 13px;
+        padding: 6px 14px;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-pag:hover:not(:disabled) {
+        background: #2a2a2a;
+        border-color: #555;
+        color: #fff;
+    }
+    .btn-pag:disabled {
+        cursor: not-allowed;
+        opacity: 0.35;
+    }
+</style>
+
+@code {
+    /// <summary>Página atual (base 1).</summary>
+    [Parameter] public int PaginaAtual  { get; set; } = 1;
+
+    /// <summary>Total de páginas: ceil(TotalRegistros / PageSize).</summary>
+    [Parameter] public int TotalPaginas { get; set; }
+
+    /// <summary>Total de registros — exibido no rótulo.</summary>
+    [Parameter] public int TotalRegistros { get; set; }
+
+    /// <summary>Dispara quando o usuário navega para outra página. Argumento = nova página.</summary>
+    [Parameter] public EventCallback<int> OnPaginaMudou { get; set; }
+
+    private async Task Navegar(int novaPagina)
+    {
+        if (novaPagina < 1 || novaPagina > TotalPaginas) return;
+        await OnPaginaMudou.InvokeAsync(novaPagina);
+    }
+}

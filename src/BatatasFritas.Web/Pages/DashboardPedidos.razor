@@ -12,13 +12,13 @@
     <label>Data Fim:</label>
     <InputDate @bind-Value="EndDate" class="form-control" />
 </div>
-<button class="btn btn-primary" @onclick="LoadPedidos">Buscar</button>
+<button class="btn btn-primary" @onclick="() => LoadPedidos(1)">Buscar</button>
 
-@if (Pedidos == null)
+@if (Carregando)
 {
     <p>Carregando...</p>
 }
-else if (!Pedidos.Any())
+else if (Resultado == null || !Resultado.Items.Any())
 {
     <p>Nenhum pedido encontrado.</p>
 }
@@ -36,7 +36,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var p in Pedidos)
+            @foreach (var p in Resultado.Items)
             {
                 <tr>
                     <td>@p.Id</td>
@@ -49,19 +49,26 @@ else
             }
         </tbody>
     </table>
+
+    <PaginacaoComponent PaginaAtual="@Resultado.Page"
+                        TotalPaginas="@Resultado.TotalPages"
+                        TotalRegistros="@Resultado.TotalCount"
+                        OnPaginaMudou="@LoadPedidos" />
 }
 
 @code {
-    private List<ListaPedidosDto>? Pedidos;
+    private PagedResult<ListaPedidosDto>? Resultado;
+    private bool Carregando;
     private DateTime? StartDate;
     private DateTime? EndDate;
 
-    private async Task LoadPedidos()
+    private async Task LoadPedidos(int pagina = 1)
     {
-        var query = $"api/pedidos/bydate?";
-        if (StartDate.HasValue) query += $"start={StartDate.Value:yyyy-MM-dd}&";
-        if (EndDate.HasValue) query += $"end={EndDate.Value:yyyy-MM-dd}&";
-        var url = query.TrimEnd('&');
-        Pedidos = await Http.GetFromJsonAsync<List<ListaPedidosDto>>(url);
+        Carregando = true;
+        var query = $"api/pedidos/bydate?page={pagina}&pageSize=20";
+        if (StartDate.HasValue) query += $"&start={StartDate.Value:yyyy-MM-dd}";
+        if (EndDate.HasValue)   query += $"&end={EndDate.Value:yyyy-MM-dd}";
+        Resultado  = await Http.GetFromJsonAsync<PagedResult<ListaPedidosDto>>(query);
+        Carregando = false;
     }
 }

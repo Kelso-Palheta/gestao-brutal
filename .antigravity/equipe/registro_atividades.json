@@ -1,0 +1,15 @@
+{
+  "projeto": "BatatasFritas — Paginação Server-Side",
+  "branch": "feat/paginacao-server-side",
+  "atividades": [
+    {"id":"AT-01","titulo":"PagedResult<T> DTO","estado":"PENDENTE","pre_requisitos":[]},
+    {"id":"AT-02","titulo":"IRepository<T> novos métodos","estado":"PENDENTE","pre_requisitos":["AT-01"]},
+    {"id":"AT-03","titulo":"NHibernateRepository implementação","estado":"PENDENTE","pre_requisitos":["AT-01","AT-02"]},
+    {"id":"AT-04","titulo":"PedidosController paginado","estado":"PENDENTE","pre_requisitos":["AT-03"]},
+    {"id":"AT-05","titulo":"RelatoriosController paginado","estado":"PENDENTE","pre_requisitos":["AT-03"]},
+    {"id":"AT-06","titulo":"FinanceiroController FindManyAsync","estado":"PENDENTE","pre_requisitos":["AT-03"]},
+    {"id":"AT-07","titulo":"PaginacaoComponent.razor","estado":"PENDENTE","pre_requisitos":["AT-01"]},
+    {"id":"AT-08","titulo":"AdminPanel integração","estado":"PENDENTE","pre_requisitos":["AT-07","AT-04"]},
+    {"id":"AT-09","titulo":"Build + test — 0 erros","estado":"PENDENTE","pre_requisitos":["AT-04","AT-05","AT-06","AT-07","AT-08"]}
+  ]
+}

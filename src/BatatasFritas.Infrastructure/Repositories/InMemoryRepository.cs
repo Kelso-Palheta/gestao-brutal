@@ -1,4 +1,5 @@
 using BatatasFritas.Domain.Entities;
+using BatatasFritas.Shared.DTOs;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -27,6 +28,25 @@ namespace BatatasFritas.Infrastructure.Repositories
         {
             var result = _storage.Values.AsQueryable().FirstOrDefault(predicate);
             return Task.FromResult(result);
+        }
+
+        public Task<IEnumerable<T>> FindManyAsync(Expression<Func<T, bool>> predicate) =>
+            Task.FromResult(_storage.Values.AsQueryable().Where(predicate).AsEnumerable());
+
+        public Task<PagedResult<T>> GetPagedAsync(int page, int pageSize)
+        {
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            var all   = _storage.Values.ToList();
+            var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return Task.FromResult(new PagedResult<T> { Items = items, TotalCount = all.Count, Page = page, PageSize = pageSize });
+        }
+
+        public Task<PagedResult<T>> GetPagedAsync(Expression<Func<T, bool>> predicate, int page, int pageSize)
+        {
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            var all   = _storage.Values.AsQueryable().Where(predicate).ToList();
+            var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return Task.FromResult(new PagedResult<T> { Items = items, TotalCount = all.Count, Page = page, PageSize = pageSize });
         }
 
         public Task AddAsync(T entity)
