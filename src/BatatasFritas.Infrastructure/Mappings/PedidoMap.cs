@@ -38,6 +38,9 @@ public class PedidoMap : ClassMap<Pedido>
         Map(x => x.MomentoPagamento).CustomType<MomentoPagamento>().Not.Nullable().Column("momento_pagamento").Default("2");
         Map(x => x.SegundoMomentoPagamento).CustomType<MomentoPagamento>().Column("segundo_momento_pagamento").Nullable();
 
+        // FASE 8: MP Point Intent ID (totem — rastreio/estorno)
+        Map(x => x.MpIntentId).Column("mp_intent_id").Nullable().Length(200);
+
         HasMany(x => x.Itens)
             .KeyColumn("pedido_id")
             .Inverse()

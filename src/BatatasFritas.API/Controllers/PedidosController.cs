@@ -398,7 +398,7 @@ public class PedidosController : ControllerBase
     }
 
     // ── POST api/pedidos/{id}/iniciar-point ────────────────────────────
-    // Cria payment intent no MP Point (maquininha física do totem).
+    // Cria payment intent no MP Point (maquininha física do totem) e persiste intentId.
     [HttpPost("{id}/iniciar-point")]
     public async Task<IActionResult> IniciarPagamentoPoint(int id)
     {
@@ -408,6 +408,22 @@ public class PedidosController : ControllerBase
             if (pedido == null) return NotFound();
 
             var intent = await _mercadoPago.CriarIntentPointAsync(pedido.Id, pedido.ValorTotal);
+
+            // Persiste intentId para rastreamento/cancelamento/estorno via painel MP
+            try
+            {
+                _uow.BeginTransaction();
+                pedido.SetIntentPoint(intent.IntentId);
+                await _pedidoRepository.UpdateAsync(pedido);
+                await _uow.CommitAsync();
+            }
+            catch (System.Exception ex)
+            {
+                await _uow.RollbackAsync();
+                // Não bloqueia o fluxo — intent já existe no MP, apenas loga perda de rastreio
+                System.Console.WriteLine($"[Point] IntentId={intent.IntentId} criado mas falhou ao salvar no pedido {id}: {ex.Message}");
+            }
+
             return Ok(new { intentId = intent.IntentId, deviceId = intent.DeviceId });
         }
         catch (System.Exception ex)
