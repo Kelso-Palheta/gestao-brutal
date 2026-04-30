@@ -41,6 +41,9 @@ public class Pedido : EntityBase
     public virtual string? QrCodeTexto { get; protected set; }
     public virtual long? MpPagamentoId { get; protected set; }
 
+    // -- FASE 8: MP Point Smart 2 (totem) — rastreia intent para cancelamento/estorno --
+    public virtual string? MpIntentId { get; protected set; }
+
     // -- FASE 6: Momento do pagamento (Online | NaEntrega) --
     public virtual MomentoPagamento MomentoPagamento { get; protected set; } = MomentoPagamento.NaEntrega;
     public virtual MomentoPagamento? SegundoMomentoPagamento { get; protected set; }
@@ -103,6 +106,12 @@ public class Pedido : EntityBase
     {
         MpPagamentoId   = pagamentoId;
         StatusPagamento = status;
+    }
+
+    // FASE 8 — Registra MP Point Intent ID (totem) para rastreamento/estorno
+    public virtual void SetIntentPoint(string intentId)
+    {
+        MpIntentId = intentId;
     }
 
     /// <summary>
