@@ -90,7 +90,24 @@
                         <div class="dash-kpi-title">Lucro do Período</div>
                         <div class="dash-kpi-value text-shadow">@dados.LucroPeriodo.ToString("C2")</div>
                     </div>
+                    <div class="dash-kpi-card period-card">
+                        <div class="dash-kpi-title">💚 Cashback</div>
+                        <div class="dash-kpi-value" style="color:#27ae60; font-size:1.1rem;">@dados.CashbackConcedidoPeriodo.ToString("C2")</div>
+                        <div class="dash-kpi-sub">concedido</div>
+                        <div class="dash-kpi-sub" style="color:#e67e22;">usado: @dados.CashbackUsadoPeriodo.ToString("C2")</div>
+                    </div>
                 </div>
+                @if (dados.PedidosPorStatus.Any())
+                {
+                    <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; font-size:12px;">
+                        @foreach (var s in dados.PedidosPorStatus)
+                        {
+                            <span style="background:#1e1e1e; border:1px solid #333; border-radius:6px; padding:4px 10px;">
+                                @StatusEmoji(s.Status) @s.Status.ToString(): <strong>@s.Quantidade</strong>
+                            </span>
+                        }
+                    </div>
+                }
 
                 <div class="dash-card no-print" style="margin-top: -10px; margin-bottom: 30px;">
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; flex-wrap:wrap;">
@@ -982,4 +999,13 @@
         if (_hubConnection is not null)
             await _hubConnection.DisposeAsync();
     }
+
+    private static string StatusEmoji(BatatasFritas.Shared.Enums.StatusPedido status) => status switch
+    {
+        BatatasFritas.Shared.Enums.StatusPedido.Recebido    => "🟡",
+        BatatasFritas.Shared.Enums.StatusPedido.EmPreparo   => "🔵",
+        BatatasFritas.Shared.Enums.StatusPedido.Entregue    => "✅",
+        BatatasFritas.Shared.Enums.StatusPedido.Cancelado   => "🔴",
+        _                                                    => "⚪"
+    };
 }

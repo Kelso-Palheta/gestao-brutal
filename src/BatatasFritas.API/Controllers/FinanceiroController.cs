@@ -5,6 +5,7 @@ using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -80,6 +81,9 @@ public class FinanceiroController : ControllerBase
         var cartaoPeriodo = 0m;
         var dinheiroPeriodo = 0m;
         var totalPedidosPeriodo = 0;
+        var cashbackConcedidoPeriodo = 0m;
+        var cashbackUsadoPeriodo = 0m;
+        var pedidosPorStatus = new List<PedidoStatusResumoDto>();
 
         if (inicio.HasValue && fim.HasValue)
         {
@@ -96,6 +100,29 @@ public class FinanceiroController : ControllerBase
             pixPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
             cartaoPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal);
             dinheiroPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
+
+            // Cashback concedido = transações Entrada no período
+            var todasTransacoesCashback = await _cashbackRepository.GetAllAsync();
+            var cbPeriodo = todasTransacoesCashback
+                .Where(c => TimeZoneInfo.ConvertTimeFromUtc(c.DataHora, tz) >= inicio.Value
+                         && TimeZoneInfo.ConvertTimeFromUtc(c.DataHora, tz) <= dataFimInclusiva)
+                .ToList();
+            cashbackConcedidoPeriodo = cbPeriodo
+                .Where(c => c.Tipo == TipoTransacaoCashback.Entrada)
+                .Sum(c => c.Valor);
+
+            // Cashback usado = soma do desconto aplicado nos pedidos aprovados do período
+            cashbackUsadoPeriodo = pPeriodo.Sum(p => p.ValorCashbackUsado);
+
+            // Pedidos por status (todos os pedidos do período, não apenas aprovados)
+            var todosPedidosPeriodo = pedidos
+                .Where(p => { var d = TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tz); return d >= inicio.Value && d <= dataFimInclusiva; })
+                .ToList();
+            pedidosPorStatus = todosPedidosPeriodo
+                .GroupBy(p => p.Status)
+                .Select(g => new PedidoStatusResumoDto { Status = g.Key, Quantidade = g.Count() })
+                .OrderBy(s => s.Status)
+                .ToList();
         }
 
         // Leitura de Meta Diária
@@ -179,7 +206,14 @@ public class FinanceiroController : ControllerBase
             DespesaOutrosPeriodo       = despOutrosPer,
 
             DataInicioFiltro = inicio,
-            DataFimFiltro    = fim
+            DataFimFiltro    = fim,
+
+            // Cashback do Período
+            CashbackConcedidoPeriodo = cashbackConcedidoPeriodo,
+            CashbackUsadoPeriodo     = cashbackUsadoPeriodo,
+
+            // Pedidos por Status
+            PedidosPorStatus = pedidosPorStatus
         };
 
         return Ok(dto);
