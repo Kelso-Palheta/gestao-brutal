@@ -2,6 +2,7 @@ using BatatasFritas.Domain.Entities;
 using BatatasFritas.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -15,6 +16,7 @@ namespace BatatasFritas.API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[EnableRateLimiting("login")]
 public class AuthController : ControllerBase
 {
     private const string ChaveSenhaKds = "senha_kds_hash";
