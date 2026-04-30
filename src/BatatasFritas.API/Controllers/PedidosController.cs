@@ -284,6 +284,8 @@ public class PedidosController : ControllerBase
             TaxaEntrega        = pedido.BairroEntrega?.TaxaEntrega ?? 0m,
             ValorCashbackUsado = pedido.ValorCashbackUsado,
             ValorTotal         = pedido.ValorTotal,
+            MomentoPagamento = pedido.MomentoPagamento,
+            SegundoMomentoPagamento = pedido.SegundoMomentoPagamento,
             Itens = pedido.Itens.Select(i => new ItemPedidoDetalheDto
             {
                 Id          = i.Id,
