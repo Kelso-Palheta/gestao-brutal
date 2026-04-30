@@ -39,7 +39,7 @@ public class MercadoPagoService : IMercadoPagoService
     // ── Helpers para Point API ─────────────────────────────────────────────
     private HttpClient CreatePointClient()
     {
-        var client = _httpClientFactory.CreateClient();
+        var client = _httpClientFactory.CreateClient("MercadoPagoPoint");
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _options.AccessToken);
         client.DefaultRequestHeaders.Accept.Add(
