@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using BatatasFritas.Domain.Entities;
+using BatatasFritas.Shared.DTOs;
 using NHibernate;
 using NHibernate.Linq;
 
@@ -27,9 +29,32 @@ public class Repository<T> : IRepository<T> where T : EntityBase
         return await _session.Query<T>().ToListAsync();
     }
 
-    public async Task<T?> FindAsync(Expression<Func<T, bool>> predicate)
+    public async Task<T?> FindAsync(Expression<Func<T, bool>> predicate) =>
+        await _session.Query<T>().Where(predicate).FirstOrDefaultAsync();
+
+    public async Task<IEnumerable<T>> FindManyAsync(Expression<Func<T, bool>> predicate) =>
+        await _session.Query<T>().Where(predicate).ToListAsync();
+
+    private const int MaxPageSize = 100;
+
+    public async Task<PagedResult<T>> GetPagedAsync(int page, int pageSize)
     {
-        return await _session.Query<T>().Where(predicate).FirstOrDefaultAsync();
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        var offset = (page - 1) * pageSize;
+        var query  = _session.Query<T>();
+        var total  = await query.CountAsync();
+        var items  = await query.Skip(offset).Take(pageSize).ToListAsync();
+        return new PagedResult<T> { Items = items, TotalCount = total, Page = page, PageSize = pageSize };
+    }
+
+    public async Task<PagedResult<T>> GetPagedAsync(Expression<Func<T, bool>> predicate, int page, int pageSize)
+    {
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        var offset = (page - 1) * pageSize;
+        var query  = _session.Query<T>().Where(predicate);
+        var total  = await query.CountAsync();
+        var items  = await query.Skip(offset).Take(pageSize).ToListAsync();
+        return new PagedResult<T> { Items = items, TotalCount = total, Page = page, PageSize = pageSize };
     }
 
     public async Task AddAsync(T entity)

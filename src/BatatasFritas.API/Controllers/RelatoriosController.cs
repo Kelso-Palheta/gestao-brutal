@@ -37,9 +37,6 @@ public class RelatoriosController : ControllerBase
         [FromQuery] string? de  = null,
         [FromQuery] string? ate = null)
     {
-        var todos = (await _pedidoRepository.GetAllAsync()).ToList();
-        var entregues = todos.Where(p => p.Status == StatusPedido.Entregue).ToList();
-
         var agora       = DateTime.UtcNow;
         var inicioHoje  = agora.Date;
 
@@ -49,22 +46,35 @@ public class RelatoriosController : ControllerBase
         // Garante que dataFim inclua o dia inteiro
         var dataFimFinal = dataFim.AddDays(1).AddTicks(-1);
 
-        var entreguesPeriodo = entregues
+        // Gráfico pode precisar de dados além do período (até hoje)
+        var totalDiasCalc = (int)(dataFim - dataInicio).TotalDays + 1;
+        var diasGraficoCalc = Math.Min(totalDiasCalc, 31);
+        var inicioGraficoCalc = dataFim.AddDays(-(diasGraficoCalc - 1));
+        // Query cobre o período selecionado E o range do gráfico
+        var broadStart = dataInicio < inicioGraficoCalc ? dataInicio : inicioGraficoCalc;
+        var broadEnd   = agora.Date.AddDays(1).AddTicks(-1);
+
+        // FindManyAsync — filtra no banco, não full scan
+        var entreguesBroad = (await _pedidoRepository.FindManyAsync(
+            p => p.Status == StatusPedido.Entregue &&
+                 p.DataHoraPedido >= broadStart &&
+                 p.DataHoraPedido <= broadEnd)).ToList();
+
+        var entregues        = entreguesBroad;
+        var entreguesPeriodo = entreguesBroad
             .Where(p => p.DataHoraPedido >= dataInicio && p.DataHoraPedido <= dataFimFinal)
             .ToList();
 
         // ── Totais de Estoque (Gastos e Lucro) ────────────────────────────
-        var movimentacoes = await _movRepository.GetAllAsync();
-        var entradas = movimentacoes
-            .Where(m => m.Tipo == TipoMovimentacao.Entrada && m.DataMovimentacao >= dataInicio && m.DataMovimentacao <= dataFimFinal)
-            .ToList();
+        var entradas = (await _movRepository.FindManyAsync(
+            m => m.Tipo == TipoMovimentacao.Entrada &&
+                 m.DataMovimentacao >= dataInicio &&
+                 m.DataMovimentacao <= dataFimFinal)).ToList();
 
         var gastosCompras = entradas.Sum(e => e.ValorTotal);
 
-        var despesasFull = await _despRepository.GetAllAsync();
-        var despesasPeriodo = despesasFull
-            .Where(d => d.DataRegistro >= dataInicio && d.DataRegistro <= dataFimFinal)
-            .ToList();
+        var despesasPeriodo = (await _despRepository.FindManyAsync(
+            d => d.DataRegistro >= dataInicio && d.DataRegistro <= dataFimFinal)).ToList();
         
         var outrasDespesas = despesasPeriodo.Sum(d => d.Valor);
 
@@ -106,14 +116,11 @@ public class RelatoriosController : ControllerBase
 
         // ── Gráfico: Pedidos por Dia do período (max 31 dias no gráfico) ──
         var diasSemana = new[] { "Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb" };
-        var totalDias  = (int)(dataFim - dataInicio).TotalDays + 1;
-        var diasGrafico = Math.Min(totalDias, 31);
-        var inicioGrafico = dataFim.AddDays(-(diasGrafico - 1));
-
-        var pedidosPorDia = Enumerable.Range(0, diasGrafico)
+        // Reusar variáveis já calculadas (diasGraficoCalc, inicioGraficoCalc)
+        var pedidosPorDia = Enumerable.Range(0, diasGraficoCalc)
             .Select(offset =>
             {
-                var dia = inicioGrafico.AddDays(offset);
+                var dia = inicioGraficoCalc.AddDays(offset);
                 var pedsDia = entregues
                     .Where(p => p.DataHoraPedido.Date == dia)
                     .ToList();
@@ -162,16 +169,16 @@ public class RelatoriosController : ControllerBase
         [FromQuery] string? de  = null,
         [FromQuery] string? ate = null)
     {
-        var todos    = (await _pedidoRepository.GetAllAsync()).ToList();
-        var entregues = todos.Where(p => p.Status == StatusPedido.Entregue).ToList();
-
         var agora      = DateTime.UtcNow;
         var dataInicio = ParseData(de)  ?? agora.Date.AddDays(-6);
         var dataFim    = ParseData(ate) ?? agora.Date;
         var dataFimFinal = dataFim.AddDays(1).AddTicks(-1);
 
-        var filtrados = entregues
-            .Where(p => p.DataHoraPedido >= dataInicio && p.DataHoraPedido <= dataFimFinal)
+        // FindManyAsync — filtra no banco
+        var filtrados = (await _pedidoRepository.FindManyAsync(
+            p => p.Status == StatusPedido.Entregue &&
+                 p.DataHoraPedido >= dataInicio &&
+                 p.DataHoraPedido <= dataFimFinal))
             .OrderBy(p => p.DataHoraPedido)
             .ToList();
 

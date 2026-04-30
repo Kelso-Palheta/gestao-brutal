@@ -53,10 +53,27 @@ public class FinanceiroController : ControllerBase
         var hoje      = agora.Date;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
 
-        var pedidos = await _pedidoRepository.GetAllAsync();
-        var movimentacoes = await _movRepository.GetAllAsync();
+        // ── Calcular range UTC mínimo que cobre hoje + mês + período filtrado ─
+        // BRT = UTC-3, então midnight BRT = 03:00 UTC
+        var inicioMesUtc    = inicioMes.AddHours(3);
+        var fimHojeUtc      = hoje.AddDays(1).AddHours(3); // exclusive upper bound
+
+        var broadStartUtc = inicio.HasValue
+            ? new DateTime(Math.Min(inicioMesUtc.Ticks, inicio.Value.Date.AddHours(3).Ticks), DateTimeKind.Utc)
+            : inicioMesUtc;
+        var broadEndUtc = fim.HasValue
+            ? new DateTime(Math.Max(fimHojeUtc.Ticks, fim.Value.Date.AddDays(1).AddHours(3).Ticks), DateTimeKind.Utc)
+            : fimHojeUtc;
+
+        // FindManyAsync — filtra por data no banco, elimina full table scan
+        var pedidos       = (await _pedidoRepository.FindManyAsync(
+            p => p.DataHoraPedido >= broadStartUtc && p.DataHoraPedido < broadEndUtc)).ToList();
+        var movimentacoes = (await _movRepository.FindManyAsync(
+            m => m.DataMovimentacao >= broadStartUtc && m.DataMovimentacao < broadEndUtc)).ToList();
+        var despesasObj   = (await _despesaRepository.FindManyAsync(
+            d => d.DataRegistro >= broadStartUtc && d.DataRegistro < broadEndUtc)).ToList();
+        // configs é pequena e sem coluna de data útil — GetAllAsync ok
         var configs = await _configRepository.GetAllAsync();
-        var despesasObj = await _despesaRepository.GetAllAsync();
 
         // Consideramos como faturamento os pedidos efetivamente Pagos.
         var pedidosValidos = pedidos.Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial).ToList();
@@ -101,12 +118,11 @@ public class FinanceiroController : ControllerBase
             cartaoPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal);
             dinheiroPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
 
-            // Cashback concedido = transações Entrada no período
-            var todasTransacoesCashback = await _cashbackRepository.GetAllAsync();
-            var cbPeriodo = todasTransacoesCashback
-                .Where(c => TimeZoneInfo.ConvertTimeFromUtc(c.DataHora, tz) >= inicio.Value
-                         && TimeZoneInfo.ConvertTimeFromUtc(c.DataHora, tz) <= dataFimInclusiva)
-                .ToList();
+            // Cashback concedido = transações Entrada no período (filtrado no banco)
+            var inicioUtcCb = inicio.Value.Date.AddHours(3);
+            var fimUtcCb    = fim.Value.Date.AddDays(1).AddHours(3);
+            var cbPeriodo = (await _cashbackRepository.FindManyAsync(
+                c => c.DataHora >= inicioUtcCb && c.DataHora < fimUtcCb)).ToList();
             cashbackConcedidoPeriodo = cbPeriodo
                 .Where(c => c.Tipo == TipoTransacaoCashback.Entrada)
                 .Sum(c => c.Valor);
@@ -290,15 +306,15 @@ public class FinanceiroController : ControllerBase
             switch (req.Tipo.ToLower())
             {
                 case "pedidos":
-                    var pedidos = await _pedidoRepository.GetAllAsync();
-                    var pedidosNoPeriodo = pedidos.Where(p => p.DataHoraPedido >= req.DataInicio && p.DataHoraPedido <= dataFimInclusiva).ToList();
+                    var pedidosNoPeriodo = (await _pedidoRepository.FindManyAsync(
+                        p => p.DataHoraPedido >= req.DataInicio && p.DataHoraPedido <= dataFimInclusiva)).ToList();
                     foreach (var p in pedidosNoPeriodo) await _pedidoRepository.DeleteAsync(p);
                     break;
-                
+
                 case "estoque":
                     // Ao deletar movimentacoes, precisamos reverter o EstoqueAtual dos insumos afetados
-                    var movsEstoque = await _movRepository.GetAllAsync();
-                    var movsNoPeriodo = movsEstoque.Where(m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva).ToList();
+                    var movsNoPeriodo = (await _movRepository.FindManyAsync(
+                        m => m.DataMovimentacao >= req.DataInicio && m.DataMovimentacao <= dataFimInclusiva)).ToList();
                     foreach (var m in movsNoPeriodo)
                     {
                         // Reverte o impacto no estoque antes de deletar
@@ -315,23 +331,23 @@ public class FinanceiroController : ControllerBase
                     break;
 
                 case "despesas":
-                    var desps = await _despesaRepository.GetAllAsync();
-                    var despsNoPeriodo = desps.Where(d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva).ToList();
+                    var despsNoPeriodo = (await _despesaRepository.FindManyAsync(
+                        d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva)).ToList();
                     foreach (var d in despsNoPeriodo) await _despesaRepository.DeleteAsync(d);
                     break;
 
                 case "cashback":
-                    var cbs = await _cashbackRepository.GetAllAsync();
-                    var cbNoPeriodo = cbs.Where(c => c.DataHora >= req.DataInicio && c.DataHora <= dataFimInclusiva).ToList();
+                    var cbNoPeriodo = (await _cashbackRepository.FindManyAsync(
+                        c => c.DataHora >= req.DataInicio && c.DataHora <= dataFimInclusiva)).ToList();
                     foreach (var c in cbNoPeriodo) await _cashbackRepository.DeleteAsync(c);
                     break;
 
                 case "financeiro":
                     // Apaga APENAS as Despesas do período (salários, contas, etc.)
                     // NÃO apaga movimentações de estoque para não perder o cadastro de insumos
-                    var df = await _despesaRepository.GetAllAsync();
-                    foreach (var d in df.Where(d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva).ToList())
-                        await _despesaRepository.DeleteAsync(d);
+                    var dfNoPeriodo = (await _despesaRepository.FindManyAsync(
+                        d => d.DataRegistro >= req.DataInicio && d.DataRegistro <= dataFimInclusiva)).ToList();
+                    foreach (var d in dfNoPeriodo) await _despesaRepository.DeleteAsync(d);
                     break;
 
                 default:
@@ -365,17 +381,14 @@ public class FinanceiroController : ControllerBase
         var dataFim = fim ?? hoje;
         var dataFimInclusiva = dataFim.Date.AddDays(1).AddTicks(-1);
 
-        // Busca apenas pedidos pagos (faturamento real)
-        var pedidos = (await _pedidoRepository.GetAllAsync())
-            .Where(p => p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
-            .ToList();
+        // BRT midnight = UTC +3h; query filtra no banco pelo range UTC equivalente
+        var startUtc = dataInicio.Date.AddHours(3);
+        var endUtc   = dataFimInclusiva.AddHours(3);
 
-        // Filtra pelo período
-        var pedidosPeriodo = pedidos
-            .Where(p => {
-                var d = TimeZoneInfo.ConvertTimeFromUtc(p.DataHoraPedido, tzBrasilia);
-                return d >= dataInicio && d <= dataFimInclusiva;
-            })
+        // Busca apenas pedidos pagos do período (filtrado no banco)
+        var pedidosPeriodo = (await _pedidoRepository.FindManyAsync(
+            p => (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
+              && p.DataHoraPedido >= startUtc && p.DataHoraPedido <= endUtc))
             .ToList();
 
         // === QUERY LINQ: Soma separada de Batatas e Bebidas ===

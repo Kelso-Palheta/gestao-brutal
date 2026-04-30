@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using NHibernate;
+using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -255,6 +257,50 @@ public class PedidosController : ControllerBase
             await _uow.RollbackAsync();
             return BadRequest(ex.Message);
         }
+    }
+
+    // ── GET api/pedidos/bydate?start=yyyy-MM-dd&end=yyyy-MM-dd&page=1&pageSize=20 ──
+    [HttpGet("bydate")]
+    public async Task<IActionResult> GetByDate(
+        [FromQuery] string? start    = null,
+        [FromQuery] string? end      = null,
+        [FromQuery] int     page     = 1,
+        [FromQuery] int     pageSize = 20)
+    {
+        if (page < 1)     return BadRequest("page deve ser >= 1");
+        if (pageSize < 1) return BadRequest("pageSize deve ser >= 1");
+
+        var dataInicio = ParseData(start) ?? DateTime.UtcNow.Date.AddDays(-6);
+        var dataFim    = (ParseData(end) ?? DateTime.UtcNow.Date).AddDays(1).AddTicks(-1);
+
+        var paged = await _pedidoRepository.GetPagedAsync(
+            p => p.DataHoraPedido >= dataInicio && p.DataHoraPedido <= dataFim,
+            page, pageSize);
+
+        var result = new PagedResult<ListaPedidosDto>
+        {
+            Items      = paged.Items.Select(p => new ListaPedidosDto
+            {
+                Id                 = p.Id,
+                NomeCliente        = p.NomeCliente,
+                TelefoneCliente    = p.TelefoneCliente,
+                ValorTotal         = p.ValorTotal,
+                DataHoraPedido     = p.DataHoraPedido,
+                ValorCashbackUsado = p.ValorCashbackUsado
+            }).ToList(),
+            TotalCount = paged.TotalCount,
+            Page       = paged.Page,
+            PageSize   = paged.PageSize
+        };
+
+        return Ok(result);
+    }
+
+    private static DateTime? ParseData(string? val)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return null;
+        return DateTime.TryParseExact(val, "yyyy-MM-dd",
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
     }
 
     // ── GET api/pedidos/{id} ──────────────────────────────────────────────
