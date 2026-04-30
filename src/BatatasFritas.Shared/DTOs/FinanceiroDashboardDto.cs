@@ -1,3 +1,5 @@
+using BatatasFritas.Shared.Enums;
+
 namespace BatatasFritas.Shared.DTOs;
 
 public class FinanceiroDashboardDto
@@ -54,4 +56,17 @@ public class FinanceiroDashboardDto
 
     public DateTime? DataInicioFiltro { get; set; }
     public DateTime? DataFimFiltro { get; set; }
+
+    // Cashback do Período
+    public decimal CashbackConcedidoPeriodo { get; set; }
+    public decimal CashbackUsadoPeriodo { get; set; }
+
+    // Pedidos por Status do Período
+    public List<PedidoStatusResumoDto> PedidosPorStatus { get; set; } = new();
+}
+
+public class PedidoStatusResumoDto
+{
+    public StatusPedido Status { get; set; }
+    public int Quantidade { get; set; }
 }
