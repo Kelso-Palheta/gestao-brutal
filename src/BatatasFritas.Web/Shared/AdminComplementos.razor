@@ -1,0 +1,184 @@
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<div class="admin-section">
+    <div class="admin-section-header">
+        <h2>Adicionais, Molhos e Remoções</h2>
+        <button class="admin-btn-novo" @onclick="AbrirNovoComplemento">+ Novo Adicional</button>
+    </div>
+
+    @if (mostrarFormComplemento)
+    {
+        <div class="admin-form-card">
+            <h3>@(complementoEdit.Id == 0 ? "Novo Adicional" : $"Editando: {complementoEdit.Nome}")</h3>
+            <div class="admin-form-grid">
+                <div class="admin-field">
+                    <label>Nome *</label>
+                    <input @bind="complementoEdit.Nome" placeholder="Ex: Bacon, Sem Cebola..." />
+                </div>
+                <div class="admin-field">
+                    <label>Preço (R$) *</label>
+                    <input type="number" step="0.01" min="0" @bind="complementoEdit.Preco" placeholder="0,00" />
+                </div>
+                <div class="admin-field">
+                    <label>Tipo de Personalização *</label>
+                    <select @bind="complementoEdit.TipoAcao">
+                        <option value="AdicionalPago">Adicional Pago (+ R$)</option>
+                        <option value="MolhoGratuito">Molho Gratuito</option>
+                        <option value="Remocao">Remoção (Ex: Sem cebola)</option>
+                    </select>
+                </div>
+                <div class="admin-field">
+                    <label>Sessão/Categoria *</label>
+                    <select @bind="complementoEdit.CategoriaAlvo">
+                        <option value="Todas">Todas as Categorias</option>
+                        @foreach (var cat in Enum.GetValues<CategoriaEnum>())
+                        {
+                            <option value="@cat.ToString()">Apenas @cat</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="admin-form-actions">
+                <button class="admin-btn-salvar" @onclick="SalvarComplemento" disabled="@salvando">
+                    @(salvando ? "Salvando..." : "💾 Salvar")
+                </button>
+                <button class="admin-btn-cancelar" @onclick="FecharFormComplemento">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @if (complementos.Any())
+    {
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>Preço</th>
+                        <th>Aplica-se a</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in complementos)
+                    {
+                        <tr class="@(!c.Ativo ? "admin-row-inativo" : "")">
+                            <td><strong>@c.Nome</strong></td>
+                            <td><span class="admin-badge">@c.TipoAcao</span></td>
+                            <td class="admin-td-preco">R$ @c.Preco.ToString("F2")</td>
+                            <td>@c.CategoriaAlvo</td>
+                            <td>
+                                @if (c.Ativo) { <span class="admin-status-ativo">● Ativo</span> }
+                                else { <span class="admin-status-inativo">● Inativo</span> }
+                            </td>
+                            <td class="admin-td-acoes">
+                                <button class="admin-btn-editar" @onclick="() => EditarComplemento(c)" title="Editar">✏️</button>
+                                <button class="admin-btn-toggle" @onclick="() => ToggleComplemento(c, !c.Ativo)" title="Ativar/Desativar">
+                                    @(c.Ativo ? "🔴" : "🟢")
+                                </button>
+                                <button class="admin-btn-deletar" @onclick="() => DeletarComplemento(c)" title="Excluir">🗑️</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="admin-vazio">Nenhum complemento cadastrado ainda. Clique em "+ Novo Adicional" para começar.</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private AdminAlertService Alert { get; set; } = default!;
+
+    private List<ComplementoDto> complementos = new();
+    private ComplementoDto complementoEdit = new();
+    private bool mostrarFormComplemento = false;
+    private bool salvando = false;
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        try
+        {
+            var res = await Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos");
+            if (res != null) complementos = res;
+        }
+        catch (Exception ex) { Alert.MostrarErro($"Erro ao carregar complementos: {ex.Message}"); }
+    }
+
+    private void AbrirNovoComplemento()
+    {
+        Alert.Limpar();
+        complementoEdit = new ComplementoDto { Ativo = true, TipoAcao = "AdicionalPago", CategoriaAlvo = "Todas" };
+        mostrarFormComplemento = true;
+    }
+
+    private void EditarComplemento(ComplementoDto c)
+    {
+        Alert.Limpar();
+        complementoEdit = new ComplementoDto { Id = c.Id, Nome = c.Nome, Preco = c.Preco, TipoAcao = c.TipoAcao, CategoriaAlvo = c.CategoriaAlvo, Ativo = c.Ativo };
+        mostrarFormComplemento = true;
+    }
+
+    private void FecharFormComplemento()
+    {
+        mostrarFormComplemento = false;
+        complementoEdit = new ComplementoDto();
+    }
+
+    private async Task SalvarComplemento()
+    {
+        if (string.IsNullOrWhiteSpace(complementoEdit.Nome)) { Alert.MostrarErro("Nome é obrigatório!"); return; }
+        Alert.Limpar();
+        salvando = true;
+        try
+        {
+            HttpResponseMessage response;
+            if (complementoEdit.Id == 0)
+                response = await Http.PostAsJsonAsync("api/complementos", complementoEdit);
+            else
+                response = await Http.PutAsJsonAsync($"api/complementos/{complementoEdit.Id}", complementoEdit);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Alert.MostrarSucesso("Adicional salvo com sucesso!");
+                FecharFormComplemento();
+                await Carregar();
+            }
+            else { Alert.MostrarErro("Erro ao salvar o adicional."); }
+        }
+        catch (Exception ex) { Alert.MostrarErro($"Erro de conexão: {ex.Message}"); }
+        finally { salvando = false; }
+    }
+
+    private async Task ToggleComplemento(ComplementoDto c, bool ativar)
+    {
+        Alert.Limpar();
+        var response = await Http.PutAsJsonAsync($"api/complementos/{c.Id}/toggle", ativar);
+        if (response.IsSuccessStatusCode)
+        {
+            Alert.MostrarSucesso(ativar ? $"'{c.Nome}' ativado!" : $"'{c.Nome}' desativado!");
+            await Carregar();
+        }
+    }
+
+    private async Task DeletarComplemento(ComplementoDto c)
+    {
+        Alert.Limpar();
+        var response = await Http.DeleteAsync($"api/complementos/{c.Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            Alert.MostrarSucesso($"'{c.Nome}' excluído permanentemente.");
+            await Carregar();
+        }
+    }
+}
