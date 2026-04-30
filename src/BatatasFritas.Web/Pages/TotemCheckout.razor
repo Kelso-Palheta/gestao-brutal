@@ -393,8 +393,8 @@
 
                 Carrinho.LimparCarrinho();
 
-                // Cartão no totem → maquininha (MP Point Smart 2)
-                if (pagamento == "Cartao")
+                // Cartão e Pix no totem → maquininha (MP Point Smart 2)
+                if (pagamento == "Cartao" || pagamento == "Pix")
                 {
                     Nav.NavigateTo($"/totem/pagamento-point/{idRecebido}/{valorCentavos}");
                 }

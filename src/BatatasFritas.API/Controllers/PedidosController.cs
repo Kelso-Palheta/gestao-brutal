@@ -156,7 +156,8 @@ public class PedidosController : ControllerBase
             await _uow.CommitAsync();
 
             // ── Pix: gera pagamento direto MP (QR + copia-e-cola) após commit ──
-            if (dto.MetodoPagamento == MetodoPagamento.Pix)
+            // Totem usa MP Point Smart 2 — Point gera QR na maquininha, não precisa de CriarPagamentoPixAsync
+            if (dto.MetodoPagamento == MetodoPagamento.Pix && dto.TipoAtendimento != TipoAtendimento.Totem)
             {
                 try
                 {
@@ -229,8 +230,10 @@ public class PedidosController : ControllerBase
             // ── FASE 6: imprimir se pagamento é na entrega (não precisa esperar webhook) ──
             // Pix/Online → PrintAgent aguarda sinal do webhook via ImprimirPedido
             // Cartão físico na entrega (sem token Bricks) → imprime agora
+            // Totem (Cartão/Pix) → Point Smart 2 confirma pelo endpoint StatusIntentPoint → imprime lá
             var deveImprimirAgora = dto.MomentoPagamento == BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega
-                                    && string.IsNullOrWhiteSpace(dto.CardToken); // Bricks já imprimiu acima se aprovado
+                                    && string.IsNullOrWhiteSpace(dto.CardToken)   // Bricks já imprimiu acima se aprovado
+                                    && dto.TipoAtendimento != TipoAtendimento.Totem; // Totem imprime após Point confirmar
             if (deveImprimirAgora)
                 await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
 
@@ -415,12 +418,37 @@ public class PedidosController : ControllerBase
 
     // ── GET api/pedidos/point-intent/{intentId}/status ─────────────────
     // Proxy de polling para o status do intent Point (usado pelo totem).
+    // Quando PROCESSED+approved: persiste status no pedido e emite ImprimirPedido via SignalR.
     [HttpGet("point-intent/{intentId}/status")]
-    public async Task<IActionResult> StatusIntentPoint(string intentId)
+    public async Task<IActionResult> StatusIntentPoint(string intentId, [FromQuery] int pedidoId = 0)
     {
         try
         {
             var status = await _mercadoPago.ConsultarIntentPointAsync(intentId);
+
+            // Ao confirmar aprovação → persiste e dispara impressão
+            if (status.State == "PROCESSED" && status.Status == "approved" && pedidoId > 0)
+            {
+                try
+                {
+                    var pedido = await _pedidoRepository.GetByIdAsync(pedidoId);
+                    if (pedido != null && pedido.StatusPagamento != StatusPagamento.Aprovado)
+                    {
+                        _uow.BeginTransaction();
+                        pedido.SetPagamentoCartao(status.PagamentoMpId ?? 0, StatusPagamento.Aprovado);
+                        await _pedidoRepository.UpdateAsync(pedido);
+                        await _uow.CommitAsync();
+                        await _hub.Clients.All.SendAsync("ImprimirPedido", pedidoId);
+                        System.Console.WriteLine($"[Point] Pedido {pedidoId} aprovado — ImprimirPedido emitido.");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    await _uow.RollbackAsync();
+                    System.Console.WriteLine($"[Point] Falha ao persistir aprovação pedido {pedidoId}: {ex.Message}");
+                }
+            }
+
             return Ok(new
             {
                 state        = status.State,

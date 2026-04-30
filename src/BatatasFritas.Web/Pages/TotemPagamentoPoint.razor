@@ -183,7 +183,7 @@
         try
         {
             var resp = await Http.GetFromJsonAsync<System.Text.Json.JsonElement>(
-                $"api/pedidos/point-intent/{intentId}/status");
+                $"api/pedidos/point-intent/{intentId}/status?pedidoId={PedidoId}");
 
             var state = resp.TryGetProperty("state", out var s) ? (s.GetString() ?? "") : "";
 
