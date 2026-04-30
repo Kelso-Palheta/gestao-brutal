@@ -248,3 +248,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Permite WebApplicationFactory<Program> nos integration tests
+public partial class Program { }
