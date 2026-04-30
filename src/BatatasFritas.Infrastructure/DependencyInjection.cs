@@ -17,9 +17,10 @@ namespace BatatasFritas.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, string databaseProvider = "sqlite", IConfiguration? configuration = null)
+        public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, string databaseProvider = "sqlite", IConfiguration? configuration = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null)
         {
-            Console.WriteLine($"[INFRA] Inicializando Infraestrutura. Provider: {databaseProvider}");
+            var log = loggerFactory?.CreateLogger("Infrastructure");
+            log?.LogInformation("Inicializando Infraestrutura. Provider: {Provider}", databaseProvider);
 
             bool isPostgres = databaseProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase)
                            || databaseProvider.Equals("postgresql", StringComparison.OrdinalIgnoreCase);
@@ -28,13 +29,13 @@ namespace BatatasFritas.Infrastructure
 
             if (isPostgres)
             {
-                Console.WriteLine("[INFRA] Usando configuração de banco: PostgreSQL (Npgsql)");
+                log?.LogInformation("Usando configuração de banco: PostgreSQL (Npgsql)");
                 dbConfig = PostgreSQLConfiguration.PostgreSQL82
                     .ConnectionString(connectionString);
             }
             else
             {
-                Console.WriteLine("[INFRA] Usando configuração de banco: SQLite");
+                log?.LogInformation("Usando configuração de banco: SQLite");
                 dbConfig = SQLiteConfiguration.Standard.ConnectionString(connectionString);
             }
 
@@ -65,12 +66,12 @@ namespace BatatasFritas.Infrastructure
                 services.AddScoped(typeof(IRepository<>), typeof(NHibernateRepository<>));
                 services.AddScoped<IUnitOfWork, NHibernateUnitOfWork>();
 
-                Console.WriteLine("[INFRA] SessionFactory criado com sucesso.");
+                log?.LogInformation("SessionFactory criado com sucesso.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[INFRA] ERRO FATAL ao criar SessionFactory: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"[INFRA] Inner Exception: {ex.InnerException.Message}");
+                log?.LogError(ex, "ERRO FATAL ao criar SessionFactory: {Message}", ex.Message);
+                if (ex.InnerException != null) log?.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
                 throw;
             }
 
