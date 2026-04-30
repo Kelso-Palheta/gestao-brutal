@@ -79,6 +79,7 @@ Operador/dono do estabelecimento. Acesso via painel admin com JWT. Nível técni
 
 | Caso | Comportamento |
 |------|--------------|
+| Base de cálculo do cashback | Apenas produtos das categorias **Batatas** e **Porções** (`CategoriaEnum.Batatas`, `CategoriaEnum.Porcoes`). Taxa de entrega e bebidas **excluídos**. Garantido pela propriedade `Pedido.ValorElegivelCashback` no domínio — `CashbackConcedidoPeriodo` herda esse comportamento automaticamente via `TransacaoCashback.Entrada` |
 | Período sem transações cashback | `CashbackConcedidoPeriodo = 0` |
 | Pedido com `SegundoMetodoPagamento` | Não afeta cashback — `ValorCashbackUsado` é campo único por pedido, não duplica |
 | `TipoTransacaoCashback.Saida` (uso de saldo) | Excluído do `CashbackConcedidoPeriodo`; capturado em `CashbackUsadoPeriodo` via `Pedido.ValorCashbackUsado` |
