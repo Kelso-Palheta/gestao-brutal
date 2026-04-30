@@ -417,10 +417,10 @@
         }
         else if (p.StatusPagamento == StatusPagamento.PagamentoParcial)
         {
-            <button class="kds-btn" style="background:#2980b9; color:#fff; flex: 0 0 auto; border-color:#2471a3;"
+            <button class="kds-btn" style="background:#27ae60; color:#fff; flex: 0 0 auto; border-color:#1e8449;"
                     @onclick="() => ConfirmarPagamentoEntrega(p.Id)"
                     title="Confirmar recebimento do pagamento na entrega">
-                💵 Confirmar pagto. entrega
+                💵 Confirmar pgto entrega
             </button>
         }
         else
@@ -690,7 +690,7 @@
         if (p.StatusPagamento == StatusPagamento.Aprovado || p.StatusPagamento == StatusPagamento.Presencial)
             return ("✅ PAGO",    "background:#27ae60; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
         if (p.StatusPagamento == StatusPagamento.PagamentoParcial)
-            return ("🟡 PARCIAL", "background:#d4ac0d; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
+            return ("🟡 PARCIAL", "background:#e67e22; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
         return ("⏳ PENDENTE",    "background:#f39c12; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
     }
 
