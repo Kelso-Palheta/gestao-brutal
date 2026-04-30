@@ -1,0 +1,158 @@
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="admin-section">
+    <div class="admin-section-header">
+        <h2>Base de Clientes (Cashback)</h2>
+        <p style="color: #666; font-size: 0.9rem;">Lista de clientes que já fizeram pedidos e possuem saldo acumulado.</p>
+    </div>
+
+    <div class="admin-table-container shadow-sm">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nome Cliente</th>
+                    <th>WhatsApp / Telefone</th>
+                    <th>Saldo Atual</th>
+                    <th style="width: 120px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (clientes.Any())
+                {
+                    @foreach (var c in clientes)
+                    {
+                        <tr>
+                            <td style="font-weight: 700;">@c.NomeCliente</td>
+                            <td>@c.Telefone</td>
+                            <td style="color: #27ae60; font-weight: 900;">R$ @c.SaldoAtual.ToString("F2")</td>
+                            <td>
+                                <div style="display: flex; gap: 5px;">
+                                    <button class="admin-btn-editar" @onclick="() => EditarCliente(c)" title="Editar">✏️</button>
+                                    <button class="admin-btn-deletar" @onclick="() => ConfirmarExclusaoCliente(c)" title="Excluir">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 40px; color: #999;">
+                            Nenhum cliente com cashback encontrado ainda.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (mostrarModalCliente && clienteEdit != null)
+{
+    <div class="admin-modal-overlay">
+        <div class="admin-modal-content">
+            <h3>Editar Cliente</h3>
+            <p style="color:#888; font-size:0.9rem; margin-bottom:15px;">Telefone: <strong>@clienteEdit.Telefone</strong></p>
+
+            <div class="admin-form-grid">
+                <div class="admin-field admin-field-full">
+                    <label>Nome do Cliente</label>
+                    <input @bind="clienteEdit.NomeCliente" placeholder="Ex: João da Silva" />
+                </div>
+                <div class="admin-field admin-field-full">
+                    <label>Saldo de Cashback (R$)</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" step="0.01" @bind="clienteEdit.SaldoAtual" placeholder="0.00" />
+                        <div style="display: flex; gap: 5px;">
+                            <button class="admin-btn-toggle" style="padding: 5px 10px;" @onclick="() => clienteEdit.SaldoAtual += 5">+R$5</button>
+                            <button class="admin-btn-toggle" style="padding: 5px 10px;" @onclick="() => clienteEdit.SaldoAtual += 10">+R$10</button>
+                        </div>
+                    </div>
+                    <small style="color: #666;">Ajuste manual do saldo de cashback (entrada/saída automática no histórico).</small>
+                </div>
+            </div>
+
+            <div class="admin-modal-footer">
+                <button class="admin-btn-cancelar" @onclick="() => mostrarModalCliente = false">Cancelar</button>
+                <button class="admin-btn-salvar" @onclick="SalvarEdicaoCliente" disabled="@salvando">
+                    @(salvando ? "Salvando..." : "✅ Salvar Alterações")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private AdminAlertService Alert { get; set; } = default!;
+
+    private List<SaldoCashbackDto> clientes = new();
+    private bool mostrarModalCliente = false;
+    private SaldoCashbackDto? clienteEdit;
+    private bool salvando = false;
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        try
+        {
+            var res = await Http.GetFromJsonAsync<List<SaldoCashbackDto>>("api/cashback/clientes");
+            if (res != null) clientes = res;
+        }
+        catch (Exception ex) { Alert.MostrarErro($"Erro ao carregar clientes: {ex.Message}"); }
+    }
+
+    private void EditarCliente(SaldoCashbackDto c)
+    {
+        clienteEdit = new SaldoCashbackDto { Telefone = c.Telefone, NomeCliente = c.NomeCliente, SaldoAtual = c.SaldoAtual };
+        mostrarModalCliente = true;
+    }
+
+    private async Task SalvarEdicaoCliente()
+    {
+        if (clienteEdit == null) return;
+        salvando = true;
+        try
+        {
+            var dto = new UpdateClienteCashbackDto { NomeCliente = clienteEdit.NomeCliente, SaldoAtual = clienteEdit.SaldoAtual };
+            var res = await Http.PutAsJsonAsync($"api/cashback/clientes/{clienteEdit.Telefone}", dto);
+            if (res.IsSuccessStatusCode)
+            {
+                mostrarModalCliente = false;
+                await Carregar();
+                Alert.MostrarSucesso("Cliente atualizado com sucesso!");
+            }
+            else { Alert.MostrarErro("Erro ao salvar: " + await res.Content.ReadAsStringAsync()); }
+        }
+        catch (Exception ex) { Alert.MostrarErro("Erro de conexão: " + ex.Message); }
+        finally { salvando = false; }
+    }
+
+    private async Task ConfirmarExclusaoCliente(SaldoCashbackDto c)
+    {
+        if (string.IsNullOrWhiteSpace(c.Telefone))
+        {
+            Alert.MostrarErro($"O cliente '{c.NomeCliente}' não possui telefone registrado e não pode ser excluído pela interface. Delete diretamente pelo banco se necessário.");
+            return;
+        }
+
+        var confirm = await JS.InvokeAsync<bool>("kdsInterop.confirmar", $"Tem certeza que deseja apagar permanentemente o cliente {c.NomeCliente} ({c.Telefone}) e todo o histórico de cashback dele?");
+        if (!confirm) return;
+
+        try
+        {
+            var res = await Http.DeleteAsync($"api/cashback/clientes/{c.Telefone}");
+            if (res.IsSuccessStatusCode)
+            {
+                await Carregar();
+                Alert.MostrarSucesso("Cliente removido com sucesso.");
+            }
+            else { Alert.MostrarErro("Erro ao excluir: " + await res.Content.ReadAsStringAsync()); }
+        }
+        catch (Exception ex) { Alert.MostrarErro("Erro de conexão: " + ex.Message); }
+    }
+}

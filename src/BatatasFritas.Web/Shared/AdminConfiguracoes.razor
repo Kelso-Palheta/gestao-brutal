@@ -1,0 +1,286 @@
+@using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<div class="admin-section">
+
+    <!-- Seção Delivery (Cardápio Digital) -->
+    <div class="admin-section-header">
+        <h2>🛵 Cardápio Digital (Delivery)</h2>
+    </div>
+    <div class="admin-form-card" style="margin-bottom: 24px;">
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+            <div style="font-size:2.5rem;">@(deliveryAtivo ? "🟢" : "🔴")</div>
+            <div>
+                <h3 style="margin:0 0 4px 0;">@(deliveryAtivo ? "Delivery Aberto" : "Delivery Encerrado")</h3>
+                <p style="margin:0; color:#666; font-size:0.85rem;">
+                    @(deliveryAtivo
+                        ? "Os clientes podem fazer pedidos pelo cardápio digital."
+                        : "O delivery está exibindo a mensagem de encerramento. Pedidos bloqueados.")
+                </p>
+            </div>
+            <button @onclick="ToggleDelivery"
+                    disabled="@salvandoDelivery"
+                    style="margin-left:auto; padding:12px 28px; font-size:1rem; font-weight:bold; border:none; border-radius:8px; cursor:pointer; transition:0.2s;
+                           background:@(deliveryAtivo ? "#e74c3c" : "#27ae60"); color:#fff;">
+                @if (salvandoDelivery) { <text>⌛ Salvando...</text> }
+                else if (deliveryAtivo) { <text>🔴 Encerrar Delivery</text> }
+                else { <text>🟢 Abrir Delivery</text> }
+            </button>
+        </div>
+
+        <div class="admin-field" style="margin-bottom:12px;">
+            <label>Mensagem exibida quando encerrado</label>
+            <input type="text" @bind="deliveryMensagem" maxlength="200"
+                   placeholder="Ex: Atendimento encerrado. Voltamos amanhã às 11h! 🍟"
+                   style="width:100%;" />
+        </div>
+        <p style="font-size:0.8rem; color:#999; margin:0 0 12px 0;">
+            Esta mensagem aparece para o cliente no cardápio digital quando o delivery estiver encerrado.
+        </p>
+
+        @if (!string.IsNullOrEmpty(msgDeliveryOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgDeliveryOk</div>  }
+        @if (!string.IsNullOrEmpty(msgDeliveryErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgDeliveryErro</div> }
+
+        <div class="admin-form-actions" style="margin-top:12px;">
+            <button class="admin-btn-salvar" @onclick="SalvarDelivery" disabled="@salvandoDelivery">
+                💾 Salvar Configuração
+            </button>
+        </div>
+    </div>
+
+    <!-- Seção Totem (Autoatendimento) -->
+    <div class="admin-section-header">
+        <h2>📱 Totem de Autoatendimento</h2>
+    </div>
+    <div class="admin-form-card" style="margin-bottom: 24px;">
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+            <div style="font-size:2.5rem;">@(totemAtivo ? "🟢" : "🔴")</div>
+            <div>
+                <h3 style="margin:0 0 4px 0;">@(totemAtivo ? "Totem Ativo" : "Totem Encerrado")</h3>
+                <p style="margin:0; color:#666; font-size:0.85rem;">
+                    @(totemAtivo
+                        ? "O totem está funcionando normalmente para autoatendimento."
+                        : "O totem está exibindo a mensagem de encerramento. Pedidos bloqueados.")
+                </p>
+            </div>
+            <button @onclick="ToggleTotem"
+                    disabled="@salvandoTotem"
+                    style="margin-left:auto; padding:12px 28px; font-size:1rem; font-weight:bold; border:none; border-radius:8px; cursor:pointer; transition:0.2s;
+                           background:@(totemAtivo ? "#e74c3c" : "#27ae60"); color:#fff;">
+                @if (salvandoTotem) { <text>⌛ Salvando...</text> }
+                else if (totemAtivo) { <text>🔴 Encerrar Totem</text> }
+                else { <text>🟢 Ativar Totem</text> }
+            </button>
+        </div>
+
+        <div class="admin-field" style="margin-bottom:12px;">
+            <label>Mensagem exibida quando encerrado</label>
+            <input type="text" @bind="totemMensagem" maxlength="200"
+                   placeholder="Ex: Atendimento encerrado. Voltamos amanhã às 11h! 🍟"
+                   style="width:100%;" />
+        </div>
+        <p style="font-size:0.8rem; color:#999; margin:0 0 12px 0;">
+            Esta mensagem aparece para o cliente no totem quando estiver encerrado.
+        </p>
+
+        @if (!string.IsNullOrEmpty(msgTotemOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgTotemOk</div>  }
+        @if (!string.IsNullOrEmpty(msgTotemErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgTotemErro</div> }
+
+        <div class="admin-form-actions" style="margin-top:12px;">
+            <button class="admin-btn-salvar" @onclick="SalvarTotem" disabled="@salvandoTotem">
+                💾 Salvar Configuração
+            </button>
+        </div>
+    </div>
+
+    <!-- Seção Cashback -->
+    <div class="admin-section-header">
+        <h2>Cashback</h2>
+    </div>
+    <div class="admin-form-card" style="margin-bottom: 24px;">
+        <h3>🎁 Porcentagem de Cashback</h3>
+        <p style="color:#666; font-size:0.9rem; margin-bottom:16px;">
+            Defina a porcentagem de cashback que os clientes ganham em cada compra. Coloque 0 para desativar.
+        </p>
+        <div class="admin-form-grid" style="grid-template-columns: 1fr;">
+            <div class="admin-field">
+                <label>Cashback (%) *</label>
+                <input type="number" step="0.1" min="0" max="100" @bind="porcentagemCashback" placeholder="Ex: 5" style="max-width: 150px;" />
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(msgCashbackOk))   { <div class="admin-alert admin-alert-ok"   style="margin-top:12px;">✅ @msgCashbackOk</div> }
+        @if (!string.IsNullOrEmpty(msgCashbackErro))  { <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgCashbackErro</div> }
+        <div class="admin-form-actions" style="margin-top:16px;">
+            <button class="admin-btn-salvar" @onclick="SalvarCashback" disabled="@salvandoCashback">
+                @(salvandoCashback ? "Salvando..." : "💾 Salvar Configuração")
+            </button>
+        </div>
+    </div>
+
+    <!-- Seção Segurança -->
+    <div class="admin-section-header">
+        <h2>Alterar Senha do KDS / Admin</h2>
+    </div>
+    <div class="admin-form-card" style="max-width: 480px;">
+        <h3>🔐 Nova Senha de Acesso</h3>
+        <p style="color:#666; font-size:0.9rem; margin-bottom:16px;">
+            Esta senha é usada para acessar o Monitor da Cozinha (KDS) e este Painel Admin.
+            A senha padrão de fábrica é <strong>palheta2025</strong>.
+        </p>
+        <div class="admin-form-grid" style="grid-template-columns: 1fr;">
+            <div class="admin-field">
+                <label>Senha Atual *</label>
+                <input type="password" @bind="senhaAtual" placeholder="Digite a senha atual..." />
+            </div>
+            <div class="admin-field">
+                <label>Nova Senha *</label>
+                <input type="password" @bind="novaSenha" placeholder="Mínimo 4 caracteres..." />
+            </div>
+            <div class="admin-field">
+                <label>Confirmar Nova Senha *</label>
+                <input type="password" @bind="confirmarSenha" placeholder="Repita a nova senha..." />
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(msgSenhaOk))   { <div class="admin-alert admin-alert-ok"   style="margin-top:12px;">✅ @msgSenhaOk</div> }
+        @if (!string.IsNullOrEmpty(msgSenhaErro))  { <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgSenhaErro</div> }
+        <div class="admin-form-actions" style="margin-top:16px;">
+            <button class="admin-btn-salvar" @onclick="AlterarSenha" disabled="@alterandoSenha">
+                @(alterandoSenha ? "Salvando..." : "🔑 Alterar Senha")
+            </button>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [CascadingParameter] private AdminAlertService Alert { get; set; } = default!;
+
+    // ── Delivery ──
+    private bool   deliveryAtivo    = true;
+    private string deliveryMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
+    private bool   salvandoDelivery = false;
+    private string msgDeliveryOk    = "";
+    private string msgDeliveryErro  = "";
+
+    // ── Totem ──
+    private bool   totemAtivo    = true;
+    private string totemMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
+    private bool   salvandoTotem = false;
+    private string msgTotemOk    = "";
+    private string msgTotemErro  = "";
+
+    // ── Cashback ──
+    private decimal porcentagemCashback = 0;
+    private string  msgCashbackOk       = string.Empty;
+    private string  msgCashbackErro     = string.Empty;
+    private bool    salvandoCashback    = false;
+
+    // ── Segurança ──
+    private string senhaAtual      = string.Empty;
+    private string novaSenha       = string.Empty;
+    private string confirmarSenha  = string.Empty;
+    private string msgSenhaOk      = string.Empty;
+    private string msgSenhaErro    = string.Empty;
+    private bool   alterandoSenha  = false;
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        try
+        {
+            var cbConfig = await Http.GetFromJsonAsync<CashbackConfigDto>("api/cashback/configuracao");
+            if (cbConfig != null) porcentagemCashback = cbConfig.Porcentagem;
+
+            var deliveryStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
+            if (deliveryStatus != null) { deliveryAtivo = deliveryStatus.Ativo; deliveryMensagem = deliveryStatus.Mensagem; }
+
+            var totemStatus = await Http.GetFromJsonAsync<TotemStatusDto>("api/configuracoes/totem-status");
+            if (totemStatus != null) { totemAtivo = totemStatus.Ativo; totemMensagem = totemStatus.Mensagem; }
+        }
+        catch (Exception ex) { Alert.MostrarErro($"Erro ao carregar configurações: {ex.Message}"); }
+    }
+
+    private async Task ToggleDelivery() { deliveryAtivo = !deliveryAtivo; await EnviarStatusDelivery(); }
+    private async Task SalvarDelivery()  => await EnviarStatusDelivery();
+
+    private async Task EnviarStatusDelivery()
+    {
+        msgDeliveryOk = ""; msgDeliveryErro = "";
+        salvandoDelivery = true;
+        try
+        {
+            var dto = new DeliveryStatusDto { Ativo = deliveryAtivo, Mensagem = deliveryMensagem };
+            var res = await Http.PostAsJsonAsync("api/configuracoes/delivery-status", dto);
+            if (res.IsSuccessStatusCode)
+                msgDeliveryOk = deliveryAtivo ? "Delivery aberto com sucesso!" : "Delivery encerrado. Mensagem ativa.";
+            else
+                msgDeliveryErro = await res.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex) { msgDeliveryErro = $"Erro: {ex.Message}"; }
+        finally { salvandoDelivery = false; }
+    }
+
+    private async Task ToggleTotem() { totemAtivo = !totemAtivo; await EnviarStatusTotem(); }
+    private async Task SalvarTotem()  => await EnviarStatusTotem();
+
+    private async Task EnviarStatusTotem()
+    {
+        msgTotemOk = ""; msgTotemErro = "";
+        salvandoTotem = true;
+        try
+        {
+            var dto = new TotemStatusDto { Ativo = totemAtivo, Mensagem = totemMensagem };
+            var res = await Http.PostAsJsonAsync("api/configuracoes/totem-status", dto);
+            if (res.IsSuccessStatusCode)
+                msgTotemOk = totemAtivo ? "Totem ativado com sucesso!" : "Totem encerrado. Mensagem ativa.";
+            else
+                msgTotemErro = await res.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex) { msgTotemErro = $"Erro: {ex.Message}"; }
+        finally { salvandoTotem = false; }
+    }
+
+    private async Task SalvarCashback()
+    {
+        msgCashbackOk = string.Empty; msgCashbackErro = string.Empty;
+        salvandoCashback = true;
+        try
+        {
+            var body = new CashbackConfigDto { Porcentagem = porcentagemCashback };
+            var response = await Http.PostAsJsonAsync("api/cashback/configuracao", body);
+            if (response.IsSuccessStatusCode)
+                msgCashbackOk = "Configuração de Cashback salva com sucesso!";
+            else
+                msgCashbackErro = await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex) { msgCashbackErro = $"Erro de conexão: {ex.Message}"; }
+        finally { salvandoCashback = false; }
+    }
+
+    private async Task AlterarSenha()
+    {
+        msgSenhaOk = string.Empty; msgSenhaErro = string.Empty;
+        if (string.IsNullOrWhiteSpace(senhaAtual) || string.IsNullOrWhiteSpace(novaSenha) || string.IsNullOrWhiteSpace(confirmarSenha))
+            { msgSenhaErro = "Preencha todos os campos."; return; }
+        if (novaSenha != confirmarSenha) { msgSenhaErro = "A nova senha e a confirmação não coincidem."; return; }
+        if (novaSenha.Length < 4)        { msgSenhaErro = "A nova senha deve ter ao menos 4 caracteres."; return; }
+
+        alterandoSenha = true;
+        try
+        {
+            var body = new AlterarSenhaRequest { SenhaAtual = senhaAtual, NovaSenha = novaSenha };
+            var response = await Http.PostAsJsonAsync("api/configuracoes/auth/alterar-senha", body);
+            if (response.IsSuccessStatusCode)
+            {
+                msgSenhaOk = "Senha alterada com sucesso! Use a nova senha no próximo login.";
+                senhaAtual = string.Empty; novaSenha = string.Empty; confirmarSenha = string.Empty;
+            }
+            else { msgSenhaErro = await response.Content.ReadAsStringAsync(); }
+        }
+        catch (Exception ex) { msgSenhaErro = $"Erro de conexão: {ex.Message}"; }
+        finally { alterandoSenha = false; }
+    }
+}

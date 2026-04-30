@@ -1,0 +1,195 @@
+@using BatatasFritas.Shared.DTOs
+@using System.Net.Http.Json
+@using BatatasFritas.Web.Services
+@inject HttpClient Http
+
+<div class="admin-section">
+    <div class="admin-section-header">
+        <h2>Bairros e Taxas de Entrega</h2>
+        <button class="admin-btn-novo" @onclick="AbrirNovoBairro">+ Novo Bairro</button>
+    </div>
+
+    <!-- FORMULÁRIO de Criar/Editar Bairro -->
+    @if (mostrarFormBairro)
+    {
+        <div class="admin-form-card">
+            <h3>@(bairroEdit.Id == 0 ? "Novo Bairro" : $"Editando: {bairroEdit.Nome}")</h3>
+            <div class="admin-form-grid">
+                <div class="admin-field">
+                    <label>Nome do Bairro *</label>
+                    <input @bind="bairroEdit.Nome" placeholder="Ex: Centro" />
+                </div>
+                <div class="admin-field">
+                    <label>Taxa de Entrega (R$) *</label>
+                    <input type="number" step="0.01" min="0" @bind="bairroEdit.TaxaEntrega" placeholder="0,00" />
+                </div>
+            </div>
+            <div class="admin-form-actions">
+                <button class="admin-btn-salvar" @onclick="SalvarBairro" disabled="@salvando">
+                    @(salvando ? "Salvando..." : "💾 Salvar")
+                </button>
+                <button class="admin-btn-cancelar" @onclick="FecharFormBairro">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    <!-- TABELA de Bairros -->
+    @if (bairros.Any())
+    {
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width:60px">Ordem</th>
+                        <th>Nome do Bairro</th>
+                        <th>Taxa de Entrega</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var posicaoBairro = 0; }
+                    @foreach (var b in bairros)
+                    {
+                        var pos = posicaoBairro++;
+                        <tr>
+                            <td class="admin-td-id">
+                                <div class="admin-ordem-ctrl">
+                                    <button class="admin-btn-ordem" @onclick="@(() => MoverCimaBairro(pos))" disabled="@(pos == 0 || salvandoOrdemBairro)" title="Mover para cima">▲</button>
+                                    <button class="admin-btn-ordem" @onclick="@(() => MoverBaixoBairro(pos))" disabled="@(pos == bairros.Count - 1 || salvandoOrdemBairro)" title="Mover para baixo">▼</button>
+                                </div>
+                            </td>
+                            <td><strong>@b.Nome</strong></td>
+                            <td class="admin-td-preco">R$ @b.TaxaEntrega.ToString("F2")</td>
+                            <td class="admin-td-acoes">
+                                <button class="admin-btn-editar" @onclick="@(() => EditarBairro(b))" title="Editar">✏️</button>
+                                <button class="admin-btn-deletar" @onclick="@(() => DeletarBairro(b))" title="Excluir">🗑️</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="admin-vazio">Nenhum bairro cadastrado ainda. Clique em "+ Novo Bairro" para começar.</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private AdminAlertService Alert { get; set; } = default!;
+
+    private List<BairroDto> bairros         = new();
+    private BairroDto       bairroEdit      = new();
+    private bool            mostrarFormBairro   = false;
+    private bool            salvando            = false;
+    private bool            salvandoOrdemBairro = false;
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        try
+        {
+            var res = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
+            if (res != null) bairros = res;
+        }
+        catch (Exception ex) { Alert.MostrarErro($"Erro ao carregar bairros: {ex.Message}"); }
+    }
+
+    // ── Ordem ──
+    private async Task MoverCimaBairro(int indice)
+    {
+        if (indice <= 0) return;
+        (bairros[indice], bairros[indice - 1]) = (bairros[indice - 1], bairros[indice]);
+        await SalvarOrdemBairros();
+    }
+
+    private async Task MoverBaixoBairro(int indice)
+    {
+        if (indice >= bairros.Count - 1) return;
+        (bairros[indice], bairros[indice + 1]) = (bairros[indice + 1], bairros[indice]);
+        await SalvarOrdemBairros();
+    }
+
+    private async Task SalvarOrdemBairros()
+    {
+        salvandoOrdemBairro = true;
+        try
+        {
+            var payload = bairros.Select((b, idx) => new ReordenarBairroItem(b.Id, idx)).ToList();
+            await Http.PatchAsJsonAsync("api/bairros/reordenar", payload);
+        }
+        catch { /* falha silenciosa — lista local já reorganizada */ }
+        finally { salvandoOrdemBairro = false; }
+    }
+
+    // ── CRUD Bairros ──
+    private void AbrirNovoBairro()
+    {
+        Alert.Limpar();
+        bairroEdit = new BairroDto();
+        mostrarFormBairro = true;
+    }
+
+    private void EditarBairro(BairroDto b)
+    {
+        Alert.Limpar();
+        bairroEdit = new BairroDto { Id = b.Id, Nome = b.Nome, TaxaEntrega = b.TaxaEntrega };
+        mostrarFormBairro = true;
+    }
+
+    private void FecharFormBairro()
+    {
+        mostrarFormBairro = false;
+        bairroEdit = new();
+    }
+
+    private async Task SalvarBairro()
+    {
+        if (string.IsNullOrWhiteSpace(bairroEdit.Nome))
+        {
+            Alert.MostrarErro("Nome do bairro é obrigatório!");
+            return;
+        }
+        Alert.Limpar();
+        salvando = true;
+        try
+        {
+            HttpResponseMessage response;
+            if (bairroEdit.Id == 0)
+                response = await Http.PostAsJsonAsync("api/bairros", bairroEdit);
+            else
+                response = await Http.PutAsJsonAsync($"api/bairros/{bairroEdit.Id}", bairroEdit);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Alert.MostrarSucesso(bairroEdit.Id == 0 ? "Bairro criado com sucesso!" : "Bairro atualizado com sucesso!");
+                FecharFormBairro();
+                await Carregar();
+            }
+            else { Alert.MostrarErro($"Erro ao salvar bairro: {await response.Content.ReadAsStringAsync()}"); }
+        }
+        catch (Exception ex) { Alert.MostrarErro($"Erro de conexão: {ex.Message}"); }
+        finally { salvando = false; }
+    }
+
+    private async Task DeletarBairro(BairroDto b)
+    {
+        Alert.Limpar();
+        var response = await Http.DeleteAsync($"api/bairros/{b.Id}");
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            Alert.MostrarSucesso($"Bairro '{b.Nome}' excluído.");
+            await Carregar();
+        }
+        else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Alert.MostrarErro(await response.Content.ReadAsStringAsync());
+        }
+        else
+        {
+            Alert.MostrarErro($"Erro ao excluir bairro: {await response.Content.ReadAsStringAsync()}");
+        }
+    }
+}
