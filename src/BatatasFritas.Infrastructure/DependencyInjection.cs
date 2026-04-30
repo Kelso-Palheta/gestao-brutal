@@ -80,6 +80,7 @@ namespace BatatasFritas.Infrastructure
             else
                 services.Configure<MercadoPagoOptions>(_ => { });
 
+            services.AddHttpClient(); // necessário para IHttpClientFactory (Point Smart 2)
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
 
             return services;

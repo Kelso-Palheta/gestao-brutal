@@ -1,0 +1,284 @@
+@page "/totem/pagamento-point/{PedidoId:int}/{ValorCentavos:int}"
+@layout TotemLayout
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using System.Threading
+@using System.Net.Http.Json
+
+<div class="totem-success">
+    <div class="t-success-box" style="max-width:500px;">
+
+        @if (fase == "iniciando")
+        {
+            <div class="t-icon" style="font-size:3rem; animation:spin 1s linear infinite;">⏳</div>
+            <h1>Preparando maquininha...</h1>
+            <p style="color:#aaa;">Aguarde um instante.</p>
+        }
+        else if (fase == "aguardando")
+        {
+            <div style="font-size:5rem; margin-bottom:12px; animation:pulse 1.5s ease-in-out infinite;">💳</div>
+            <h1 style="color:#ffb347;">Pague na maquininha</h1>
+            <p style="font-size:1.2rem; color:#fff; margin:8px 0;">
+                Aproxime, insira ou passe o cartão
+            </p>
+            <div style="background:#1a1a1a; border:2px solid #ffb347; border-radius:12px; padding:16px; margin:16px 0;">
+                <p style="font-size:2rem; font-weight:900; color:#fff; margin:0;">
+                    R$ @((ValorCentavos / 100m).ToString("N2"))
+                </p>
+            </div>
+            <p style="color:#888; font-size:0.9rem;">Pedido #@PedidoId.ToString("D3")</p>
+
+            @if (tempoRestante <= 30)
+            {
+                <p style="color:#e74c3c; font-size:0.85rem; margin-top:8px;">
+                    Tempo restante: @tempoRestante segundos
+                </p>
+            }
+
+            <button @onclick="CancelarEVoltar"
+                    style="background:transparent; border:1px solid #555; color:#888; padding:10px 20px; border-radius:8px; cursor:pointer; margin-top:16px; font-size:0.9rem;">
+                ✕ Cancelar e voltar
+            </button>
+        }
+        else if (fase == "aprovado")
+        {
+            <div class="t-icon" style="color:#27ae60;">✅</div>
+            <h1 style="color:#27ae60;">Pagamento Aprovado!</h1>
+            <p>Seu pedido <strong>#@PedidoId.ToString("D3")</strong> foi pago com sucesso.</p>
+            <p style="color:#aaa; font-size:0.9rem; margin-top:8px;">Aguarde chamarmos o seu nome.</p>
+            <div class="t-timer" style="margin-top:16px;">
+                Retornando em @tempoRestante segundos...
+            </div>
+        }
+        else if (fase == "recusado")
+        {
+            <div class="t-icon" style="color:#e74c3c;">❌</div>
+            <h1 style="color:#e74c3c;">Pagamento não aprovado</h1>
+            <p style="color:#ccc;">@msgErro</p>
+            <p style="color:#aaa; font-size:0.9rem; margin-top:8px;">
+                Tente novamente ou dirija-se ao caixa.
+            </p>
+            <div style="display:flex; gap:12px; margin-top:20px; justify-content:center; flex-wrap:wrap;">
+                <button @onclick="TentarNovamente"
+                        style="background:#e67e22; border:none; color:#fff; padding:14px 24px; border-radius:10px; font-size:1rem; font-weight:700; cursor:pointer;">
+                    🔄 Tentar novamente
+                </button>
+                <button @onclick="VoltarAoInicio"
+                        style="background:#333; border:1px solid #555; color:#ccc; padding:14px 24px; border-radius:10px; font-size:1rem; cursor:pointer;">
+                    🏠 Novo pedido
+                </button>
+            </div>
+        }
+        else if (fase == "erro")
+        {
+            <div class="t-icon" style="color:#e74c3c;">⚠️</div>
+            <h1 style="color:#e74c3c;">Erro na maquininha</h1>
+            <p style="color:#ccc;">@msgErro</p>
+            <p style="color:#ffb347; font-size:1rem; margin-top:12px; font-weight:bold;">
+                Por favor, dirija-se ao caixa para efetuar o pagamento.
+            </p>
+            <button @onclick="VoltarAoInicio"
+                    style="background:#333; border:1px solid #555; color:#ccc; padding:14px 24px; border-radius:10px; font-size:1rem; cursor:pointer; margin-top:16px;">
+                🏠 Novo pedido
+            </button>
+        }
+
+    </div>
+</div>
+
+<style>
+    @@keyframes spin   { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @@keyframes pulse  { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+</style>
+
+@code {
+    [Parameter] public int PedidoId { get; set; }
+    [Parameter] public int ValorCentavos { get; set; }
+
+    // "iniciando" | "aguardando" | "aprovado" | "recusado" | "erro"
+    private string fase = "iniciando";
+    private string msgErro = "";
+    private string? intentId;
+
+    private const int TimeoutSegundos = 120;
+    private int tempoRestante = TimeoutSegundos;
+
+    private Timer? _pollTimer;
+    private Timer? _countdownTimer;
+    private bool _disposed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await IniciarIntent();
+    }
+
+    private async Task IniciarIntent()
+    {
+        fase = "iniciando";
+        intentId = null;
+        msgErro = "";
+        tempoRestante = TimeoutSegundos;
+        StateHasChanged();
+
+        try
+        {
+            var resp = await Http.PostAsync($"api/pedidos/{PedidoId}/iniciar-point", null);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                fase = "erro";
+                msgErro = $"Não foi possível acionar a maquininha. {err}";
+                StateHasChanged();
+                return;
+            }
+
+            var json = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            intentId = json.GetProperty("intentId").GetString();
+
+            fase = "aguardando";
+            StateHasChanged();
+
+            // Inicia polling a cada 2 segundos
+            _pollTimer = new Timer(async _ => await PollStatus(), null, 2000, 2000);
+
+            // Inicia contagem regressiva
+            _countdownTimer = new Timer(Tick, null, 1000, 1000);
+        }
+        catch (Exception ex)
+        {
+            fase = "erro";
+            msgErro = ex.Message;
+            StateHasChanged();
+        }
+    }
+
+    private void Tick(object? state)
+    {
+        if (_disposed) return;
+        tempoRestante--;
+        InvokeAsync(StateHasChanged);
+
+        if (tempoRestante <= 0)
+        {
+            InvokeAsync(OnTimeout);
+        }
+    }
+
+    private async Task OnTimeout()
+    {
+        PararTimers();
+        if (!string.IsNullOrEmpty(intentId))
+        {
+            try { await Http.DeleteAsync($"api/pedidos/point-intent/{intentId}"); } catch { }
+        }
+        fase = "erro";
+        msgErro = "Tempo esgotado. Por favor, dirija-se ao caixa.";
+        StateHasChanged();
+    }
+
+    private async Task PollStatus()
+    {
+        if (_disposed || string.IsNullOrEmpty(intentId)) return;
+
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<System.Text.Json.JsonElement>(
+                $"api/pedidos/point-intent/{intentId}/status?pedidoId={PedidoId}");
+
+            var state = resp.TryGetProperty("state", out var s) ? (s.GetString() ?? "") : "";
+
+            await InvokeAsync(async () =>
+            {
+                switch (state)
+                {
+                    case "PROCESSED":
+                        PararTimers();
+                        var status = resp.TryGetProperty("status", out var st) ? (st.GetString() ?? "") : "";
+                        if (status == "approved")
+                        {
+                            fase = "aprovado";
+                            tempoRestante = 10;
+                            // Contagem regressiva para voltar ao início
+                            _countdownTimer = new Timer(TickAprovado, null, 1000, 1000);
+                        }
+                        else
+                        {
+                            fase = "recusado";
+                            var detail = resp.TryGetProperty("statusDetail", out var sd) ? (sd.GetString() ?? "") : "";
+                            msgErro = string.IsNullOrEmpty(detail)
+                                ? "Pagamento recusado pela operadora."
+                                : $"Recusado: {detail}.";
+                        }
+                        break;
+
+                    case "ABANDONED":
+                    case "CANCELED":
+                        PararTimers();
+                        fase = "recusado";
+                        msgErro = "Pagamento cancelado ou abandonado na maquininha.";
+                        break;
+
+                    case "ERROR":
+                        PararTimers();
+                        fase = "erro";
+                        msgErro = "Erro na maquininha. Tente novamente ou pague no caixa.";
+                        break;
+
+                    // OPEN | PROCESSING → continua aguardando
+                }
+                StateHasChanged();
+            });
+        }
+        catch
+        {
+            // Falha de rede transiente — continua polling
+        }
+    }
+
+    private void TickAprovado(object? state)
+    {
+        if (_disposed) return;
+        tempoRestante--;
+        InvokeAsync(StateHasChanged);
+        if (tempoRestante <= 0)
+        {
+            PararTimers();
+            InvokeAsync(VoltarAoInicio);
+        }
+    }
+
+    private void PararTimers()
+    {
+        _pollTimer?.Dispose();
+        _pollTimer = null;
+        _countdownTimer?.Dispose();
+        _countdownTimer = null;
+    }
+
+    private async Task CancelarEVoltar()
+    {
+        PararTimers();
+        if (!string.IsNullOrEmpty(intentId))
+        {
+            try { await Http.DeleteAsync($"api/pedidos/point-intent/{intentId}"); } catch { }
+        }
+        Nav.NavigateTo("/totem/checkout");
+    }
+
+    private async Task TentarNovamente()
+    {
+        await IniciarIntent();
+    }
+
+    private void VoltarAoInicio()
+    {
+        PararTimers();
+        Nav.NavigateTo("/totem");
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        PararTimers();
+    }
+}
