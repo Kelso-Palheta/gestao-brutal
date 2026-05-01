@@ -1,31 +1,35 @@
+using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Interfaces;
-using FluentMigrator.Runner;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
-using NHibernate;
 using NSubstitute;
+using Testcontainers.PostgreSql;
 
 namespace BatatasFritas.API.Tests;
 
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private SqliteConnection? _sharedConnection;
-    public IMercadoPagoService MockMercadoPago { get; } = Substitute.For<IMercadoPagoService>();
+    private readonly PostgreSqlContainer _db = new PostgreSqlBuilder()
+        .WithImage("postgres:16-alpine")
+        .Build();
 
-    public CustomWebApplicationFactory()
+    public IMercadoPagoService MockMercadoPago { get; } = Substitute.For<IMercadoPagoService>();
+    public IHubContext<PedidosHub> MockHub { get; } = Substitute.For<IHubContext<PedidosHub>>();
+
+    public async Task InitializeAsync()
     {
-        var dbFile = Path.Combine(Path.GetTempPath(), $"batatastestes_{Guid.NewGuid():N}.db");
+        await _db.StartAsync();
 
         Environment.SetEnvironmentVariable("Jwt__SecretKey", "test-secret-key-that-is-at-least-32-characters-long");
         Environment.SetEnvironmentVariable("Jwt__Issuer", "BatatasFritasAPI");
         Environment.SetEnvironmentVariable("Jwt__Audience", "BatatasFritasKDS");
         Environment.SetEnvironmentVariable("Jwt__ExpirationMinutes", "480");
         Environment.SetEnvironmentVariable("KDS_DEFAULT_PASSWORD", "testpassword123");
-        Environment.SetEnvironmentVariable("DatabaseProvider", "sqlite");
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", $"Data Source={dbFile};Cache=Shared");
+        Environment.SetEnvironmentVariable("DatabaseProvider", "postgres");
+        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", _db.GetConnectionString());
         Environment.SetEnvironmentVariable("MercadoPago__WebhookSecret", "test-webhook-secret");
     }
 
@@ -33,27 +37,29 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureTestServices(services =>
         {
-            var descriptorsToRemove = services.Where(d =>
-                d.ServiceType == typeof(ISessionFactory) ||
-                d.ServiceType == typeof(ISession) ||
-                d.ServiceType == typeof(IMigrationRunner) ||
-                d.ServiceType == typeof(IMercadoPagoService)
-            ).ToList();
+            var toRemove = services
+                .Where(d =>
+                    d.ServiceType == typeof(IMercadoPagoService) ||
+                    d.ServiceType == typeof(IHubContext<PedidosHub>))
+                .ToList();
 
-            foreach (var descriptor in descriptorsToRemove)
-                services.Remove(descriptor);
+            foreach (var d in toRemove)
+                services.Remove(d);
 
             services.AddSingleton(MockMercadoPago);
-        });
 
-        _sharedConnection = new SqliteConnection(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
-        _sharedConnection.Open();
+            var mockClients = Substitute.For<IHubClients>();
+            var mockClientProxy = Substitute.For<IClientProxy>();
+            MockHub.Clients.Returns(mockClients);
+            mockClients.All.Returns(mockClientProxy);
+            mockClients.Group(Arg.Any<string>()).Returns(mockClientProxy);
+            services.AddSingleton(MockHub);
+        });
     }
 
-    protected override void Dispose(bool disposing)
+    public new async Task DisposeAsync()
     {
-        base.Dispose(disposing);
-        if (disposing)
-            _sharedConnection?.Dispose();
+        await base.DisposeAsync();
+        await _db.DisposeAsync();
     }
 }
