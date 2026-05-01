@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using NSubstitute;
 using Testcontainers.PostgreSql;
 
@@ -18,6 +19,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
     public IMercadoPagoService MockMercadoPago { get; } = Substitute.For<IMercadoPagoService>();
     public IHubContext<PedidosHub> MockHub { get; } = Substitute.For<IHubContext<PedidosHub>>();
+    public IHubClients MockHubClients { get; } = Substitute.For<IHubClients>();
+    public IClientProxy MockClientProxy { get; } = Substitute.For<IClientProxy>();
 
     public async Task InitializeAsync()
     {
@@ -31,6 +34,36 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         Environment.SetEnvironmentVariable("DatabaseProvider", "postgres");
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", _db.GetConnectionString());
         Environment.SetEnvironmentVariable("MercadoPago__WebhookSecret", "test-webhook-secret");
+
+        // Força startup do servidor (Program.cs + MigrateUp cria tabelas)
+        // CreateClient() é síncrono e bloqueia até o servidor estar pronto
+        using var warmupClient = CreateClient();
+        var _ = await warmupClient.GetAsync("/api/pedidos/bydate?page=1&pageSize=1");
+
+        await SeedAsync();
+    }
+
+    private async Task SeedAsync()
+    {
+        // Program.cs seeds Produtos with estoque=0 during startup.
+        // Retry UPDATE until rows exist (seed may not be committed yet when warmup returns).
+        await using var conn = new NpgsqlConnection(_db.GetConnectionString());
+        await conn.OpenAsync();
+
+        int rows = 0;
+        for (int i = 0; i < 20 && rows == 0; i++)
+        {
+            await Task.Delay(300);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                UPDATE produtos SET estoque_atual = 100, estoque_minimo = 5
+                WHERE nome IN ('Batata Suprema Média', 'Batata Suprema Gigante', 'Coca-Cola 1L');
+            ";
+            rows = await cmd.ExecuteNonQueryAsync();
+        }
+
+        if (rows == 0)
+            throw new InvalidOperationException("SeedAsync: produtos não encontrados após 6s. Program.cs seed falhou.");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -48,11 +81,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
             services.AddSingleton(MockMercadoPago);
 
-            var mockClients = Substitute.For<IHubClients>();
-            var mockClientProxy = Substitute.For<IClientProxy>();
-            MockHub.Clients.Returns(mockClients);
-            mockClients.All.Returns(mockClientProxy);
-            mockClients.Group(Arg.Any<string>()).Returns(mockClientProxy);
+            MockHub.Clients.Returns(MockHubClients);
+            MockHubClients.All.Returns(MockClientProxy);
+            MockHubClients.Group(Arg.Any<string>()).Returns(MockClientProxy);
             services.AddSingleton(MockHub);
         });
     }

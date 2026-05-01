@@ -13,7 +13,8 @@ namespace BatatasFritas.API.Tests;
 /// Integration tests para POST /api/pedidos e GET /api/pedidos/bydate.
 /// Usa CustomWebApplicationFactory com SQLite in-memory e mock de MercadoPago.
 /// </summary>
-public class PedidosControllerTests : IClassFixture<CustomWebApplicationFactory>
+[Collection("API")]
+public class PedidosControllerTests
 {
     private readonly HttpClient _client;
     private readonly IMercadoPagoService _mockMp;

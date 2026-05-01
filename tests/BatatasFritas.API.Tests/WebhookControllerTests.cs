@@ -15,17 +15,26 @@ namespace BatatasFritas.API.Tests;
 /// Integration tests para POST /api/webhook/mercadopago.
 /// Usa CustomWebApplicationFactory com mock de IMercadoPagoService.
 /// </summary>
-public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
+[Collection("API")]
+public class WebhookControllerTests
 {
     private readonly HttpClient _client;
     private readonly IMercadoPagoService _mockMp;
     private readonly IHubContext<PedidosHub> _mockHub;
+    private readonly IHubClients _mockHubClients;
+    private readonly IClientProxy _mockClientProxy;
 
     public WebhookControllerTests(CustomWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
         _mockMp = factory.MockMercadoPago;
         _mockHub = factory.MockHub;
+        _mockHubClients = factory.MockHubClients;
+        _mockClientProxy = factory.MockClientProxy;
+        _mockMp.ClearReceivedCalls();
+        _mockHub.ClearReceivedCalls();
+        _mockHubClients.ClearReceivedCalls();
+        _mockClientProxy.ClearReceivedCalls();
     }
 
     // ── Payload helper ─────────────────────────────────────────────────
@@ -321,11 +330,14 @@ public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
         var getResp = await _client.GetAsync($"/api/pedidos/{pedidoId}");
         var body = await getResp.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(body);
-        doc.RootElement.GetProperty("statusPagamento").GetString().Should().Be("Aprovado");
+        doc.RootElement.GetProperty("statusPagamento").GetInt32().Should().Be((int)StatusPagamento.Aprovado);
 
         // Assert: Hub deve ter sido notificado
-        await _mockHub.Clients.Received().Group($"pedido-{pedidoId}").SendAsync("PagamentoAprovado", pedidoId);
-        await _mockHub.Clients.All.Received().SendAsync("ImprimirPedido", pedidoId);
+        _mockHubClients.Received().Group($"pedido-{pedidoId}");
+        _mockClientProxy.Received().SendCoreAsync("PagamentoAprovado",
+            Arg.Is<object[]>(a => a.Length == 1 && (int)a[0] == pedidoId), Arg.Any<CancellationToken>());
+        _mockClientProxy.Received().SendCoreAsync("ImprimirPedido",
+            Arg.Is<object[]>(a => a.Length == 1 && (int)a[0] == pedidoId), Arg.Any<CancellationToken>());
     }
 
     // ── TESTE 12: Approved + Split (NaEntrega) → Confirma Parcial ─────────
@@ -353,11 +365,14 @@ public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
         var getResp = await _client.GetAsync($"/api/pedidos/{pedidoId}");
         var body = await getResp.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(body);
-        doc.RootElement.GetProperty("statusPagamento").GetString().Should().Be("PagamentoParcial");
+        doc.RootElement.GetProperty("statusPagamento").GetInt32().Should().Be((int)StatusPagamento.PagamentoParcial);
 
         // Assert: Hub notifica PagamentoAprovado no grupo, mas status no KDS é PagamentoParcial
-        await _mockHub.Clients.Received().Group($"pedido-{pedidoId}").SendAsync("PagamentoAprovado", pedidoId);
-        await _mockHub.Clients.All.Received().SendAsync("StatusAtualizado", pedidoId, "PagamentoParcial");
+        _mockHubClients.Received().Group($"pedido-{pedidoId}");
+        _mockClientProxy.Received().SendCoreAsync("PagamentoAprovado",
+            Arg.Is<object[]>(a => a.Length == 1 && (int)a[0] == pedidoId), Arg.Any<CancellationToken>());
+        _mockClientProxy.Received().SendCoreAsync("StatusAtualizado",
+            Arg.Is<object[]>(a => a.Length == 2 && (int)a[0] == pedidoId && (string)a[1] == "PagamentoParcial"), Arg.Any<CancellationToken>());
     }
 
     // ── TESTE 13: Action "payment.created" + Status "approved" → Funciona ─
@@ -385,7 +400,7 @@ public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
         var getResp = await _client.GetAsync($"/api/pedidos/{pedidoId}");
         var body = await getResp.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(body);
-        doc.RootElement.GetProperty("statusPagamento").GetString().Should().Be("Aprovado");
+        doc.RootElement.GetProperty("statusPagamento").GetInt32().Should().Be((int)StatusPagamento.Aprovado);
     }
 
     // ── TESTE 14: Idempotência de Negócio (Já Aprovado) → Sem Sinais Hub ──
@@ -410,7 +425,8 @@ public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
         await _client.SendAsync(request1);
 
         // Limpa recebimentos do mock para checar a segunda chamada
-        _mockHub.Clients.ClearReceivedCalls();
+        _mockHubClients.ClearReceivedCalls();
+        _mockClientProxy.ClearReceivedCalls();
 
         // Segunda chamada (Já está aprovado no DB)
         var request2 = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
@@ -418,8 +434,8 @@ public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
         await _client.SendAsync(request2);
 
         // Assert: Hub NÃO deve ter recebido novas chamadas de sinalização
-        _mockHub.Clients.DidNotReceive().Group(Arg.Any<string>());
-        _mockHub.Clients.All.DidNotReceive().SendAsync(Arg.Any<string>(), Arg.Any<object[]>());
+        _mockHubClients.DidNotReceive().Group(Arg.Any<string>());
+        _mockClientProxy.DidNotReceive().SendCoreAsync(Arg.Any<string>(), Arg.Any<object[]>(), Arg.Any<CancellationToken>());
     }
 
     // ── TESTE 15: data.id não numérico → Retorna OK sem crash ──────────────
@@ -491,6 +507,6 @@ public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
         var getResp = await _client.GetAsync($"/api/pedidos/{pedidoId}");
         var body = await getResp.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(body);
-        doc.RootElement.GetProperty("statusPagamento").GetString().Should().Be("Aprovado");
+        doc.RootElement.GetProperty("statusPagamento").GetInt32().Should().Be((int)StatusPagamento.Aprovado);
     }
 }
