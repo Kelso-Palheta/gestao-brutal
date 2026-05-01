@@ -8,7 +8,8 @@ using Xunit;
 
 namespace BatatasFritas.API.Tests;
 
-public class AuthControllerTests : IClassFixture<CustomWebApplicationFactory>
+[Collection("API")]
+public class AuthControllerTests
 {
     private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;

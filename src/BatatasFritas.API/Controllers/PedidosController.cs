@@ -106,6 +106,9 @@ public class PedidosController : ControllerBase
             }
 
             var bairro = await _bairroRepository.GetByIdAsync(dto.BairroEntregaId);
+            if (bairro == null && dto.TipoAtendimento == TipoAtendimento.Delivery)
+                return BadRequest("Bairro de entrega não encontrado.");
+
             var pedido = new Pedido(
                 dto.NomeCliente, dto.TelefoneCliente, dto.EnderecoEntrega, bairro,
                 dto.MetodoPagamento, dto.TrocoPara, dto.TipoAtendimento,
