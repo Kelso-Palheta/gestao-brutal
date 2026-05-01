@@ -36,7 +36,8 @@ namespace BatatasFritas.Infrastructure
             else
             {
                 log?.LogInformation("Usando configuração de banco: SQLite");
-                dbConfig = SQLiteConfiguration.Standard.ConnectionString(connectionString);
+                dbConfig = SQLiteConfiguration.Standard
+                    .ConnectionString(connectionString);
             }
 
             // ── FluentMigrator ────────────────────────────────────────────────
