@@ -113,4 +113,151 @@ public class WebhookControllerTests : IClassFixture<CustomWebApplicationFactory>
         // (nenhum pedido no banco com esse MpPagamentoId — comportamento idempotente)
         await _mockMp.Received(2).ConsultarPagamentoAsync(55555);
     }
+
+    // ── TESTE 4: action fora do escopo → sem consulta, retorna 200 ────────
+    [Fact]
+    public async Task Webhook_ActionFora_RetornaSemMutacao()
+    {
+        // Arrange
+        _mockMp.ValidarAssinaturaWebhookAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(true));
+
+        var content = CriarWebhookPayload("11111", "payment.deleted");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
+        request.Headers.Add("x-signature", "ts=111,v1=ok");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert — action ignorada; ConsultarPagamento nunca chamado
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _mockMp.DidNotReceive().ConsultarPagamentoAsync(Arg.Any<long>());
+    }
+
+    // ── TESTE 5: status "pending" → sem alteração de pedido, retorna 200 ──
+    [Fact]
+    public async Task Webhook_StatusPending_NaoAlteraPedido()
+    {
+        // Arrange
+        _mockMp.ValidarAssinaturaWebhookAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(true));
+        _mockMp.ConsultarPagamentoAsync(Arg.Any<long>())
+            .Returns(Task.FromResult(new PagamentoMpStatus(22222, "pending", "pending")));
+
+        var content = CriarWebhookPayload("22222");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
+        request.Headers.Add("x-signature", "ts=222,v1=ok");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert — status != approved → nenhuma mutação de pedido
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _mockMp.Received(1).ConsultarPagamentoAsync(22222);
+    }
+
+    // ── TESTE 6: status "rejected" → sem alteração de pedido, retorna 200 ─
+    [Fact]
+    public async Task Webhook_StatusRejected_NaoAlteraPedido()
+    {
+        // Arrange
+        _mockMp.ValidarAssinaturaWebhookAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(true));
+        _mockMp.ConsultarPagamentoAsync(Arg.Any<long>())
+            .Returns(Task.FromResult(new PagamentoMpStatus(33333, "rejected", "cc_rejected_other_reason")));
+
+        var content = CriarWebhookPayload("33333");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
+        request.Headers.Add("x-signature", "ts=333,v1=ok");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert — status rejected → short-circuit após consulta, 200 sem commit
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _mockMp.Received(1).ConsultarPagamentoAsync(33333);
+    }
+
+    // ── TESTE 7: payload sem campo data.id → short-circuit gracioso ────────
+    [Fact]
+    public async Task Webhook_PayloadSemDataId_RetornaOk()
+    {
+        // Arrange
+        _mockMp.ValidarAssinaturaWebhookAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(true));
+
+        // Payload sem o campo "data"
+        var payloadSemData = JsonSerializer.Serialize(new { action = "payment.updated", type = "payment" });
+        var content = new StringContent(payloadSemData, Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
+        request.Headers.Add("x-signature", "ts=444,v1=ok");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert — sem data.id → short-circuit, ConsultarPagamento nunca chamado
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _mockMp.DidNotReceive().ConsultarPagamentoAsync(Arg.Any<long>());
+    }
+
+    // ── TESTE 8: status "approved" mas nenhum pedido no DB → sem commit ───
+    [Fact]
+    public async Task Webhook_PagamentoOrfao_SemPedidoAssociado()
+    {
+        // Arrange — pagamentoId inexistente no banco (99998)
+        _mockMp.ValidarAssinaturaWebhookAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(true));
+        _mockMp.ConsultarPagamentoAsync(Arg.Any<long>())
+            .Returns(Task.FromResult(new PagamentoMpStatus(99998, "approved", "accredited")));
+
+        var content = CriarWebhookPayload("99998");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
+        request.Headers.Add("x-signature", "ts=555,v1=ok");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert — approved mas pedido não encontrado → 200 sem mutação
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await _mockMp.Received(1).ConsultarPagamentoAsync(99998);
+    }
+
+    // ── TESTE 9: body malformado (não-JSON) → não lança exceção, retorna 200
+    [Fact]
+    public async Task Webhook_PayloadMalformado_RetornaOk()
+    {
+        // Arrange
+        _mockMp.ValidarAssinaturaWebhookAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(true));
+
+        // Body que não é JSON válido — HMAC já validado com resourceId vazio
+        var content = new StringContent("not-json", Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
+        request.Headers.Add("x-signature", "ts=666,v1=ok");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert — JSON inválido capturado pelo catch interno → 200 sem quebrar
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // ── TESTE 10: sem header x-signature → ValidarAssinatura retorna false → 401
+    [Fact]
+    public async Task Webhook_SemXSignatureHeader_Retorna401()
+    {
+        // Arrange — mock rejeita string vazia (header ausente vira "")
+        _mockMp.ValidarAssinaturaWebhookAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(false));
+
+        var content = CriarWebhookPayload("77777");
+        // Intencionalmente não adiciona header x-signature
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/webhook/mercadopago") { Content = content };
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert — assinatura ausente/inválida → 401
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }
