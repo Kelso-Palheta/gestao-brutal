@@ -197,6 +197,34 @@ public class KdsController : ControllerBase
     }
 
     /// <summary>
+    /// PUT api/kds/{id}/estornar
+    /// Cancela pedido já pago e registra estorno manual. Estorno físico é responsabilidade do operador.
+    /// </summary>
+    [HttpPut("{id}/estornar")]
+    public async Task<IActionResult> EstornarPagamento(int id, [FromBody] EstornarPagamentoDto? dto = null)
+    {
+        var pedido = await _pedidoRepository.GetByIdAsync(id);
+        if (pedido == null) return NotFound();
+
+        _uow.BeginTransaction();
+        try
+        {
+            pedido.RegistrarEstorno(dto?.Motivo?.Trim());
+            await _pedidoRepository.UpdateAsync(pedido);
+            await _uow.CommitAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
+
+        await _hub.Clients.All.SendAsync("StatusAtualizado", id, "Estornado");
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// POST api/kds/{id}/cancelar
     /// Cancela um pedido e grava o motivo informado pelo operador KDS.
     /// Body: { "motivo": "Cliente desistiu" }

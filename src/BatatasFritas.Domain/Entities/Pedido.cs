@@ -47,6 +47,9 @@ public class Pedido : EntityBase
     // -- FASE 3.5: E2E ID do PIX para prevenção de reuso de comprovante --
     public virtual string? ComprovantePix { get; protected set; }
 
+    // -- FASE 3.5: Estorno manual — motivo registrado pelo operador --
+    public virtual string? MotivoEstorno { get; protected set; }
+
     // -- FASE 6: Momento do pagamento (Online | NaEntrega) --
     public virtual MomentoPagamento MomentoPagamento { get; protected set; } = MomentoPagamento.NaEntrega;
     public virtual MomentoPagamento? SegundoMomentoPagamento { get; protected set; }
@@ -176,5 +179,16 @@ public class Pedido : EntityBase
             throw new InvalidOperationException("Apenas pedidos com pagamento pendente podem ser aprovados.");
         ComprovantePix = comprovantePix;
         StatusPagamento = StatusPagamento.Aprovado;
+    }
+
+    public virtual void RegistrarEstorno(string? motivo = null)
+    {
+        if (StatusPagamento != StatusPagamento.Aprovado)
+            throw new InvalidOperationException("Estorno só é possível em pedidos com pagamento aprovado.");
+        if (Status is StatusPedido.Entregue)
+            throw new InvalidOperationException("Pedido já entregue não pode ser estornado.");
+        MotivoEstorno   = motivo;
+        StatusPagamento = StatusPagamento.Estornado;
+        Status          = StatusPedido.Cancelado;
     }
 }
