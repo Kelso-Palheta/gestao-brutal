@@ -7,7 +7,7 @@ namespace BatatasFritas.Web.Services;
 
 /// <summary>
 /// Serviço de autenticação do KDS com JWT.
-/// Obtém token em POST /api/auth/login e o armazena em sessionStorage.
+/// Obtém token em POST /api/auth/login e o armazena em localStorage.
 /// O HttpClient do KDS envia o token automaticamente via AuthDelegatingHandler.
 /// </summary>
 public class KdsAuthService
@@ -31,11 +31,11 @@ public class KdsAuthService
     public string? GetToken() => _token;
 
     /// <summary>
-    /// Tenta restaurar o token da sessionStorage (chamado no startup do app).
+    /// Tenta restaurar o token da localStorage (chamado no startup do app).
     /// </summary>
     public async Task RestaurarSessaoAsync()
     {
-        _token = await _js.InvokeAsync<string?>("sessionStorage.getItem", TokenKey);
+        _token = await _js.InvokeAsync<string?>("localStorage.getItem", TokenKey);
         if (!string.IsNullOrEmpty(_token))
             _authStateProvider.MarkUserAsAuthenticated();
     }
@@ -44,7 +44,7 @@ public class KdsAuthService
     public async Task<bool> EstaAutenticadoAsync()
     {
         if (!string.IsNullOrEmpty(_token)) return true;
-        _token = await _js.InvokeAsync<string?>("sessionStorage.getItem", TokenKey);
+        _token = await _js.InvokeAsync<string?>("localStorage.getItem", TokenKey);
         return !string.IsNullOrEmpty(_token);
     }
 
@@ -64,7 +64,7 @@ public class KdsAuthService
             if (string.IsNullOrEmpty(token)) return false;
 
             _token = token;
-            await _js.InvokeVoidAsync("sessionStorage.setItem", TokenKey, token);
+            await _js.InvokeVoidAsync("localStorage.setItem", TokenKey, token);
             _authStateProvider.MarkUserAsAuthenticated();
             return true;
         }
@@ -78,7 +78,7 @@ public class KdsAuthService
     public async Task LogoutAsync()
     {
         _token = null;
-        await _js.InvokeVoidAsync("sessionStorage.removeItem", TokenKey);
+        await _js.InvokeVoidAsync("localStorage.removeItem", TokenKey);
         _authStateProvider.MarkUserAsLoggedOut();
     }
 }
