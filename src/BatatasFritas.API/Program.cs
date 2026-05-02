@@ -109,6 +109,9 @@ builder.Services.AddRateLimiter(options =>
 // ── SignalR ──────────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
 
+// ── Background Workers ───────────────────────────────────────────────────────
+builder.Services.AddHostedService<BatatasFritas.API.Workers.ZombieOrderCleanupWorker>();
+
 // ── Banco de dados ───────────────────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))

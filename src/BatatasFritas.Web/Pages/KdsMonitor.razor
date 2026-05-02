@@ -34,10 +34,10 @@
         <div class="kds-column-body">
             @foreach (var p in pedidosRecebidos)
             {
-                <div @key="p.Id" class="kds-card @(idsNovos.Contains(p.Id) ? "kds-card-novo" : "")">
+                <div @key="p.Id" class="kds-card @(idsNovos.Contains(p.Id) ? "kds-card-novo" : "") @(EhZombie(p) ? "kds-card-zombie" : "")">
                     <div class="kds-card-header">
                         <span>#@p.Id — @p.NomeCliente</span>
-                        <span class="kds-time">@p.DataHoraPedido.ToString("HH:mm")</span>
+                        <span class="kds-time">@p.DataHoraPedido.ToString("HH:mm") @(EhZombie(p) ? "⚠️" : "")</span>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 10px;">
                         @ExibirBadgesPedido(p)
@@ -701,6 +701,10 @@
             return ("🟡 PARCIAL", "background:#e67e22; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
         return ("⏳ PENDENTE",    "background:#f39c12; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;");
     }
+
+    private static bool EhZombie(PedidoDetalheDto p) =>
+        p.StatusPagamento == StatusPagamento.Pendente &&
+        (DateTime.UtcNow - p.DataHoraPedido).TotalMinutes > 30;
 
     private static string NomeMetodo(MetodoPagamento m) => m switch
     {
