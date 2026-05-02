@@ -1,13 +1,10 @@
 using BatatasFritas.API.Hubs;
 using BatatasFritas.Domain.Entities;
-using BatatasFritas.Domain.Interfaces;
-using BatatasFritas.Infrastructure.Options;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Options;
 using NHibernate;
 using System;
 using System.Globalization;
@@ -27,12 +24,9 @@ public class PedidosController : ControllerBase
     private readonly IRepository<Insumo> _insumoRepository;
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
     private readonly IRepository<CarteiraCashback> _carteiraRepository;
-    private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
-    private readonly MercadoPagoOptions _mpOptions;
     private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
     private readonly IHubContext<PedidosHub> _hub;
-    private readonly IMercadoPagoService _mercadoPago;
 
     public PedidosController(
         IRepository<Pedido> pedidoRepository,
@@ -42,12 +36,9 @@ public class PedidosController : ControllerBase
         IRepository<Insumo> insumoRepository,
         IRepository<MovimentacaoEstoque> movRepository,
         IRepository<CarteiraCashback> carteiraRepository,
-        Microsoft.Extensions.Configuration.IConfiguration config,
-        IOptions<MercadoPagoOptions> mpOptions,
         NHibernate.ISession session,
         IUnitOfWork uow,
-        IHubContext<PedidosHub> hub,
-        IMercadoPagoService mercadoPago)
+        IHubContext<PedidosHub> hub)
     {
         _pedidoRepository   = pedidoRepository;
         _bairroRepository   = bairroRepository;
@@ -56,18 +47,10 @@ public class PedidosController : ControllerBase
         _insumoRepository   = insumoRepository;
         _movRepository      = movRepository;
         _carteiraRepository = carteiraRepository;
-        _config             = config;
-        _mpOptions          = mpOptions.Value;
         _session            = session;
         _uow                = uow;
         _hub                = hub;
-        _mercadoPago        = mercadoPago;
     }
-
-    // ── GET api/pedidos/mp-public-key — expõe chave pública MP ao frontend ──
-    [HttpGet("mp-public-key")]
-    public IActionResult GetMpPublicKey()
-        => Ok(new { PublicKey = _mpOptions.PublicKey });
 
     // ── POST api/pedidos — cria pedido + dispara baixa de estoque ──────────
     [HttpPost]
@@ -77,9 +60,7 @@ public class PedidosController : ControllerBase
         {
             System.Console.WriteLine($"DTO RECEBIDO: Nome={dto.NomeCliente}, Telefone={dto.TelefoneCliente}, Endereco={dto.EnderecoEntrega}, BairroId={dto.BairroEntregaId}, Pag={dto.MetodoPagamento}, Troco={dto.TrocoPara}, QtdItens={dto.Itens?.Count}, Cashback={dto.ValorCashbackUsado}");
 
-            // ── PRÉ-CHECK de estoque (ANTES da transação) ───────────────────────
-            // Produtos com receitas (insumos) são validados pelos insumos — não pelo produto.estoque_atual.
-            // Produtos SEM receita usam o estoque direto do produto.
+            // ── PRÉ-CHECK de estoque (ANTES da transação) ────────────────────
             foreach (var item in dto.Itens)
             {
                 var temReceita = Convert.ToInt64(await _session
@@ -144,7 +125,7 @@ public class PedidosController : ControllerBase
             // NHibernate gera o ID aqui ao salvar no banco
             await _pedidoRepository.AddAsync(pedido);
 
-            // Atualiza o PedidoReferenciaId na transação de saída (usa a instância já carregada)
+            // Atualiza o PedidoReferenciaId na transação de saída
             if (carteiraCashback != null)
             {
                 var transacao = carteiraCashback.Transacoes.LastOrDefault();
@@ -160,99 +141,24 @@ public class PedidosController : ControllerBase
 
             await _uow.CommitAsync();
 
-            // ── Pix: gera pagamento direto MP (QR + copia-e-cola) após commit ──
-            // Totem usa MP Point Smart 2 — Point gera QR na maquininha, não precisa de CriarPagamentoPixAsync
-            if (dto.MetodoPagamento == MetodoPagamento.Pix && dto.TipoAtendimento != TipoAtendimento.Totem)
-            {
-                try
-                {
-                    var notificationUrl = _config["MercadoPago:NotificationUrl"] ?? string.Empty;
-                    var pixRequest = new PagamentoPixRequest(
-                        PedidoId: pedido.Id,
-                        Valor: pedido.ValorTotal,
-                        Descricao: $"Pedido #{pedido.Id} - BatatasFritas",
-                        EmailPagador: "cliente@batatasfritas.com.br",
-                        NotificationUrl: notificationUrl
-                    );
-                    var pixResponse = await _mercadoPago.CriarPagamentoPixAsync(pixRequest);
-                    pedido.SetPagamentoPix(pixResponse.QrCodeBase64, pixResponse.QrCodeTexto, pixResponse.PagamentoId);
-                    _uow.BeginTransaction();
-                    await _pedidoRepository.UpdateAsync(pedido);
-                    await _uow.CommitAsync();
-                }
-                catch (System.Exception ex)
-                {
-                    System.Console.WriteLine($"[MP] Falha ao gerar Pix para pedido {pedido.Id}: {ex.Message}");
-                }
-            }
-
             // Notifica o KDS em tempo real via SignalR
             await _hub.Clients.All.SendAsync("NovoPedido", pedido.Id);
 
-            // ── FASE 7: Checkout transparente cartão via token MP Bricks ──────────
-            string? cartaoStatusPagamento = null;
-            string? cartaoStatusDetalhe = null;
-            if (dto.MetodoPagamento == MetodoPagamento.Cartao && !string.IsNullOrWhiteSpace(dto.CardToken))
-            {
-                try
-                {
-                    var notifUrl = _config["MercadoPago:NotificationUrl"] ?? string.Empty;
-                    var cartaoReq = new PagamentoCartaoRequest(
-                        PedidoId:       pedido.Id,
-                        Valor:          pedido.ValorTotal,
-                        Token:          dto.CardToken,
-                        PaymentMethodId: dto.CardPaymentMethodId ?? string.Empty,
-                        Installments:   dto.CardInstallments > 0 ? dto.CardInstallments : 1,
-                        EmailPagador:   dto.CardEmailPagador ?? "cliente@batatasfritas.com.br",
-                        NotificationUrl: notifUrl
-                    );
-                    var cartaoResp = await _mercadoPago.CriarPagamentoCartaoAsync(cartaoReq);
-
-                    var statusPag = cartaoResp.Status == "approved"
-                        ? StatusPagamento.Aprovado
-                        : cartaoResp.Status == "rejected"
-                            ? StatusPagamento.Recusado
-                            : StatusPagamento.Pendente;
-
-                    pedido.SetPagamentoCartao(cartaoResp.PagamentoId, statusPag);
-                    _uow.BeginTransaction();
-                    await _pedidoRepository.UpdateAsync(pedido);
-                    await _uow.CommitAsync();
-
-                    cartaoStatusPagamento = cartaoResp.Status;
-                    cartaoStatusDetalhe   = cartaoResp.StatusDetail;
-
-                    // Cartão aprovado online → imprime agora (sem esperar entrega)
-                    if (statusPag == StatusPagamento.Aprovado)
-                        await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
-                }
-                catch (System.Exception ex)
-                {
-                    System.Console.WriteLine($"[MP] Falha pagamento cartão pedido {pedido.Id}: {ex.Message}");
-                }
-            }
-
-            // ── FASE 6: imprimir se pagamento é na entrega (não precisa esperar webhook) ──
-            // Pix/Online → PrintAgent aguarda sinal do webhook via ImprimirPedido
-            // Cartão físico na entrega (sem token Bricks) → imprime agora
-            // Totem (Cartão/Pix) → Point Smart 2 confirma pelo endpoint StatusIntentPoint → imprime lá
+            // ── imprimir se pagamento é na entrega ──
             var deveImprimirAgora = dto.MomentoPagamento == BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega
-                                    && string.IsNullOrWhiteSpace(dto.CardToken)   // Bricks já imprimiu acima se aprovado
-                                    && dto.TipoAtendimento != TipoAtendimento.Totem; // Totem imprime após Point confirmar
+                                    && dto.TipoAtendimento != TipoAtendimento.Totem;
             if (deveImprimirAgora)
                 await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
 
             return Ok(new
             {
-                PedidoId              = pedido.Id,
-                Status                = pedido.Status.ToString(),
-                StatusPagamento       = pedido.StatusPagamento.ToString(),
-                LinkPagamento         = pedido.LinkPagamento,
-                QrCodeBase64          = pedido.QrCodeBase64,
-                QrCodeTexto           = pedido.QrCodeTexto,
-                MpPagamentoId         = pedido.MpPagamentoId,
-                CartaoStatus          = cartaoStatusPagamento,
-                CartaoStatusDetalhe   = cartaoStatusDetalhe
+                PedidoId        = pedido.Id,
+                Status          = pedido.Status.ToString(),
+                StatusPagamento = pedido.StatusPagamento.ToString(),
+                LinkPagamento   = pedido.LinkPagamento,
+                QrCodeBase64    = pedido.QrCodeBase64,
+                QrCodeTexto     = pedido.QrCodeTexto,
+                MpPagamentoId   = pedido.MpPagamentoId
             });
         }
         catch (System.Exception ex)
@@ -353,19 +259,17 @@ public class PedidosController : ControllerBase
         if (itens == null || !itens.Any()) return;
 
         var receitas = (await _receitaRepository.GetAllAsync()).ToList();
-        
+
         foreach (var item in itens)
         {
             var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
             if (produto == null) continue;
 
-            // Separa receitas deste produto específico
             var receitasDoProduto = receitas.Where(r => r.Produto.Id == item.ProdutoId).ToList();
 
             if (receitasDoProduto.Any())
             {
                 // ── Produto com Receita: estoque controlado pelos Insumos ──────────
-                // Não usa produto.EstoqueAtual — a baixa acontece nos insumos abaixo.
             }
             else
             {
@@ -392,36 +296,34 @@ public class PedidosController : ControllerBase
 
             // ── Subtrai insumos da receita (se houver) ────────────────────────────
             foreach (var receita in receitasDoProduto)
+            {
+                var insumo = await _insumoRepository.GetByIdAsync(receita.Insumo.Id);
+                if (insumo == null) continue;
+
+                var qtdConsumida = receita.QuantidadePorUnidade * item.Quantidade;
+
+                if (insumo.EstoqueAtual >= qtdConsumida)
                 {
-                    var insumo = await _insumoRepository.GetByIdAsync(receita.Insumo.Id);
-                    if (insumo == null) continue;
+                    var mov = new MovimentacaoEstoque(
+                        insumo,
+                        TipoMovimentacao.Saida,
+                        qtdConsumida,
+                        insumo.CustoPorUnidade,
+                        $"Baixa automática — Pedido #{pedidoId}");
 
-                    var qtdConsumida = receita.QuantidadePorUnidade * item.Quantidade;
-
-                    if (insumo.EstoqueAtual >= qtdConsumida)
-                    {
-                        var mov = new MovimentacaoEstoque(
-                            insumo,
-                            TipoMovimentacao.Saida,
-                            qtdConsumida,
-                            insumo.CustoPorUnidade,
-                            $"Baixa automática — Pedido #{pedidoId}");
-
-                        await _movRepository.AddAsync(mov);
-                        await _insumoRepository.UpdateAsync(insumo);
-                    }
-                    else
-                    {
-                        // Estoque insuficiente: ajusta assim mesmo (vai para negativo) e gera alerta visual
-                        insumo.AjustarEstoque(-qtdConsumida);
-                        await _insumoRepository.UpdateAsync(insumo);
-                    }
+                    await _movRepository.AddAsync(mov);
+                    await _insumoRepository.UpdateAsync(insumo);
                 }
+                else
+                {
+                    insumo.AjustarEstoque(-qtdConsumida);
+                    await _insumoRepository.UpdateAsync(insumo);
+                }
+            }
         }
     }
 
     // ── POST api/pedidos/{id}/confirmar-pagamento-entrega ──────────────
-    // Chamado pelo operador KDS quando recebe o pagamento em mãos (2ª parte ou único na entrega).
     [HttpPost("{id}/confirmar-pagamento-entrega")]
     public async Task<IActionResult> ConfirmarPagamentoEntrega(int id)
     {
@@ -435,7 +337,6 @@ public class PedidosController : ControllerBase
             await _pedidoRepository.UpdateAsync(pedido);
             await _uow.CommitAsync();
 
-            // Notifica KDS + PrintAgent (caso seja pagamento NaEntrega puro — sem webhook anterior)
             await _hub.Clients.All.SendAsync("StatusAtualizado", pedido.Id, pedido.StatusPagamento.ToString());
             await _hub.Clients.All.SendAsync("ImprimirPedido", pedido.Id);
 
@@ -445,104 +346,6 @@ public class PedidosController : ControllerBase
         {
             await _uow.RollbackAsync();
             return BadRequest(ex.Message);
-        }
-    }
-
-    // ── POST api/pedidos/{id}/iniciar-point ────────────────────────────
-    // Cria payment intent no MP Point (maquininha física do totem) e persiste intentId.
-    [HttpPost("{id}/iniciar-point")]
-    public async Task<IActionResult> IniciarPagamentoPoint(int id)
-    {
-        try
-        {
-            var pedido = await _pedidoRepository.GetByIdAsync(id);
-            if (pedido == null) return NotFound();
-
-            var intent = await _mercadoPago.CriarIntentPointAsync(pedido.Id, pedido.ValorTotal);
-
-            // Persiste intentId para rastreamento/cancelamento/estorno via painel MP
-            try
-            {
-                _uow.BeginTransaction();
-                pedido.SetIntentPoint(intent.IntentId);
-                await _pedidoRepository.UpdateAsync(pedido);
-                await _uow.CommitAsync();
-            }
-            catch (System.Exception ex)
-            {
-                await _uow.RollbackAsync();
-                // Não bloqueia o fluxo — intent já existe no MP, apenas loga perda de rastreio
-                System.Console.WriteLine($"[Point] IntentId={intent.IntentId} criado mas falhou ao salvar no pedido {id}: {ex.Message}");
-            }
-
-            return Ok(new { intentId = intent.IntentId, deviceId = intent.DeviceId });
-        }
-        catch (System.Exception ex)
-        {
-            return BadRequest(new { erro = ex.Message });
-        }
-    }
-
-    // ── GET api/pedidos/point-intent/{intentId}/status ─────────────────
-    // Proxy de polling para o status do intent Point (usado pelo totem).
-    // Quando PROCESSED+approved: persiste status no pedido e emite ImprimirPedido via SignalR.
-    [HttpGet("point-intent/{intentId}/status")]
-    public async Task<IActionResult> StatusIntentPoint(string intentId, [FromQuery] int pedidoId = 0)
-    {
-        try
-        {
-            var status = await _mercadoPago.ConsultarIntentPointAsync(intentId);
-
-            // Ao confirmar aprovação → persiste e dispara impressão
-            if (status.State == "PROCESSED" && status.Status == "approved" && pedidoId > 0)
-            {
-                try
-                {
-                    var pedido = await _pedidoRepository.GetByIdAsync(pedidoId);
-                    if (pedido != null && pedido.StatusPagamento != StatusPagamento.Aprovado)
-                    {
-                        _uow.BeginTransaction();
-                        pedido.SetPagamentoCartao(status.PagamentoMpId ?? 0, StatusPagamento.Aprovado);
-                        await _pedidoRepository.UpdateAsync(pedido);
-                        await _uow.CommitAsync();
-                        await _hub.Clients.All.SendAsync("ImprimirPedido", pedidoId);
-                        System.Console.WriteLine($"[Point] Pedido {pedidoId} aprovado — ImprimirPedido emitido.");
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    await _uow.RollbackAsync();
-                    System.Console.WriteLine($"[Point] Falha ao persistir aprovação pedido {pedidoId}: {ex.Message}");
-                }
-            }
-
-            return Ok(new
-            {
-                state        = status.State,
-                pagamentoId  = status.PagamentoMpId,
-                status       = status.Status,
-                statusDetail = status.StatusDetail
-            });
-        }
-        catch (System.Exception ex)
-        {
-            return BadRequest(new { erro = ex.Message });
-        }
-    }
-
-    // ── DELETE api/pedidos/point-intent/{intentId} ─────────────────────
-    // Cancela intent Point (chamado quando o cliente abandona a tela do totem).
-    [HttpDelete("point-intent/{intentId}")]
-    public async Task<IActionResult> CancelarIntentPoint(string intentId)
-    {
-        try
-        {
-            await _mercadoPago.CancelarIntentPointAsync(intentId);
-            return Ok();
-        }
-        catch (System.Exception ex)
-        {
-            return BadRequest(new { erro = ex.Message });
         }
     }
 

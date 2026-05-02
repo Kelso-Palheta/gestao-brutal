@@ -21,8 +21,6 @@
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" async></script>
-    <!-- FASE 7: MP Bricks SDK — carregado sem defer para estar disponível quando o Brick for criado -->
-    <script src="https://sdk.mercadopago.com/js/v2"></script>
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
         // =============================================
@@ -58,76 +56,6 @@
                 window.print();
                 document.body.classList.remove('modo-impressao-cupom');
                 if (cupomEl) cupomEl.classList.remove('imprimindo-ativo');
-            }
-        };
-
-        // =============================================
-        // MP BRICKS INTEROP — Checkout Transparente
-        // =============================================
-        window.mpBricksInterop = {
-            _brick: null,
-
-            initCardBrick: async function (containerId, amount, publicKey, dotnetRef) {
-                try {
-                    if (typeof MercadoPago === 'undefined') {
-                        console.error('[MP Bricks] SDK não carregado');
-                        return;
-                    }
-                    // Destrói instância anterior se existir
-                    if (window.mpBricksInterop._brick) {
-                        try { await window.mpBricksInterop._brick.unmount(); } catch (_) {}
-                        window.mpBricksInterop._brick = null;
-                    }
-                    var el = document.getElementById(containerId);
-                    if (el) el.innerHTML = '';
-
-                    var mp = new MercadoPago(publicKey, { locale: 'pt-BR' });
-                    var bricksBuilder = mp.bricks();
-
-                    window.mpBricksInterop._brick = await bricksBuilder.create(
-                        'cardPayment',
-                        containerId,
-                        {
-                            initialization: { amount: amount },
-                            customization: {
-                                visual: { style: { theme: 'flat' } },
-                                paymentMethods: { minInstallments: 1, maxInstallments: 12 }
-                            },
-                            callbacks: {
-                                onReady: function () {
-                                    console.log('[MP Bricks] CardPayment pronto');
-                                },
-                                onError: function (err) {
-                                    console.error('[MP Bricks] Erro:', err);
-                                },
-                                onSubmit: async function (cardFormData) {
-                                    try {
-                                        await dotnetRef.invokeMethodAsync(
-                                            'OnCardBrickSubmit',
-                                            cardFormData.token || '',
-                                            cardFormData.payment_method_id || '',
-                                            cardFormData.installments || 1,
-                                            (cardFormData.payer && cardFormData.payer.email) ? cardFormData.payer.email : ''
-                                        );
-                                    } catch (e) {
-                                        console.error('[MP Bricks] onSubmit error:', e);
-                                    }
-                                }
-                            }
-                        }
-                    );
-                } catch (err) {
-                    console.error('[MP Bricks] initCardBrick error:', err);
-                }
-            },
-
-            destroyCardBrick: async function () {
-                if (window.mpBricksInterop._brick) {
-                    try { await window.mpBricksInterop._brick.unmount(); } catch (_) {}
-                    window.mpBricksInterop._brick = null;
-                }
-                var el = document.getElementById('mp-card-brick-container');
-                if (el) el.innerHTML = '';
             }
         };
 

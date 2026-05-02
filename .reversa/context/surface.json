@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-05-01T19:50:00Z",
+  "project_root": "/Users/kelsopalheta/Developer/Saas - Palheta Brutal/BatatasFritas",
+  "languages": [
+    { "name": "C#", "extensions": [".cs"] },
+    { "name": "JavaScript", "extensions": [".js"] },
+    { "name": "HTML/Razor", "extensions": [".html", ".razor"] }
+  ],
+  "primary_language": "C#",
+  "frameworks": [
+    { "name": ".NET 8.0", "version": "8.0", "source": ".csproj" },
+    { "name": "ASP.NET Core", "version": "8.0", "source": ".csproj" },
+    { "name": "Blazor WASM", "version": "8.0", "source": ".csproj" },
+    { "name": "NHibernate", "version": "5.5", "source": "Architecture Signature" }
+  ],
+  "package_manager": "NuGet, npm",
+  "entry_points": [
+    { "path": "src/BatatasFritas.API/Program.cs", "type": "api_entry" },
+    { "path": "src/BatatasFritas.Web/Program.cs", "type": "web_entry" },
+    { "path": "mcp_server.js", "type": "node_entry" }
+  ],
+  "config_files": [
+    "BatatasFritas.sln", "package.json", "docker-compose.yml", "docker-compose.prod.yml", "nuget.config"
+  ],
+  "ci_cd": [
+    ".github/workflows/build-base-image.yml"
+  ],
+  "docker": {
+    "compose": "docker-compose.yml"
+  },
+  "database_hints": [
+    { "path": "batatasfritas.db", "type": "sqlite_db" },
+    { "path": "src/BatatasFritas.Infrastructure/", "type": "mappings_dir" }
+  ],
+  "test_framework": "xUnit/NUnit",
+  "modules": [
+    "BatatasFritas.API",
+    "BatatasFritas.Domain",
+    "BatatasFritas.Infrastructure",
+    "BatatasFritas.Shared",
+    "BatatasFritas.Web",
+    "MCP Server"
+  ]
+}
