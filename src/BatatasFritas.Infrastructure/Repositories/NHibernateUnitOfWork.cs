@@ -1,4 +1,5 @@
 using NHibernate;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace BatatasFritas.Infrastructure.Repositories
@@ -32,6 +33,15 @@ namespace BatatasFritas.Infrastructure.Repositories
             {
                 await _transaction.RollbackAsync();
             }
+        }
+
+        public async Task<int> ExecuteRawAsync(string sql, Dictionary<string, object>? parameters = null)
+        {
+            var query = _session.CreateSQLQuery(sql);
+            if (parameters != null)
+                foreach (var (key, value) in parameters)
+                    query.SetParameter(key, value);
+            return await query.ExecuteUpdateAsync();
         }
 
         public void Dispose()

@@ -3,7 +3,6 @@ using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NHibernate;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,13 +15,11 @@ namespace BatatasFritas.API.Controllers;
 public class DespesasController : ControllerBase
 {
     private readonly IRepository<Despesa> _repo;
-    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
 
-    public DespesasController(IRepository<Despesa> repo, NHibernate.ISession session, IUnitOfWork uow)
+    public DespesasController(IRepository<Despesa> repo, IUnitOfWork uow)
     {
         _repo = repo;
-        _session = session;
         _uow = uow;
     }
 
@@ -74,7 +71,7 @@ public class DespesasController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _session.CreateSQLQuery("DELETE FROM despesas").ExecuteUpdateAsync();
+            await _uow.ExecuteRawAsync("DELETE FROM despesas");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Todas as despesas foram apagadas." });
         }

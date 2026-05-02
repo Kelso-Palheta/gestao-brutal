@@ -5,7 +5,6 @@ using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using NHibernate;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -24,7 +23,6 @@ public class PedidosController : ControllerBase
     private readonly IRepository<Insumo> _insumoRepository;
     private readonly IRepository<MovimentacaoEstoque> _movRepository;
     private readonly IRepository<CarteiraCashback> _carteiraRepository;
-    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
     private readonly IHubContext<PedidosHub> _hub;
 
@@ -36,7 +34,6 @@ public class PedidosController : ControllerBase
         IRepository<Insumo> insumoRepository,
         IRepository<MovimentacaoEstoque> movRepository,
         IRepository<CarteiraCashback> carteiraRepository,
-        NHibernate.ISession session,
         IUnitOfWork uow,
         IHubContext<PedidosHub> hub)
     {
@@ -47,7 +44,6 @@ public class PedidosController : ControllerBase
         _insumoRepository   = insumoRepository;
         _movRepository      = movRepository;
         _carteiraRepository = carteiraRepository;
-        _session            = session;
         _uow                = uow;
         _hub                = hub;
     }
@@ -63,26 +59,12 @@ public class PedidosController : ControllerBase
             // ── PRÉ-CHECK de estoque (ANTES da transação) ────────────────────
             foreach (var item in dto.Itens)
             {
-                var temReceita = Convert.ToInt64(await _session
-                    .CreateSQLQuery("SELECT COUNT(*) FROM itens_receita WHERE produto_id = :id")
-                    .SetParameter("id", item.ProdutoId)
-                    .UniqueResultAsync()) > 0;
-
-                if (!temReceita)
+                var receitas = await _receitaRepository.FindManyAsync(ir => ir.Produto.Id == item.ProdutoId);
+                if (!receitas.Any())
                 {
-                    var estoqueAtual = Convert.ToInt32(await _session
-                        .CreateSQLQuery("SELECT estoque_atual FROM produtos WHERE id = :id")
-                        .SetParameter("id", item.ProdutoId)
-                        .UniqueResultAsync());
-
-                    if (estoqueAtual < item.Quantidade)
-                    {
-                        var nomeProduto = await _session
-                            .CreateSQLQuery("SELECT nome FROM produtos WHERE id = :id")
-                            .SetParameter("id", item.ProdutoId)
-                            .UniqueResultAsync<string>();
-                        return BadRequest($"Estoque insuficiente para o produto {nomeProduto}. Disponível: {estoqueAtual}, Solicitado: {item.Quantidade}.");
-                    }
+                    var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
+                    if (produto != null && produto.EstoqueAtual < item.Quantidade)
+                        return BadRequest($"Estoque insuficiente para o produto {produto.Nome}. Disponível: {produto.EstoqueAtual}, Solicitado: {item.Quantidade}.");
                 }
             }
 
@@ -274,7 +256,7 @@ public class PedidosController : ControllerBase
             else
             {
                 // ── Produto sem Receita: usa estoque direto do produto ─────────────
-                await _session.RefreshAsync(produto);
+                produto = await _produtoRepository.GetByIdAsync(item.ProdutoId) ?? produto;
 
                 if (produto.EstoqueAtual >= item.Quantidade)
                 {
@@ -356,8 +338,8 @@ public class PedidosController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _session.CreateSQLQuery("DELETE FROM itens_pedido").ExecuteUpdateAsync();
-            await _session.CreateSQLQuery("DELETE FROM pedidos").ExecuteUpdateAsync();
+            await _uow.ExecuteRawAsync("DELETE FROM itens_pedido");
+            await _uow.ExecuteRawAsync("DELETE FROM pedidos");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Todos os pedidos foram apagados com sucesso." });
         }

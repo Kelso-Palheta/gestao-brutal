@@ -3,7 +3,6 @@ using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NHibernate;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,18 +16,15 @@ public class InsumosController : ControllerBase
 {
     private readonly IRepository<Insumo> _insumoRepo;
     private readonly IRepository<MovimentacaoEstoque> _movRepo;
-    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
 
     public InsumosController(
         IRepository<Insumo> insumoRepo,
         IRepository<MovimentacaoEstoque> movRepo,
-        NHibernate.ISession session,
         IUnitOfWork uow)
     {
         _insumoRepo = insumoRepo;
         _movRepo    = movRepo;
-        _session    = session;
         _uow        = uow;
     }
 
@@ -210,8 +206,8 @@ public class InsumosController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _session.CreateSQLQuery("DELETE FROM movimentacoes_estoque").ExecuteUpdateAsync();
-            await _session.CreateSQLQuery("UPDATE insumos SET estoque_atual = 0").ExecuteUpdateAsync();
+            await _uow.ExecuteRawAsync("DELETE FROM movimentacoes_estoque");
+            await _uow.ExecuteRawAsync("UPDATE insumos SET estoque_atual = 0");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Movimentações apagadas e estoques zerados." });
         }
