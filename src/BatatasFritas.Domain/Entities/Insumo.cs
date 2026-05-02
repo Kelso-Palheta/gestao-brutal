@@ -29,6 +29,7 @@ public class Insumo : EntityBase
     }
 
     public virtual bool AbaixoDoMinimo => EstoqueAtual <= EstoqueMinimo;
+    public virtual bool EstoqueNegativo => EstoqueAtual < 0;
 
     public virtual void AjustarEstoque(decimal quantidade) => EstoqueAtual += quantidade;
 }

@@ -83,6 +83,10 @@
                         <div class="est-kpi-label">⚠️ Abaixo do Mínimo</div>
                         <div class="est-kpi-valor">@dashboard.InsumosAbaixoMinimo</div>
                     </div>
+                    <div class="est-kpi-card @(dashboard.InsumosNegativos > 0 ? "est-kpi-negativo" : "")">
+                        <div class="est-kpi-label">🔴 Estoque Negativo</div>
+                        <div class="est-kpi-valor">@dashboard.InsumosNegativos</div>
+                    </div>
                     <div class="est-kpi-card">
                         <div class="est-kpi-label">💰 Valor do Estoque</div>
                         <div class="est-kpi-valor">@dashboard.ValorEstoqueAtual.ToString("C2")</div>
@@ -220,10 +224,11 @@
                                 <tbody>
                                 @foreach (var i in insumos.OrderBy(x => x.Nome))
                                 {
-                                    <tr class="@(i.AbaixoDoMinimo ? "est-row-alerta" : "") @(!i.Ativo ? "est-row-inativo" : "")">
+                                    <tr class="@(i.EstoqueNegativo ? "est-row-negativo" : i.AbaixoDoMinimo ? "est-row-alerta" : "") @(!i.Ativo ? "est-row-inativo" : "")">
                                         <td>
                                             @i.Nome
-                                            @if (i.AbaixoDoMinimo && i.Ativo) { <span class="est-badge-alerta">⚠️ Baixo</span> }
+                                            @if (i.EstoqueNegativo && i.Ativo) { <span class="est-badge-negativo">🔴 NEGATIVO</span> }
+                                            else if (i.AbaixoDoMinimo && i.Ativo) { <span class="est-badge-alerta">⚠️ Baixo</span> }
                                             @if (!i.Ativo) { <span class="est-badge-inativo">∅ Excluído</span> }
                                         </td>
                                         <td>@i.Unidade</td>
@@ -492,6 +497,10 @@
         .est-switch-label { display: flex; align-items: center; gap: 8px; color: #ffb347; cursor: pointer; font-size: 0.9rem; }
         .est-row-inativo { opacity: 0.5; background: rgba(0,0,0,0.2); }
         .est-badge-inativo { background: #444; color: #aaa; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; }
+        .est-kpi-negativo { border-color: #e53935 !important; background: rgba(229,57,53,0.12) !important; }
+        .est-kpi-negativo .est-kpi-valor { color: #e53935 !important; }
+        .est-row-negativo { background: rgba(229,57,53,0.1) !important; }
+        .est-badge-negativo { background: #e53935; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; font-weight: bold; }
         .est-btn-restaurar { background: #4caf50; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
         .est-btn-ajustar-mini { background: #555; color: #fff; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
         .est-btn-ajustar-mini:hover { background: #777; }

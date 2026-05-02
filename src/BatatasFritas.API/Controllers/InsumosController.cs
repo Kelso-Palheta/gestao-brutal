@@ -50,11 +50,13 @@ public class InsumosController : ControllerBase
 
         var valorEstoque = insumos.Sum(i => i.EstoqueAtual * i.CustoPorUnidade);
         var alertas      = insumos.Where(i => i.AbaixoDoMinimo).ToList();
+        var negativos    = insumos.Where(i => i.EstoqueNegativo).ToList();
 
         var dto = new EstoqueDashboardDto
         {
             TotalInsumos          = insumos.Count,
             InsumosAbaixoMinimo   = alertas.Count,
+            InsumosNegativos      = negativos.Count,
             TotalGastosCompras    = totalGastos,
             ValorEstoqueAtual     = valorEstoque,
             AlertasEstoque        = alertas.Select(ToDto).ToList(),
@@ -230,7 +232,8 @@ public class InsumosController : ControllerBase
         EstoqueMinimo  = i.EstoqueMinimo,
         CustoPorUnidade = i.CustoPorUnidade,
         Ativo          = i.Ativo,
-        AbaixoDoMinimo = i.AbaixoDoMinimo
+        AbaixoDoMinimo  = i.AbaixoDoMinimo,
+        EstoqueNegativo = i.EstoqueNegativo
     };
 
     private static MovimentacaoDto ToMovDto(MovimentacaoEstoque m) => new()
