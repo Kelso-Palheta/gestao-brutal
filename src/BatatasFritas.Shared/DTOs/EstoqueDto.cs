@@ -10,6 +10,7 @@ public class InsumoDto
     public decimal CustoPorUnidade { get; set; }
     public bool Ativo { get; set; } = true;
     public bool AbaixoDoMinimo { get; set; }
+    public bool EstoqueNegativo { get; set; }
 }
 
 public class MovimentacaoDto
@@ -59,6 +60,7 @@ public class EstoqueDashboardDto
 {
     public int TotalInsumos { get; set; }
     public int InsumosAbaixoMinimo { get; set; }
+    public int InsumosNegativos { get; set; }
     public decimal TotalGastosCompras { get; set; }
     public decimal ValorEstoqueAtual { get; set; }
     public List<InsumoDto> AlertasEstoque { get; set; } = new();
