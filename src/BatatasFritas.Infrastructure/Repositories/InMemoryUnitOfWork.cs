@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace BatatasFritas.Infrastructure.Repositories
@@ -18,6 +19,9 @@ namespace BatatasFritas.Infrastructure.Repositories
         {
             return Task.CompletedTask;
         }
+
+        public Task<int> ExecuteRawAsync(string sql, Dictionary<string, object>? parameters = null)
+            => Task.FromResult(0);
 
         public void Dispose()
         {

@@ -3,7 +3,6 @@ using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NHibernate;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,18 +19,15 @@ public class CashbackController : ControllerBase
 
     private readonly IRepository<CarteiraCashback> _repoCarteira;
     private readonly IRepository<Configuracao> _repoConfig;
-    private readonly NHibernate.ISession _session;
     private readonly IUnitOfWork _uow;
 
     public CashbackController(
         IRepository<CarteiraCashback> repoCarteira,
         IRepository<Configuracao> repoConfig,
-        NHibernate.ISession session,
         IUnitOfWork uow)
     {
         _repoCarteira = repoCarteira;
         _repoConfig = repoConfig;
-        _session = session;
         _uow = uow;
     }
 
@@ -163,10 +159,9 @@ public class CashbackController : ControllerBase
 
             _uow.BeginTransaction();
             
-            // Apaga transações relacionadas primeiro (se necessário por FK)
-            await _session.CreateSQLQuery("DELETE FROM transacoes_cashback WHERE CarteiraId = ?")
-                .SetInt32(0, carteira.Id)
-                .ExecuteUpdateAsync();
+            await _uow.ExecuteRawAsync(
+                "DELETE FROM transacoes_cashback WHERE CarteiraId = :id",
+                new() { ["id"] = (object)carteira.Id });
 
             await _repoCarteira.DeleteAsync(carteira);
             await _uow.CommitAsync();
@@ -188,8 +183,8 @@ public class CashbackController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _session.CreateSQLQuery("DELETE FROM transacoes_cashback").ExecuteUpdateAsync();
-            await _session.CreateSQLQuery("DELETE FROM carteiras_cashback").ExecuteUpdateAsync();
+            await _uow.ExecuteRawAsync("DELETE FROM transacoes_cashback");
+            await _uow.ExecuteRawAsync("DELETE FROM carteiras_cashback");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Carteiras e transações de cashback apagadas." });
         }

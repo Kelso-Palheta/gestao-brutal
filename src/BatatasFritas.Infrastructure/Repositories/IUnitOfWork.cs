@@ -8,4 +8,5 @@ public interface IUnitOfWork : IDisposable
     void BeginTransaction();
     Task CommitAsync();
     Task RollbackAsync();
+    Task<int> ExecuteRawAsync(string sql, Dictionary<string, object>? parameters = null);
 }
