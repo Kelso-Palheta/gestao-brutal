@@ -140,18 +140,36 @@ public class KdsController : ControllerBase
 
     /// <summary>
     /// PUT api/kds/{id}/pagar
-    /// Marca um pedido como pago pelo operador KDS.
+    /// Marca um pedido como pago. ComprovantePix opcional: E2E ID do PIX para prevenção de fraude.
     /// </summary>
     [HttpPut("{id}/pagar")]
-    public async Task<IActionResult> MarcarComoPago(int id)
+    public async Task<IActionResult> MarcarComoPago(int id, [FromBody] AprovarPagamentoDto? dto = null)
     {
         var pedido = await _pedidoRepository.GetByIdAsync(id);
         if (pedido == null) return NotFound();
 
+        var comprovantePix = dto?.ComprovantePix?.Trim();
+
+        if (!string.IsNullOrEmpty(comprovantePix))
+        {
+            var duplicado = await _pedidoRepository.FindManyAsync(
+                p => p.ComprovantePix == comprovantePix && p.Id != id);
+            if (duplicado.Any())
+                return BadRequest("Comprovante PIX já utilizado em outro pedido.");
+        }
+
         _uow.BeginTransaction();
-        pedido.StatusPagamento = StatusPagamento.Aprovado;
-        await _pedidoRepository.UpdateAsync(pedido);
-        await _uow.CommitAsync();
+        try
+        {
+            pedido.AprovarPagamentoManual(comprovantePix);
+            await _pedidoRepository.UpdateAsync(pedido);
+            await _uow.CommitAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            await _uow.RollbackAsync();
+            return BadRequest(ex.Message);
+        }
 
         await _hub.Clients.All.SendAsync("StatusAtualizado", id, "Pago");
 
