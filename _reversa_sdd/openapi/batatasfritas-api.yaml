@@ -1,0 +1,208 @@
+openapi: 3.0.3
+info:
+  title: BatatasFritas API
+  description: API de gestão de pedidos, estoque e cashback para o ecossistema Batata Palheta Brutal.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Servidor de Desenvolvimento
+  - url: https://api.batatapalhetabrutal.com
+    description: Servidor de Produção
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    NovoPedidoDto:
+      type: object
+      required:
+        - nomeCliente
+        - bairroEntregaId
+        - metodoPagamento
+        - itens
+      properties:
+        nomeCliente:
+          type: string
+          example: "Kelso Palheta"
+        telefoneCliente:
+          type: string
+          example: "11999998888"
+        enderecoEntrega:
+          type: string
+          example: "Rua das Batatas, 123"
+        bairroEntregaId:
+          type: integer
+          example: 1
+        metodoPagamento:
+          type: integer
+          description: "1=Dinheiro, 2=Cartao, 4=Pix"
+          example: 4
+        trocoPara:
+          type: number
+          format: decimal
+          example: 50.00
+        tipoAtendimento:
+          type: integer
+          description: "0=Delivery, 1=Balcao, 2=Totem"
+          example: 0
+        valorCashbackUsado:
+          type: number
+          format: decimal
+          example: 5.00
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/NovoItemPedidoDto'
+
+    NovoItemPedidoDto:
+      type: object
+      required:
+        - produtoId
+        - quantidade
+        - precoUnitario
+      properties:
+        produtoId:
+          type: integer
+          example: 10
+        quantidade:
+          type: integer
+          example: 2
+        precoUnitario:
+          type: number
+          format: decimal
+          example: 35.90
+        observacao:
+          type: string
+          example: "Sem cebolinha"
+
+    PedidoResult:
+      type: object
+      properties:
+        pedidoId:
+          type: integer
+        status:
+          type: string
+        linkPagamento:
+          type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+
+paths:
+  /api/auth/login:
+    post:
+      summary: Autenticação de Administrador
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login bem sucedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas
+
+  /api/pedidos:
+    post:
+      summary: Cria um novo pedido
+      description: Orquestra validação de estoque, aplicação de cashback e baixa automática.
+      tags:
+        - Pedidos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NovoPedidoDto'
+      responses:
+        '200':
+          description: Pedido criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PedidoResult'
+        '400':
+          description: Erro de validação ou estoque insuficiente
+
+  /api/pedidos/{id}:
+    get:
+      summary: Detalhes de um pedido
+      tags:
+        - Pedidos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dados do pedido
+        '404':
+          description: Pedido não encontrado
+
+  /api/kds/pendentes:
+    get:
+      summary: Lista pedidos pendentes para o KDS
+      tags:
+        - KDS
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de pedidos
+        '401':
+          description: Não autorizado
+
+  /api/kds/{id}/status:
+    patch:
+      summary: Atualiza o status de produção de um pedido
+      tags:
+        - KDS
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                novoStatus:
+                  type: integer
+                  description: "0=Recebido, 1=Aceito, 2=EmPreparo, 3=Pronto, 4=Entregue, 5=Cancelado"
+      responses:
+        '200':
+          description: Status atualizado
+

@@ -2,27 +2,23 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using BatatasFritas.Domain.Interfaces;
 using BatatasFritas.Shared.DTOs;
 using BatatasFritas.Shared.Enums;
-using NSubstitute;
 
 namespace BatatasFritas.API.Tests;
 
 /// <summary>
 /// Integration tests para POST /api/pedidos e GET /api/pedidos/bydate.
-/// Usa CustomWebApplicationFactory com SQLite in-memory e mock de MercadoPago.
+/// Usa CustomWebApplicationFactory com PostgreSQL via Testcontainers.
 /// </summary>
 [Collection("API")]
 public class PedidosControllerTests
 {
     private readonly HttpClient _client;
-    private readonly IMercadoPagoService _mockMp;
 
     public PedidosControllerTests(CustomWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
-        _mockMp = factory.MockMercadoPago;
     }
 
     // ── Helper: cria um NovoPedidoDto mínimo válido ────────────────────
@@ -175,102 +171,7 @@ public class PedidosControllerTests
             because: "mensagem de erro deve mencionar estoque");
     }
 
-    // ── TESTE 6: POST com Pix → retorna QrCodeBase64 e MpPagamentoId ────
-    [Fact]
-    public async Task Post_ComPix_RetornaQrCode()
-    {
-        // Arrange
-        _mockMp.CriarPagamentoPixAsync(Arg.Any<PagamentoPixRequest>())
-            .Returns(Task.FromResult(new PagamentoPixResponse(
-                PagamentoId:  123456L,
-                QrCodeBase64: "base64img",
-                QrCodeTexto:  "00020101...",
-                ExpiraEm:     DateTime.UtcNow.AddMinutes(30)
-            )));
-
-        var dto = CriarPedidoDto();
-        dto.MetodoPagamento  = MetodoPagamento.Pix;
-        dto.TipoAtendimento  = TipoAtendimento.Delivery;
-        dto.MomentoPagamento = MomentoPagamento.Online;
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/pedidos", dto);
-        var body = await response.Content.ReadAsStringAsync();
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            because: $"Body: {body}");
-
-        using var doc = JsonDocument.Parse(body);
-        doc.RootElement.GetProperty("qrCodeBase64").GetString()
-            .Should().NotBeNullOrEmpty(because: "Pix deve gerar QR Code");
-        doc.RootElement.GetProperty("mpPagamentoId").GetInt64()
-            .Should().Be(123456L);
-    }
-
-    // ── TESTE 7: POST com cartão aprovado → CartaoStatus = "approved" ───
-    [Fact]
-    public async Task Post_ComCartaoAprovado_RetornaStatusAprovado()
-    {
-        // Arrange
-        _mockMp.CriarPagamentoCartaoAsync(Arg.Any<PagamentoCartaoRequest>())
-            .Returns(Task.FromResult(new PagamentoCartaoResponse(
-                PagamentoId:  789L,
-                Status:       "approved",
-                StatusDetail: "accredited"
-            )));
-
-        var dto = CriarPedidoDto();
-        dto.MetodoPagamento    = MetodoPagamento.Cartao;
-        dto.MomentoPagamento   = MomentoPagamento.Online;
-        dto.CardToken          = "test-token-123";
-        dto.CardPaymentMethodId = "visa";
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/pedidos", dto);
-        var body = await response.Content.ReadAsStringAsync();
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            because: $"Body: {body}");
-
-        using var doc = JsonDocument.Parse(body);
-        doc.RootElement.GetProperty("cartaoStatus").GetString()
-            .Should().Be("approved");
-    }
-
-    // ── TESTE 8: POST com cartão recusado → CartaoStatus = "rejected" ───
-    [Fact]
-    public async Task Post_ComCartaoRecusado_RetornaStatusRecusado()
-    {
-        // Arrange
-        _mockMp.CriarPagamentoCartaoAsync(Arg.Any<PagamentoCartaoRequest>())
-            .Returns(Task.FromResult(new PagamentoCartaoResponse(
-                PagamentoId:  0L,
-                Status:       "rejected",
-                StatusDetail: "cc_rejected_bad_filled_card_number"
-            )));
-
-        var dto = CriarPedidoDto();
-        dto.MetodoPagamento    = MetodoPagamento.Cartao;
-        dto.MomentoPagamento   = MomentoPagamento.Online;
-        dto.CardToken          = "bad-token";
-        dto.CardPaymentMethodId = "visa";
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/pedidos", dto);
-        var body = await response.Content.ReadAsStringAsync();
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK,
-            because: $"Body: {body}");
-
-        using var doc = JsonDocument.Parse(body);
-        doc.RootElement.GetProperty("cartaoStatus").GetString()
-            .Should().Be("rejected");
-    }
-
-    // ── TESTE 9: POST com múltiplos itens → 200 e PedidoId > 0 ─────────
+    // ── TESTE 6: POST com múltiplos itens → 200 e PedidoId > 0 ─────────
     [Fact]
     public async Task Post_ComMultiplosItens_TodosItensSalvos()
     {
@@ -319,7 +220,7 @@ public class PedidosControllerTests
         doc.RootElement.GetProperty("pedidoId").GetInt32().Should().BeGreaterThan(0);
     }
 
-    // ── TESTE 10: GET bydate com filtro de hoje → retorna >= 1 item ─────
+    // ── TESTE 7: GET bydate com filtro de hoje → retorna >= 1 item ─────
     [Fact]
     public async Task GetByDate_ComFiltroData_RetornaApenasPeriodo()
     {
@@ -344,7 +245,7 @@ public class PedidosControllerTests
             .Should().BeGreaterOrEqualTo(1, because: "criamos ao menos um pedido hoje");
     }
 
-    // ── TESTE 11: GET bydate pageSize > totalCount → retorna tudo sem erro
+    // ── TESTE 8: GET bydate pageSize > totalCount → retorna tudo sem erro
     [Fact]
     public async Task GetByDate_PageSizeMaiorQueTotalCount_RetornaTudoSemErro()
     {
@@ -367,7 +268,7 @@ public class PedidosControllerTests
             .Should().BeLessOrEqualTo(100);
     }
 
-    // ── TESTE 12: POST com bairroId inexistente → 400 BadRequest ────────
+    // ── TESTE 9: POST com bairroId inexistente → 400 BadRequest ────────
     [Fact]
     public async Task Post_SemBairroValido_Retorna400()
     {

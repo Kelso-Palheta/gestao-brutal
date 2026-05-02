@@ -5,8 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NHibernate;
-using BatatasFritas.Domain.Interfaces;
-using BatatasFritas.Infrastructure.Options;
 using BatatasFritas.Infrastructure.Repositories;
 using BatatasFritas.Infrastructure.Mappings;
 using BatatasFritas.Infrastructure.Migrations;
@@ -75,17 +73,6 @@ namespace BatatasFritas.Infrastructure
                 if (ex.InnerException != null) log?.LogError("Inner Exception: {InnerMessage}", ex.InnerException.Message);
                 throw;
             }
-
-            // ── Mercado Pago ──────────────────────────────────────────────────
-            if (configuration != null)
-                services.Configure<MercadoPagoOptions>(configuration.GetSection("MercadoPago"));
-            else
-                services.Configure<MercadoPagoOptions>(_ => { });
-
-            // Cliente nomeado com Polly retry (3x, exponential backoff) para MP Point Smart 2
-            services.AddHttpClient("MercadoPagoPoint")
-                    .AddStandardResilienceHandler();
-            services.AddScoped<IMercadoPagoService, MercadoPagoService>();
 
             return services;
         }

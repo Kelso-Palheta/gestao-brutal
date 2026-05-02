@@ -106,15 +106,6 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Em produção, WebhookSecret é obrigatório — sem ele, qualquer um pode marcar pedido pago
-if (builder.Environment.IsProduction())
-{
-    var webhookSecret = builder.Configuration["MercadoPago:WebhookSecret"];
-    if (string.IsNullOrWhiteSpace(webhookSecret))
-        throw new InvalidOperationException(
-            "MercadoPago:WebhookSecret é obrigatório em Production. Defina via env MercadoPago__WebhookSecret.");
-}
-
 // ── SignalR ──────────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
 

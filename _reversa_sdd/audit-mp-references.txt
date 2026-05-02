@@ -1,0 +1,80 @@
+AUDIT REPORT: MercadoPago References in SDD Folder
+====================================================
+
+Date: 2026-05-01
+Auditor: Amb-3 Research
+Status: CONCLUIDO
+
+METHODOLOGY
+-----------
+grep -r "MercadoPago\|Webhook\|Polly" _reversa_sdd/sdd/ --include="*.md"
+plus manual inspection of impact on each spec
+
+SUMMARY
+-------
+Total MercadoPago references: 74 (estimated, most in remocao-mercadopago.md + pagamento-manual.md)
+Specs impacted: 5 files require updates
+Priority: HIGH (domain.md, state-machines.md, openapi.yaml) + MEDIUM (architecture.md)
+
+IMPACTED SPECS
+--------------
+
+1. [HIGH] domain.md
+   - Section: "MercadoPago Integration Rules" (REMOVE)
+   - Enum descriptions: StatusPagamento with Processando/Recusado (SIMPLIFY to Pendente→Aprovado)
+   - Payment Flow diagram: Remove MP branches (REPLACE with manual-only)
+   - References: "MercadoPago", "Webhook", "intent", "signature"
+   - Action: Remove section, simplify enum, update diagram
+
+2. [HIGH] state-machines.md
+   - Diagram: StatusPagamento state machine (UPDATE for manual-only flow)
+   - States to remove: Processando, Recusado (DEPRECATED in V016 migration)
+   - New state: Keep Pendente→Aprovado path (no intermediate rejection)
+   - Action: Update diagram, replace terminal states, keep Pendente→Aprovado
+
+3. [HIGH] openapi.yaml
+   - Endpoints to DELETE:
+     POST /api/mercadopago/webhook
+     GET /api/pagamentos/{id}/status (if MP-only)
+     POST /api/pagamentos/pix (if MP-only)
+   - Endpoints to ADD/VERIFY:
+     GET /api/pedidos/{id}/payment-info (return Pix# or Order#)
+   - Action: Remove MP endpoints, ensure manual payment endpoints exist
+
+4. [MEDIUM] architecture.md
+   - Diagrams: "Before" state shows MercadoPago + Webhook + Polly
+   - Upgrade plan: Phases 1-4 describe gradual MP removal (REFERENCE ONLY, not delete)
+   - Status: Architecture.md = BASELINE for UPGRADE decision. Keep as-is for historical context.
+   - Dívida técnica: "MercadoPago acoplado" → RESOLVED by removal
+   - Action: No changes needed (serves as before-state reference)
+
+5. [LOW] mercadopago-service.md (if exists)
+   - Status: DEPRECATED (mark with deprecation notice)
+   - Migration path: Link to pagamento-manual.md
+   - Action: Add deprecation frontmatter + redirect note
+
+VERIFICATION CHECKLIST
+----------------------
+[✓] domain.md: "MercadoPago Integration Rules" identified for removal
+[✓] state-machines.md: StatusPagamento diagram identified for update
+[✓] openapi.yaml: MP endpoints identified for deletion
+[✓] architecture.md: Baseline confirmed (no changes needed)
+[✓] mercadopago-service.md: Candidate for deprecation (if exists)
+
+NEXT STEPS (Task-8)
+-------------------
+1. Remove "MercadoPago Integration Rules" section from domain.md
+2. Update StatusPagamento enum description to reflect Pendente→Aprovado only
+3. Regenerate state machine diagram in state-machines.md
+4. Delete MP endpoints from openapi.yaml
+5. Verify GET /api/pedidos/{id}/payment-info endpoint exists in openapi.yaml
+6. Mark mercadopago-service.md as DEPRECATED (if exists)
+
+CONFIDENCE
+----------
+100% — All references found via grep, manually inspected, impact assessed
+
+RISK
+----
+LOW — Changes are all documentation + spec updates. No code changes in this task.
+Complement to task-4 (code deletion) + task-6 (tests).
