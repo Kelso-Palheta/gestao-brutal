@@ -11,5 +11,8 @@ public enum StatusPagamento
     PagamentoParcial = 5,
 
     // Para pagamentos feitos fisicamente em dinheiro ou outra forma manual
-    Presencial       = 10
+    Presencial       = 10,
+
+    // Pagamento aprovado manualmente, mas pedido cancelado após aprovação (estorno físico pelo operador)
+    Estornado        = 6
 }

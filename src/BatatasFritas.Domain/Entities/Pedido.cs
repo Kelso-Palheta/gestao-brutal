@@ -44,6 +44,12 @@ public class Pedido : EntityBase
     // -- FASE 8: MP Point Smart 2 (totem) — rastreia intent para cancelamento/estorno --
     public virtual string? MpIntentId { get; protected set; }
 
+    // -- FASE 3.5: E2E ID do PIX para prevenção de reuso de comprovante --
+    public virtual string? ComprovantePix { get; protected set; }
+
+    // -- FASE 3.5: Estorno manual — motivo registrado pelo operador --
+    public virtual string? MotivoEstorno { get; protected set; }
+
     // -- FASE 6: Momento do pagamento (Online | NaEntrega) --
     public virtual MomentoPagamento MomentoPagamento { get; protected set; } = MomentoPagamento.NaEntrega;
     public virtual MomentoPagamento? SegundoMomentoPagamento { get; protected set; }
@@ -144,8 +150,45 @@ public class Pedido : EntityBase
         Itens.Add(item);
     }
 
+    public virtual bool CanTransition(StatusPedido novoStatus)
+    {
+        if (Status == novoStatus) return false;
+        return Status switch
+        {
+            StatusPedido.Recebido          => novoStatus is StatusPedido.Aceito or StatusPedido.Cancelado,
+            StatusPedido.Aceito            => novoStatus is StatusPedido.EmPreparo or StatusPedido.Cancelado,
+            StatusPedido.EmPreparo         => novoStatus is StatusPedido.ProntoParaEntrega or StatusPedido.Cancelado,
+            StatusPedido.ProntoParaEntrega => novoStatus is StatusPedido.SaiuParaEntrega or StatusPedido.Entregue or StatusPedido.Cancelado,
+            StatusPedido.SaiuParaEntrega   => novoStatus is StatusPedido.Entregue or StatusPedido.Cancelado,
+            StatusPedido.Entregue          => false,
+            StatusPedido.Cancelado         => false,
+            _                              => false
+        };
+    }
+
     public virtual void AlterarStatus(StatusPedido novoStatus)
     {
+        if (!CanTransition(novoStatus))
+            throw new InvalidOperationException($"Transição inválida: {Status} → {novoStatus}");
         Status = novoStatus;
+    }
+
+    public virtual void AprovarPagamentoManual(string? comprovantePix = null)
+    {
+        if (StatusPagamento != StatusPagamento.Pendente)
+            throw new InvalidOperationException("Apenas pedidos com pagamento pendente podem ser aprovados.");
+        ComprovantePix = comprovantePix;
+        StatusPagamento = StatusPagamento.Aprovado;
+    }
+
+    public virtual void RegistrarEstorno(string? motivo = null)
+    {
+        if (StatusPagamento != StatusPagamento.Aprovado)
+            throw new InvalidOperationException("Estorno só é possível em pedidos com pagamento aprovado.");
+        if (Status is StatusPedido.Entregue)
+            throw new InvalidOperationException("Pedido já entregue não pode ser estornado.");
+        MotivoEstorno   = motivo;
+        StatusPagamento = StatusPagamento.Estornado;
+        Status          = StatusPedido.Cancelado;
     }
 }

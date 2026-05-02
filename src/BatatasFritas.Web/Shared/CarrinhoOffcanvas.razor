@@ -11,6 +11,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject Microsoft.JSInterop.IJSRuntime JS
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 
 <div class="carrinho-container">
     <h2>Seu Carrinho</h2>
@@ -240,7 +241,7 @@
             @if (pagamentoAprovado)
             {
                 var msgPosPix = $"Olá! Pedido #{idPedidoConfirmado:D3} — pagamento aprovado via Pix ✅. Segue minha localização para a entrega.";
-                var linkWhatsPosPix = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(msgPosPix)}";
+                var linkWhatsPosPix = $"https://wa.me/{Config["Pagamento:NumeroWhatsApp"]}?text={Uri.EscapeDataString(msgPosPix)}";
 
                 <div style="font-size: 5rem; margin-bottom: 4px;">✅</div>
                 <h2 style="color: #25D366; font-weight: 900; margin-bottom: 4px; text-transform: uppercase;">Pagamento confirmado!</h2>
@@ -342,7 +343,7 @@ else if (mostrarModalConfirmacao)
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                     <div>
                         <p style="margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; font-weight: bold;">Chave PIX / Dúvidas:</p>
-                        <p style="margin: 5px 0; font-size: 1.4rem; font-weight: 900; color: #000;">91 98620-1943</p>
+                        <p style="margin: 5px 0; font-size: 1.4rem; font-weight: 900; color: #000;">@Config["Pagamento:ChavePix"]</p>
                     </div>
                     <div style="text-align: right;">
                         <p style="margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; font-weight: bold;">Total:</p>
@@ -369,7 +370,7 @@ else if (mostrarModalConfirmacao)
                 else if (metodo == MetodoPagamento.Cartao) msgStatus = $"O pagamento será no Cartão Crédito/Débito (Total: R$ {valorFinalDoPedido:N2}). Segue minha localização para a entrega.";
                 
                 var textoWhats = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. {msgStatus}";
-                var linkWhats = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(textoWhats)}";
+                var linkWhats = $"https://wa.me/{Config["Pagamento:NumeroWhatsApp"]}?text={Uri.EscapeDataString(textoWhats)}";
             }
             @if (metodo == MetodoPagamento.Pix && !string.IsNullOrWhiteSpace(linkPagamentoMP))
             {
@@ -437,7 +438,7 @@ else if (mostrarModalConfirmacao)
             else if (cartaoStatusFinal == "approved")
             {
                 var msgCartaoAprov = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. Paguei R$ {valorFinalDoPedido:N2} no cartão ✅. Segue minha localização para a entrega.";
-                var linkWhatsCartao = $"https://wa.me/5591986201943?text={Uri.EscapeDataString(msgCartaoAprov)}";
+                var linkWhatsCartao = $"https://wa.me/{Config["Pagamento:NumeroWhatsApp"]}?text={Uri.EscapeDataString(msgCartaoAprov)}";
                 <div style="font-size:4rem; margin-bottom:8px;">✅</div>
                 <h2 style="color:#25D366; font-weight:900; margin-bottom:4px; text-transform:uppercase;">Pagamento aprovado!</h2>
                 <p style="color:#ffb347; font-weight:700; margin-bottom:16px;">Pedido #@idPedidoConfirmado.ToString("D3")</p>

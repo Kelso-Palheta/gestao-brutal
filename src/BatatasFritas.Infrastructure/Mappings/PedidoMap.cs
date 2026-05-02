@@ -41,6 +41,12 @@ public class PedidoMap : ClassMap<Pedido>
         // FASE 8: MP Point Intent ID (totem — rastreio/estorno)
         Map(x => x.MpIntentId).Column("mp_intent_id").Nullable().Length(200);
 
+        // FASE 3.5: E2E ID do PIX para prevenção de reuso de comprovante
+        Map(x => x.ComprovantePix).Column("comprovante_pix").Nullable().Length(100);
+
+        // FASE 3.5: Motivo do estorno manual
+        Map(x => x.MotivoEstorno).Column("motivo_estorno").Nullable().Length(500);
+
         HasMany(x => x.Itens)
             .KeyColumn("pedido_id")
             .Inverse()
