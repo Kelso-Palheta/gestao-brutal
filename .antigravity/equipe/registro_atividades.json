@@ -1,15 +1,35 @@
 {
-  "projeto": "BatatasFritas — Paginação Server-Side",
-  "branch": "feat/paginacao-server-side",
+  "missao": "Teste E2E producao — https://www.batatapalhetabrutal.com.br",
+  "maestro": "SandecoMaestro",
+  "inicio": "2026-05-02",
   "atividades": [
-    {"id":"AT-01","titulo":"PagedResult<T> DTO","estado":"PENDENTE","pre_requisitos":[]},
-    {"id":"AT-02","titulo":"IRepository<T> novos métodos","estado":"PENDENTE","pre_requisitos":["AT-01"]},
-    {"id":"AT-03","titulo":"NHibernateRepository implementação","estado":"PENDENTE","pre_requisitos":["AT-01","AT-02"]},
-    {"id":"AT-04","titulo":"PedidosController paginado","estado":"PENDENTE","pre_requisitos":["AT-03"]},
-    {"id":"AT-05","titulo":"RelatoriosController paginado","estado":"PENDENTE","pre_requisitos":["AT-03"]},
-    {"id":"AT-06","titulo":"FinanceiroController FindManyAsync","estado":"PENDENTE","pre_requisitos":["AT-03"]},
-    {"id":"AT-07","titulo":"PaginacaoComponent.razor","estado":"PENDENTE","pre_requisitos":["AT-01"]},
-    {"id":"AT-08","titulo":"AdminPanel integração","estado":"PENDENTE","pre_requisitos":["AT-07","AT-04"]},
-    {"id":"AT-09","titulo":"Build + test — 0 erros","estado":"PENDENTE","pre_requisitos":["AT-04","AT-05","AT-06","AT-07","AT-08"]}
+    {
+      "id": "T01", "modulo": "KDS Monitor",
+      "url": "https://www.batatapalhetabrutal.com.br/kds",
+      "executor": "Agente-KDS", "estado": "CONCLUIDA", "pre_requisitos": [],
+      "checklist": ["Acessar /kds → tela login", "Login → JWT armazenado", "Cards pedido ou msg vazia", "Botões status presentes", "Logout funciona"],
+      "resultado": "Login compartilhado bem-sucedido. Pedido #57 visível e transicionado através das colunas. Logout verificado."
+    },
+    {
+      "id": "T02", "modulo": "Admin Panel",
+      "url": "https://www.batatapalhetabrutal.com.br/admin",
+      "executor": "Agente-Admin", "estado": "CONCLUIDA", "pre_requisitos": [],
+      "checklist": ["Acesso /admin → autenticado ou redirect", "Dashboard KPIs carregam", "Listagem pedidos + filtro data", "Navegação abas ok"],
+      "resultado": "Acesso verificado, filtros operacionais e layout responsivo. Tabelas de acompanhamento carregadas."
+    },
+    {
+      "id": "T03", "modulo": "Totem",
+      "url": "https://www.batatapalhetabrutal.com.br/totem",
+      "executor": "Agente-Totem", "estado": "CONCLUIDA", "pre_requisitos": [],
+      "checklist": ["Tela inicial carrega", "Produtos com imagem e preço", "Modal complementos abre", "Carrinho funciona", "Checkout exibe nro pedido"],
+      "resultado": "Fluxo de checkout completo verificado em produção. Pedido criado via pagamento 'Dinheiro'."
+    },
+    {
+      "id": "T04", "modulo": "Estoque",
+      "url": "https://www.batatapalhetabrutal.com.br/admin/estoque",
+      "executor": "Agente-Estoque", "estado": "CONCLUIDA", "pre_requisitos": [],
+      "checklist": ["KPI Total Insumos", "KPI Abaixo do Minimo", "KPI Estoque Negativo presente", "Badges Baixo e NEGATIVO", "Filtro periodo ok"],
+      "resultado": "KPIs corretos, alertas renderizados com sucesso (ex: Coca-cola 1L alertada)."
+    }
   ]
 }

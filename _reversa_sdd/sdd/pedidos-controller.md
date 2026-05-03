@@ -21,7 +21,7 @@ O endpoint `POST /api/pedidos` é a porta de entrada para todas as vendas do sis
 | Persistir pedido e itens em uma única transação atômica | **Must** |
 | Executar a baixa de estoque automática | **Must** |
 | Emitir notificação via SignalR para o Hub de Pedidos | **Must** |
-| Retornar o ID do pedido e link de pagamento gerado | **Should** |
+| Retornar o ID do pedido e dados de pagamento manual | **Should** |
 
 ---
 
@@ -57,7 +57,7 @@ O endpoint `POST /api/pedidos` é a porta de entrada para todas as vendas do sis
 {
   "pedidoId": "int",
   "status": "string",
-  "linkPagamento": "string"
+  "dadosPagamento": "string"
 }
 ```
 
@@ -111,7 +111,7 @@ Dado um payload válido com método de pagamento Pix
 Quando a requisição é processada
 Então o pedido deve ser salvo
   E o status retornado deve ser "Recebido"
-  E um link de pagamento MercadoPago deve estar presente no retorno
+  E os dados de pagamento PIX (manual) devem estar presentes no retorno
 
 # Falha — Estoque insuficiente
 Dado um produto com estoque 1

@@ -206,8 +206,8 @@ public class InsumosController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _uow.ExecuteRawAsync("DELETE FROM movimentacoes_estoque");
-            await _uow.ExecuteRawAsync("UPDATE insumos SET estoque_atual = 0");
+            await _uow.ExecuteHqlAsync("DELETE FROM MovimentacaoEstoque");
+            await _uow.ExecuteHqlAsync("UPDATE Insumo SET EstoqueAtual = 0");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Movimentações apagadas e estoques zerados." });
         }

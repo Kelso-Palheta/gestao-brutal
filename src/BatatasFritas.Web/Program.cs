@@ -14,7 +14,7 @@ public class Program
         // Configurar autenticação
         builder.Services.AddAuthorizationCore();
         builder.Services.AddCascadingAuthenticationState();
-        builder.Services.AddSingleton<AuthStateProvider>();
+        builder.Services.AddScoped<AuthStateProvider>();
         builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateProvider>());
         
         builder.RootComponents.Add<App>("#app");

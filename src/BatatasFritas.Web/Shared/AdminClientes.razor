@@ -10,6 +10,11 @@
         <p style="color: #666; font-size: 0.9rem;">Lista de clientes que já fizeram pedidos e possuem saldo acumulado.</p>
     </div>
 
+    <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.2rem;">🔍</span>
+        <input type="text" @bind="termoBusca" @bind:event="oninput" placeholder="Buscar por Nome ou Telefone..." style="width: 100%; max-width: 400px; padding: 10px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 1rem;" />
+    </div>
+
     <div class="admin-table-container shadow-sm">
         <table class="admin-table">
             <thead>
@@ -21,9 +26,9 @@
                 </tr>
             </thead>
             <tbody>
-                @if (clientes.Any())
+                @if (ClientesFiltrados.Any())
                 {
-                    @foreach (var c in clientes)
+                    @foreach (var c in ClientesFiltrados)
                     {
                         <tr>
                             <td style="font-weight: 700;">@c.NomeCliente</td>
@@ -90,6 +95,13 @@
     [CascadingParameter] private AdminAlertService Alert { get; set; } = default!;
 
     private List<SaldoCashbackDto> clientes = new();
+    private string termoBusca = "";
+    private IEnumerable<SaldoCashbackDto> ClientesFiltrados => 
+        string.IsNullOrWhiteSpace(termoBusca) 
+            ? clientes 
+            : clientes.Where(c => (c.NomeCliente != null && c.NomeCliente.Contains(termoBusca, StringComparison.OrdinalIgnoreCase)) 
+                               || (c.Telefone != null && c.Telefone.Contains(termoBusca, StringComparison.OrdinalIgnoreCase)));
+
     private bool mostrarModalCliente = false;
     private SaldoCashbackDto? clienteEdit;
     private bool salvando = false;

@@ -23,6 +23,9 @@ namespace BatatasFritas.Infrastructure.Repositories
         public Task<int> ExecuteRawAsync(string sql, Dictionary<string, object>? parameters = null)
             => Task.FromResult(0);
 
+        public Task<int> ExecuteHqlAsync(string hql, Dictionary<string, object>? parameters = null)
+            => Task.FromResult(0);
+
         public void Dispose()
         {
             // Do nothing

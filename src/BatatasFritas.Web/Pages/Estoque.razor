@@ -110,8 +110,8 @@
                                 {
                                     <tr class="est-row-alerta">
                                         <td>@i.Nome</td>
-                                        <td class="est-td-alerta">@i.EstoqueAtual @i.Unidade</td>
-                                        <td>@i.EstoqueMinimo @i.Unidade</td>
+                                        <td class="est-td-alerta">@i.EstoqueAtual.ToString("0.###") @i.Unidade</td>
+                                        <td>@i.EstoqueMinimo.ToString("0.###") @i.Unidade</td>
                                         <td><button class="est-btn-entrada" @onclick="@(() => AbrirEntrada(i))">+ Entrada</button></td>
                                     </tr>
                                 }
@@ -234,13 +234,13 @@
                                         <td>@i.Unidade</td>
                                         <td>
                                             <div style="display:flex; align-items:center; gap:5px;">
-                                                <strong>@i.EstoqueAtual</strong>
+                                                <strong>@i.EstoqueAtual.ToString("0.###")</strong>
                                                 @if(i.Ativo) {
                                                     <button class="est-btn-ajustar-mini" @onclick="@(() => AbrirAjuste(i))" title="Ajustar saldo real">🔧</button>
                                                 }
                                             </div>
                                         </td>
-                                        <td>@i.EstoqueMinimo</td>
+                                        <td>@i.EstoqueMinimo.ToString("0.###")</td>
                                         <td>@i.CustoPorUnidade.ToString("C2")</td>
                                         <td class="est-td-acoes">
                                             @if (i.Ativo)
@@ -376,7 +376,7 @@
                                 <option value="0">— Selecione —</option>
                                 @foreach (var i in insumos)
                                 {
-                                    <option value="@i.Id">@i.Nome (@i.EstoqueAtual @i.Unidade)</option>
+                                    <option value="@i.Id">@i.Nome (@i.EstoqueAtual.ToString("0.###") @i.Unidade)</option>
                                 }
                             </select>
                         </div>
@@ -440,7 +440,7 @@
         <div class="est-modal-overlay" @onclick="@(() => FecharModalEntrada())">
             <div class="est-modal" @onclick:stopPropagation="true">
                 <h3>📦 Entrada de Estoque</h3>
-                <p class="est-modal-sub">Insumo: <strong>@insumoEntrada.Nome</strong> (Atual: @insumoEntrada.EstoqueAtual @insumoEntrada.Unidade)</p>
+                <p class="est-modal-sub">Insumo: <strong>@insumoEntrada.Nome</strong> (Atual: @insumoEntrada.EstoqueAtual.ToString("0.###") @insumoEntrada.Unidade)</p>
                 <div class="est-form-grid">
                     <div class="est-form-grupo">
                         <label>Quantidade *</label>

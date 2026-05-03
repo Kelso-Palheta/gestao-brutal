@@ -71,7 +71,7 @@ public class DespesasController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _uow.ExecuteRawAsync("DELETE FROM despesas");
+            await _uow.ExecuteHqlAsync("DELETE FROM Despesa");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Todas as despesas foram apagadas." });
         }

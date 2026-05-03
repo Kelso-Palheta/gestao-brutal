@@ -45,6 +45,15 @@ public class UnitOfWork : IUnitOfWork
         return await query.ExecuteUpdateAsync();
     }
 
+    public async Task<int> ExecuteHqlAsync(string hql, Dictionary<string, object>? parameters = null)
+    {
+        var query = _session.CreateQuery(hql);
+        if (parameters != null)
+            foreach (var (key, value) in parameters)
+                query.SetParameter(key, value);
+        return await query.ExecuteUpdateAsync();
+    }
+
     public void Dispose()
     {
         _transaction?.Dispose();

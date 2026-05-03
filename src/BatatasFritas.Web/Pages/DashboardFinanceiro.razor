@@ -37,6 +37,12 @@
             </div>
         </div>
 
+        <!-- ABAS UNIFICADAS -->
+        <div class="dash-tabs no-print">
+            <a href="/admin/dashboard" class="dash-tab active">📊 Visão Geral</a>
+            <a href="/admin/dashboard-analytics" class="dash-tab">📈 Analytics Avançado</a>
+        </div>
+
         <!-- MENSAGENS -->
         @if (!string.IsNullOrEmpty(msgSucesso)) { <div class="dash-msg-ok no-print">✅ @msgSucesso</div> }
         @if (!string.IsNullOrEmpty(msgErro))    { <div class="dash-msg-err no-print">❌ @msgErro</div> }
@@ -440,6 +446,33 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
     margin-bottom: 30px;
+}
+.dash-tabs {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0;
+}
+.dash-tab {
+    padding: 10px 20px;
+    color: #888;
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 3px solid transparent;
+    transition: 0.2s;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.dash-tab:hover {
+    color: #ccc;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px 6px 0 0;
+}
+.dash-tab.active {
+    color: #ffb347;
+    border-bottom: 3px solid #ffb347;
 }
 .dash-kpi-card {
     background: rgba(40, 40, 40, 0.6);

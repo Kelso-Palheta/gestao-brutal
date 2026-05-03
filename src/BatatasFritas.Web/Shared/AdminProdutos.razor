@@ -182,7 +182,7 @@
                             {
                                 <tr>
                                     <td>@item.InsumoNome</td>
-                                    <td><strong>@item.QuantidadePorUnidade</strong> <small style="color:#888">@item.InsumoUnidade</small></td>
+                                    <td><strong>@item.QuantidadePorUnidade.ToString("0.###")</strong> <small style="color:#888">@item.InsumoUnidade</small></td>
                                     <td>
                                         <button @onclick="() => RemoverItemReceita(item.Id)" style="background:transparent; border:none; font-size:1.2rem; cursor:pointer;" title="Remover Insumo">🗑️</button>
                                     </td>
