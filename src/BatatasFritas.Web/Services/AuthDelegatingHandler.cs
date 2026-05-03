@@ -16,10 +16,16 @@ public class AuthDelegatingHandler : DelegatingHandler
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var auth = _sp.GetRequiredService<KdsAuthService>();
-        var token = await auth.GetTokenAsync();
-        if (!string.IsNullOrEmpty(token))
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        try
+        {
+            var js = _sp.GetRequiredService<IJSRuntime>();
+            var token = await js.InvokeAsync<string?>("localStorage.getItem", "kds_jwt_token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+        catch { /* Falha silenciosa se o JS não estiver disponível */ }
 
         return await base.SendAsync(request, cancellationToken);
     }
