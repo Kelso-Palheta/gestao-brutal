@@ -159,8 +159,8 @@ public class CashbackController : ControllerBase
 
             _uow.BeginTransaction();
             
-            await _uow.ExecuteRawAsync(
-                "DELETE FROM transacoes_cashback WHERE CarteiraId = :id",
+            await _uow.ExecuteHqlAsync(
+                "DELETE FROM TransacaoCashback WHERE Carteira.Id = :id",
                 new() { ["id"] = (object)carteira.Id });
 
             await _repoCarteira.DeleteAsync(carteira);
@@ -183,8 +183,8 @@ public class CashbackController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _uow.ExecuteRawAsync("DELETE FROM transacoes_cashback");
-            await _uow.ExecuteRawAsync("DELETE FROM carteiras_cashback");
+            await _uow.ExecuteHqlAsync("DELETE FROM TransacaoCashback");
+            await _uow.ExecuteHqlAsync("DELETE FROM CarteiraCashback");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Carteiras e transações de cashback apagadas." });
         }

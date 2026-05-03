@@ -338,8 +338,8 @@ public class PedidosController : ControllerBase
         try
         {
             _uow.BeginTransaction();
-            await _uow.ExecuteRawAsync("DELETE FROM itens_pedido");
-            await _uow.ExecuteRawAsync("DELETE FROM pedidos");
+            await _uow.ExecuteHqlAsync("DELETE FROM ItemPedido");
+            await _uow.ExecuteHqlAsync("DELETE FROM Pedido");
             await _uow.CommitAsync();
             return Ok(new { mensagem = "Todos os pedidos foram apagados com sucesso." });
         }

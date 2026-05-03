@@ -5,34 +5,45 @@ namespace BatatasFritas.Web.Services;
 
 public class AuthStateProvider : AuthenticationStateProvider
 {
-    private bool _isAuthenticated = false;
+    private readonly IJSRuntime _js;
     private readonly ClaimsPrincipal _anonymous = new(new ClaimsIdentity());
 
-    public override Task<AuthenticationState> GetAuthenticationStateAsync()
+    public AuthStateProvider(IJSRuntime js)
     {
-        if (!_isAuthenticated)
-            return Task.FromResult(new AuthenticationState(_anonymous));
+        _js = js;
+    }
 
-        var claims = new List<Claim>
+    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+    {
+        try
         {
-            new(ClaimTypes.Name, "admin"),
-            new(ClaimTypes.Role, "admin")
-        };
+            var token = await _js.InvokeAsync<string?>("localStorage.getItem", "kds_jwt_token");
+            if (string.IsNullOrEmpty(token))
+                return new AuthenticationState(_anonymous);
 
-        var identity = new ClaimsIdentity(claims, "jwt");
-        var principal = new ClaimsPrincipal(identity);
-        return Task.FromResult(new AuthenticationState(principal));
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.Name, "admin"),
+                new(ClaimTypes.Role, "admin")
+            };
+
+            var identity = new ClaimsIdentity(claims, "jwt");
+            var principal = new ClaimsPrincipal(identity);
+            return new AuthenticationState(principal);
+        }
+        catch
+        {
+            return new AuthenticationState(_anonymous);
+        }
     }
 
     public void MarkUserAsAuthenticated()
     {
-        _isAuthenticated = true;
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
     public void MarkUserAsLoggedOut()
     {
-        _isAuthenticated = false;
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 }
