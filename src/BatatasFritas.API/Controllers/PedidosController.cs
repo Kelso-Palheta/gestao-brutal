@@ -63,8 +63,11 @@ public class PedidosController : ControllerBase
                 if (!receitas.Any())
                 {
                     var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
-                    if (produto != null && produto.EstoqueAtual < item.Quantidade)
-                        return BadRequest($"Estoque insuficiente para o produto {produto.Nome}. Disponível: {produto.EstoqueAtual}, Solicitado: {item.Quantidade}.");
+                    if (produto == null || produto.EstoqueAtual < item.Quantidade)
+                    {
+                        var nomeProduto = produto?.Nome ?? $"produto id {item.ProdutoId}";
+                        return BadRequest($"Estoque insuficiente para o produto {nomeProduto}. Disponível: {produto?.EstoqueAtual ?? 0}, Solicitado: {item.Quantidade}.");
+                    }
                 }
             }
 

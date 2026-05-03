@@ -1,4 +1,39 @@
 /* =============================================
+   DESIGN TOKENS — PALHETA BRUTAL
+   ============================================= */
+:root {
+    /* Cores */
+    --color-bg:          #0A0A0A;
+    --color-surface:     #141414;
+    --color-surface-2:   #1E1E1E;
+    --color-border:      #2A2A2A;
+    --color-accent:      #FFB300;
+    --color-accent-hover:#FFD740;
+    --color-text:        #FFFFFF;
+    --color-text-muted:  #AAAAAA;
+    --color-error:       #E53935;
+    --color-success:     #43A047;
+    --color-warning:     #FB8C00;
+
+    /* Tipografia */
+    --font-heading: 'Bebas Neue', 'Impact', sans-serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+
+    /* Espaçamento (base 4px) */
+    --space-1: 4px;  --space-2: 8px;   --space-3: 12px;
+    --space-4: 16px; --space-6: 24px;  --space-8: 32px;
+
+    /* Bordas */
+    --radius-sm: 4px;  --radius-md: 8px;
+    --radius-lg: 16px; --radius-full: 9999px;
+
+    /* Animações */
+    --transition-fast:   150ms ease-out;
+    --transition-normal: 250ms ease-out;
+    --transition-slow:   400ms ease-in-out;
+}
+
+/* =============================================
    APP SHELL — HEADER FIXO (mobile-first)
    ============================================= */
 html,
@@ -266,6 +301,7 @@ body {
     padding: 14px 16px;
     max-width: 1200px;
     margin: 0 auto;
+    isolation: isolate;
 }
 
 @media (min-width: 500px) {
@@ -296,13 +332,37 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transform-style: preserve-3d;
+    transition: transform var(--transition-normal, 250ms ease-out),
+                box-shadow var(--transition-normal, 250ms ease-out);
+    will-change: transform;
+    cursor: pointer;
 }
 
 .produto-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.13);
+    transform: perspective(800px) rotateX(-3deg) rotateY(4deg) translateZ(8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 179, 0, 0.3);
 }
+
+.produto-card:active {
+    transform: perspective(800px) rotateX(0deg) rotateY(0deg) translateZ(4px);
+    transition-duration: 80ms;
+}
+
+/* Entrada com stagger */
+@keyframes card-enter {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.produto-card { animation: card-enter 300ms ease-out backwards; }
+.produto-card:nth-child(1) { animation-delay: 0ms; }
+.produto-card:nth-child(2) { animation-delay: 60ms; }
+.produto-card:nth-child(3) { animation-delay: 120ms; }
+.produto-card:nth-child(4) { animation-delay: 180ms; }
+.produto-card:nth-child(5) { animation-delay: 240ms; }
+.produto-card:nth-child(6) { animation-delay: 300ms; }
 
 /* Imagem do produto */
 .produto-img-wrap {
@@ -2249,7 +2309,7 @@ body {
     border: 1px solid #e6ff00;
     padding: 4px 10px;
     cursor: pointer;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.8rem;
 }
 
@@ -2390,7 +2450,7 @@ body {
     border: 2px solid #555;
     color: #e6ff00;
     padding: 6px 10px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     outline: none;
     cursor: pointer;
@@ -2412,7 +2472,7 @@ body {
     border: 1.5px solid #444;
     color: #aaa;
     padding: 5px 10px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.78rem;
     cursor: pointer;
     transition: all 0.15s;
@@ -2428,7 +2488,7 @@ body {
     color: #000;
     border: 2px solid #e6ff00;
     padding: 7px 18px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     font-weight: 900;
     cursor: pointer;
@@ -2447,10 +2507,10 @@ body {
 
 .rel-btn-csv {
     background: #111;
-    color: #7fff7f;
-    border: 2px solid #7fff7f;
+    color: var(--color-accent);
+    border: 2px solid var(--color-accent);
     padding: 7px 18px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     font-weight: 900;
     cursor: pointer;
@@ -2459,7 +2519,7 @@ body {
 }
 
 .rel-btn-csv:hover:not(:disabled) {
-    background: #7fff7f;
+    background: var(--color-accent);
     color: #000;
 }
 
@@ -2568,7 +2628,7 @@ body {
 
 .rel-fat {
     font-weight: 900;
-    color: #7fff7f;
+    color: var(--color-accent);
     text-align: right;
 }
 
@@ -2586,7 +2646,7 @@ body {
 .est-container {
     min-height: 100vh;
     background: #0f0f0f;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     color: #f0f0f0;
 }
 
@@ -2597,7 +2657,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 4px solid #7fff7f;
+    border-bottom: 4px solid var(--color-accent);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -2607,7 +2667,7 @@ body {
     margin: 0;
     font-size: 1.3rem;
     font-weight: 900;
-    color: #7fff7f;
+    color: var(--color-accent);
     text-transform: uppercase;
 }
 
@@ -2634,8 +2694,8 @@ body {
 }
 
 .est-btn-nav:hover {
-    border-color: #7fff7f;
-    color: #7fff7f;
+    border-color: var(--color-accent);
+    color: var(--color-accent);
 }
 
 /* Abas */
@@ -2652,7 +2712,7 @@ body {
     background: transparent;
     color: #aaa;
     cursor: pointer;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.85rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -2662,13 +2722,13 @@ body {
 }
 
 .est-tab:hover {
-    color: #7fff7f;
+    color: var(--color-accent);
 }
 
 .est-tab.ativo {
-    color: #7fff7f;
-    border-bottom-color: #7fff7f;
-    background: #0a1a0a;
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+    background: rgba(255, 179, 0, 0.06);
 }
 
 /* Seção */
@@ -2705,7 +2765,7 @@ body {
 .est-kpi-valor {
     font-size: 1.6rem;
     font-weight: 900;
-    color: #7fff7f;
+    color: var(--color-accent);
 }
 
 .est-kpi-alerta .est-kpi-valor {
@@ -2724,7 +2784,7 @@ body {
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #7fff7f;
+    color: var(--color-accent);
     margin: 0 0 16px 0;
     padding-bottom: 10px;
     border-bottom: 1px solid #333;
@@ -2820,8 +2880,8 @@ body {
 
 .est-tipo-entrada {
     background: #0a2a0a;
-    color: #7fff7f;
-    border: 1px solid #7fff7f;
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
 }
 
 .est-tipo-saida {
@@ -2854,8 +2914,8 @@ body {
 
 .est-btn-entrada {
     background: #0a2a0a;
-    color: #7fff7f;
-    border: 1px solid #7fff7f;
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
     padding: 4px 8px;
     cursor: pointer;
     font-size: 0.8rem;
@@ -2863,7 +2923,7 @@ body {
 }
 
 .est-btn-entrada:hover {
-    background: #7fff7f;
+    background: var(--color-accent);
     color: #000;
 }
 
@@ -2882,11 +2942,11 @@ body {
 }
 
 .est-btn-salvar {
-    background: #7fff7f;
+    background: var(--color-accent);
     color: #000;
-    border: 2px solid #7fff7f;
+    border: 2px solid var(--color-accent);
     padding: 9px 20px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     font-weight: 900;
     cursor: pointer;
@@ -2903,7 +2963,7 @@ body {
     color: #aaa;
     border: 2px solid #444;
     padding: 9px 20px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     cursor: pointer;
     text-transform: uppercase;
@@ -2940,13 +3000,13 @@ body {
     border: 2px solid #444;
     color: #f0f0f0;
     padding: 8px 10px;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-body);
     font-size: 0.9rem;
     outline: none;
 }
 
 .est-input:focus {
-    border-color: #7fff7f;
+    border-color: var(--color-accent);
 }
 
 select.est-input option {
@@ -2962,8 +3022,8 @@ select.est-input option {
 .est-total-compra {
     padding: 10px 14px;
     background: #0a2a0a;
-    border: 1px solid #7fff7f;
-    color: #7fff7f;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
     font-size: 0.9rem;
     margin-bottom: 14px;
 }
@@ -2981,7 +3041,7 @@ select.est-input option {
 }
 
 .est-resumo-bar strong {
-    color: #7fff7f;
+    color: var(--color-accent);
 }
 
 /* Loading e empty */
@@ -3000,8 +3060,8 @@ select.est-input option {
 /* Mensagens */
 .est-msg-ok {
     background: #0a2a0a;
-    border: 1px solid #7fff7f;
-    color: #7fff7f;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
     padding: 10px 14px;
     margin-bottom: 14px;
     font-size: 0.9rem;
@@ -3030,7 +3090,7 @@ select.est-input option {
 
 .est-modal {
     background: #1a1a1a;
-    border: 2px solid #7fff7f;
+    border: 2px solid var(--color-accent);
     padding: 28px;
     width: 100%;
     max-width: 500px;
@@ -3040,7 +3100,7 @@ select.est-input option {
 
 .est-modal h3 {
     margin: 0 0 6px;
-    color: #7fff7f;
+    color: var(--color-accent);
     font-size: 1.1rem;
     text-transform: uppercase;
 }
@@ -3637,7 +3697,7 @@ select.est-input option {
 }
 
 .totem-btn-checkout {
-    background: #7fff7f;
+    background: var(--color-accent);
     color: #000;
     border: none;
     width: 100%;
@@ -3944,7 +4004,7 @@ select.est-input option {
 
 .totem-opt-btn.active {
     background: rgba(127, 255, 127, 0.1);
-    border-color: #7fff7f;
+    border-color: var(--color-accent);
 }
 
 .totem-input-lg {
@@ -3972,7 +4032,7 @@ select.est-input option {
 }
 
 .totem-btn-final {
-    background: #7fff7f;
+    background: var(--color-accent);
 }
 
 .totem-btn-next:disabled,
@@ -4015,7 +4075,7 @@ select.est-input option {
 
 .t-success-box h1 {
     font-size: 3.5rem;
-    color: #7fff7f;
+    color: var(--color-accent);
     margin: 0 0 10px;
 }
 
@@ -4474,5 +4534,147 @@ select.est-input option {
    ================================================================ */
 #blazor-error-ui {
     display: none !important;
+}
+
+/* ================================================================
+   SKELETON LOADING — Totem cards
+   ================================================================ */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        #1a1a1a 25%,
+        #2a2a2a 50%,
+        #1a1a1a 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: 4px;
+    color: transparent;
+}
+
+@keyframes skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-img   { height: 140px; width: 100%; border-radius: 12px 12px 0 0; }
+.skeleton-title { height: 20px; width: 75%; margin: 14px 14px 6px; }
+.skeleton-desc  { height: 14px; width: 90%; margin: 0 14px 6px; }
+.skeleton-price { height: 24px; width: 40%; margin: 0 14px 14px; }
+
+/* ================================================================
+   MOBILE BOTTOM SHEET — Carrinho Totem (< 640px)
+   ================================================================ */
+
+/* FAB — botão flutuante carrinho */
+.cart-fab {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 16px;
+    background: var(--color-accent);
+    color: #000;
+    font-weight: 900;
+    font-size: 0.95rem;
+    padding: 14px 20px;
+    border: none;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    z-index: 100;
+    gap: 8px;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.cart-fab:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Overlay escuro */
+.cart-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 199;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-slow);
+}
+
+.cart-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Bottom Sheet */
+.cart-sheet {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #141414;
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid #2A2A2A;
+    z-index: 200;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform var(--transition-slow);
+    padding: 20px 16px;
+}
+
+.cart-sheet.open {
+    transform: translateY(0);
+}
+
+.cart-sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: #444;
+    border-radius: var(--radius-full);
+    margin: 0 auto 16px;
+}
+
+/* Mostrar FAB + sheet apenas em mobile */
+@media (max-width: 639px) {
+    .cart-fab     { display: flex; }
+    .cart-overlay { display: block; }
+    .cart-sheet   { display: block; }
+}
+
+/* Grid responsivo Totem — mobile-first */
+@media (max-width: 639px) {
+    .totem-grid {
+        position: relative !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 100vh;
+        inset: auto !important;
+    }
+
+    .totem-sidebar {
+        display: none !important;
+    }
+
+    .totem-menu-area {
+        padding: 16px;
+        overflow-y: auto;
+    }
+
+    .produtos-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+    .produtos-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .totem-sidebar {
+        width: 260px;
+    }
 }
 

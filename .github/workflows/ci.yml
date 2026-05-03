@@ -19,24 +19,38 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-
+
       - name: Restore
         run: dotnet restore BatatasFritas.sln
 
       - name: Build
         run: dotnet build BatatasFritas.sln --configuration Release --no-restore
 
-      - name: Test Domain (unitários puros)
-        run: >
-          dotnet test tests/BatatasFritas.Domain.Tests/BatatasFritas.Domain.Tests.csproj
-          --configuration Release
-          --no-build
-          --verbosity normal
-          --collect:"XPlat Code Coverage"
+      - name: Test (Domain + Infrastructure)
+        run: |
+          dotnet test tests/BatatasFritas.Domain.Tests/BatatasFritas.Domain.Tests.csproj \
+            --configuration Release --no-build --verbosity normal \
+            --logger "trx;LogFileName=domain.trx"
+          dotnet test tests/BatatasFritas.Infrastructure.Tests/BatatasFritas.Infrastructure.Tests.csproj \
+            --configuration Release --no-build --verbosity normal \
+            --logger "trx;LogFileName=infrastructure.trx"
 
-      - name: Test Infrastructure (migrations SQLite in-memory)
-        run: >
-          dotnet test tests/BatatasFritas.Infrastructure.Tests/BatatasFritas.Infrastructure.Tests.csproj
-          --configuration Release
-          --no-build
-          --verbosity normal
-          --collect:"XPlat Code Coverage"
+      - name: Test API (TestContainers — requires Docker)
+        run: |
+          dotnet test tests/BatatasFritas.API.Tests/BatatasFritas.API.Tests.csproj \
+            --configuration Release --no-build --verbosity normal \
+            --logger "trx;LogFileName=api.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/*.trx"
+          retention-days: 7
