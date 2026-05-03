@@ -27,8 +27,19 @@ public class KdsAuthService
         _authStateProvider = authStateProvider;
     }
 
-    /// <summary>Expõe o token atual de forma síncrona (para o DelegatingHandler).</summary>
-    public string? GetToken() => _token;
+    /// <summary>Expõe o token atual. Se não estiver em memória, tenta recuperar assincronamente da sessão.</summary>
+    public async Task<string?> GetTokenAsync()
+    {
+        if (string.IsNullOrEmpty(_token))
+        {
+            try
+            {
+                _token = await _js.InvokeAsync<string?>("localStorage.getItem", TokenKey);
+            }
+            catch { /* Ignora se o JS não estiver disponível no contexto de pré-renderização */ }
+        }
+        return _token;
+    }
 
     /// <summary>
     /// Tenta restaurar o token da localStorage (chamado no startup do app).

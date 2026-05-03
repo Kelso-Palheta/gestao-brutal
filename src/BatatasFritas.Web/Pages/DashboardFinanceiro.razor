@@ -772,7 +772,7 @@
         else
             hubUrl = $"{apiBase}/hubs/pedidos";
 
-        var token = KdsAuth.GetToken();
+        var token = await KdsAuth.GetTokenAsync();
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
