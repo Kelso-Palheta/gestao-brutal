@@ -13,14 +13,14 @@ public class AuthDelegatingHandler : DelegatingHandler
 
     public AuthDelegatingHandler(IServiceProvider sp) => _sp = sp;
 
-    protected override Task<HttpResponseMessage> SendAsync(
+    protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var auth = _sp.GetRequiredService<KdsAuthService>();
-        var token = auth.GetToken();
+        var token = await auth.GetTokenAsync();
         if (!string.IsNullOrEmpty(token))
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-        return base.SendAsync(request, cancellationToken);
+        return await base.SendAsync(request, cancellationToken);
     }
 }
