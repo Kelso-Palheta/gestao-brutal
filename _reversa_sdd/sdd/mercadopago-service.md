@@ -1,4 +1,8 @@
-# SDD — MercadoPagoService (Integração de Pagamentos)
+# SDD — MercadoPago Integration (DEPRECATED)
+
+> ⚠️ **DEPRECATED** (2026-05-01 FASE 3.5)
+> Esta integração foi removida do sistema. O fluxo atual utiliza aprovação manual.
+> Veja: [`pagamento-manual.md`](pagamento-manual.md) para a especificação atual.
 
 > Gerado pelo Reversa (Redator) em 2026-05-01 | Nível: Detalhado
 > Rastreabilidade: `src/BatatasFritas.API/Services/MercadoPagoService.cs`

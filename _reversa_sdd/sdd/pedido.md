@@ -20,9 +20,9 @@
 | Calcular a taxa de entrega com base no bairro | **Must** |
 | Calcular o valor elegível para acúmulo de cashback | **Must** |
 | Rastrear status do pedido (KDS) | **Must** |
-| Rastrear status do pagamento (MercadoPago) | **Must** |
+| Rastrear status do pagamento (Manual) | **Must** |
 | Suportar divisão de pagamento em dois métodos | **Should** |
-| Armazenar link de pagamento PIX/Checkout Pro | **Should** |
+| Armazenar dado de pagamento PIX (Copia e Cola) | **Should** |
 | Registrar observações do operador | **Could** |
 
 ---
@@ -58,7 +58,8 @@ Pedido(
 |---|---|---|
 | `AdicionarItem(produto, quantidade, precoUnitario, observacao)` | Produto, int, decimal, string | Cria `ItemPedido` e adiciona à coleção |
 | `AlterarStatus(novoStatus)` | StatusPedido | Atualiza o status do KDS |
-| `SetLinkPagamento(link)` | string | Define o URL de pagamento PIX/Checkout |
+| `SetLinkPagamento(link)` | string | Define o dado de pagamento PIX (manual) |
+| `AprovarPagamento()` | - | Muda `StatusPagamento` para `Aprovado` |
 
 ---
 
@@ -68,10 +69,11 @@ Pedido(
 2. 🟢 **Total nunca negativo** — `Math.Max(0, ...)` garante que cashback excessivo não gera valor negativo.
 3. 🟢 **Snapshot de preço** — `PrecoUnitario` é salvo em `ItemPedido` no momento da criação. Mudanças futuras no `Produto.PrecoBase` não afetam pedidos existentes.
 4. 🟢 **Status inicial é sempre Recebido** — definido no construtor, não configurável externamente.
-5. 🟢 **StatusPagamento inicial é sempre Pendente** — definido no construtor.
-6. 🟢 **TipoAtendimento padrão é Delivery** — se não informado.
-7. 🟡 **Transições de status não validadas no Domain** — `AlterarStatus` aceita qualquer `StatusPedido` sem verificar a sequência lógica. A validação fica por conta do KdsController.
-8. 🟡 **BairroEntrega pode ser null** — para pedidos Balcão/Totem. TaxaEntrega retorna 0 nesses casos.
+| 5. 🟢 **StatusPagamento inicial é sempre Pendente** — definido no construtor.
+| 6. 🟢 **StatusPagamento Simplificado** — Apenas `Pendente`, `Aprovado` e `Cancelado` (removidos Processando e Recusado).
+| 7. 🟢 **TipoAtendimento padrão é Delivery** — se não informado.
+| 8. 🟡 **Transições de status não validadas no Domain** — `AlterarStatus` aceita qualquer `StatusPedido` sem verificar a sequência lógica. A validação fica por conta do KdsController.
+| 9. 🟡 **BairroEntrega pode ser null** — para pedidos Balcão/Totem. TaxaEntrega retorna 0 nesses casos.
 
 ---
 
@@ -80,10 +82,11 @@ Pedido(
 1. Construtor inicializa todos os campos obrigatórios
 2. `DataHoraPedido = DateTime.UtcNow` (UTC sempre)
 3. `Status = StatusPedido.Recebido`
-4. `StatusPagamento = StatusPagamento.Pendente`
-5. Controller chama `AdicionarItem()` para cada item do DTO
-6. Controller persiste via `IRepository<Pedido>.AddAsync()`
-7. NHibernate gera o `Id` no banco
+| 4. `StatusPagamento = StatusPagamento.Pendente`
+| 5. Controller chama `AdicionarItem()` para cada item do DTO
+| 6. Controller persiste via `IRepository<Pedido>.AddAsync()`
+| 7. NHibernate gera o `Id` no banco
+| 8. **Operador aprova pagamento manualmente no Dashboard** → Status muda para `Aprovado` e pedido segue para produção.
 
 ## Fluxos Alternativos
 
