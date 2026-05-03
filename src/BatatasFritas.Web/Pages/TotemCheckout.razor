@@ -132,7 +132,7 @@
                         <label style="display:block; font-size:1rem; margin-bottom:8px;">1º - @(pagamento switch { "Dinheiro" => "Dinheiro", "Cartao" => "Cartão", "Pix" => "PIX", _ => "Método"}):</label>
                         <div style="display:flex; gap:10px; align-items:center;">
                             <span style="font-size:1.2rem; font-weight:bold;">R$</span>
-                            <input type="number" step="0.01" min="0.01" max="@((TotalPagar - 0.01m).ToString(System.Globalization.CultureInfo.InvariantCulture))" @bind="valorPrimeiroPagamento" @oninput="CalcularSegundoPagamento" style="flex-grow:1; max-width:150px; padding:8px; font-size:1.2rem; font-weight:bold; border:2px solid #4CAF50; border-radius:6px; background:#111; color:#fff;" />
+                            <input type="number" step="0.01" min="0.01" max="@((TotalPagar - 0.01m).ToString(System.Globalization.CultureInfo.InvariantCulture))" @bind="valorPrimeiroPagamento" @bind:format="F2" @oninput="CalcularSegundoPagamento" style="flex-grow:1; max-width:150px; padding:8px; font-size:1.2rem; font-weight:bold; border:2px solid #4CAF50; border-radius:6px; background:#111; color:#fff;" />
                             <button @onclick="UsarValorTotalPrimeiro" style="background:#4CAF50; color:#fff; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; cursor:pointer;">TOTAL (@TotalPagar.ToString("C2"))</button>
                         </div>
                     </div>
