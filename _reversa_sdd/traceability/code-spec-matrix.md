@@ -18,7 +18,9 @@ Esta matriz mapeia os arquivos principais do projeto legado para suas respectiva
 | `src/BatatasFritas.Domain/Entities/MovimentacaoEstoque.cs` | `sdd/produto-estoque.md` | 🟢 Completa |
 | `src/BatatasFritas.API/Controllers/PedidosController.cs` | `sdd/pedidos-controller.md` | 🟢 Completa (Post) |
 | `src/BatatasFritas.API/Controllers/PedidosController.cs` | `sdd/baixar-estoque.md` | 🟢 Completa (Privado) |
-| `src/BatatasFritas.API/Services/MercadoPagoService.cs` | `sdd/mercadopago-service.md` | 🟢 Completa |
+| `src/BatatasFritas.API/Services/MercadoPagoService.cs` | `sdd/mercadopago-service.md` | 🗑️ Removido (vFASE 3.5) |
+| `src/BatatasFritas.API/Controllers/WebhookController.cs` | `sdd/remocao-mercadopago.md` | 🗑️ Removido |
+| `(Novo Fluxo Manual)` | `sdd/pagamento-manual.md` | 🟢 Completa |
 | `src/BatatasFritas.API/Hubs/PedidosHub.cs` | `sdd/kds.md` | 🟢 Completa |
 | `src/BatatasFritas.Web/Pages/KdsMonitor.razor` | `sdd/kds.md` | 🟢 UI Logic |
 | `src/BatatasFritas.API/Program.cs` | `sdd/auth.md` | 🟢 Configuração |
@@ -38,8 +40,9 @@ Esta matriz mapeia os arquivos principais do projeto legado para suas respectiva
 
 ---
 
-## Estatísticas Finais de Geração
-- **Specs SDD geradas**: 9
-- **APIs documentadas**: 1 (OpenAPI completo)
+## Estatísticas de Geração (v1.1)
+- **Specs SDD ativas**: 10
+- **Specs depreciadas**: 1 (MercadoPago)
+- **APIs documentadas**: 1 (OpenAPI atualizada)
 - **User Stories criadas**: 3
-- **% de Cobertura estimada**: 85% do Core Business Logic
+- **% de Cobertura estimada**: 90% do Core Business Logic (Fluxo Manual incluído)

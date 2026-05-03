@@ -9,4 +9,5 @@ public interface IUnitOfWork : IDisposable
     Task CommitAsync();
     Task RollbackAsync();
     Task<int> ExecuteRawAsync(string sql, Dictionary<string, object>? parameters = null);
+    Task<int> ExecuteHqlAsync(string hql, Dictionary<string, object>? parameters = null);
 }
