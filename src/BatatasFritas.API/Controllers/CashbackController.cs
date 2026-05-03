@@ -161,7 +161,7 @@ public class CashbackController : ControllerBase
             
             await _uow.ExecuteHqlAsync(
                 "DELETE FROM TransacaoCashback WHERE Carteira.Id = :id",
-                new() { ["id"] = (object)carteira.Id });
+                new Dictionary<string, object> { ["id"] = carteira.Id });
 
             await _repoCarteira.DeleteAsync(carteira);
             await _uow.CommitAsync();
