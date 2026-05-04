@@ -4317,6 +4317,98 @@ select.est-input option {
         border-top: 2px solid #333;
     }
 
+    /* ── TOTEM CHECKOUT MOBILE ── */
+    .totem-flow {
+        padding: 80px 15px 30px 15px !important;
+    }
+
+    .totem-btn-back {
+        top: 15px !important;
+        left: 15px !important;
+        padding: 8px 16px !important;
+        font-size: 0.9rem !important;
+    }
+
+    .totem-checkout-box h1 {
+        font-size: 1.8rem !important;
+    }
+
+    .totem-checkout-sub {
+        font-size: 1rem !important;
+        margin-bottom: 20px !important;
+    }
+
+    .totem-chk-total {
+        padding: 15px !important;
+        font-size: 1.1rem !important;
+        margin-bottom: 25px !important;
+    }
+
+    .totem-chk-total span {
+        font-size: 1.4rem !important;
+    }
+
+    .totem-step-title {
+        font-size: 1.1rem !important;
+        margin-bottom: 15px !important;
+    }
+
+    .totem-input-lg {
+        padding: 12px 15px !important;
+        font-size: 1.1rem !important;
+        margin-bottom: 20px !important;
+    }
+
+    .totem-opt-btn {
+        padding: 15px 10px !important;
+        font-size: 1rem !important;
+        border-radius: 15px !important;
+    }
+
+    .totem-opt-icon {
+        font-size: 2rem !important;
+        margin-bottom: 5px !important;
+    }
+
+    .totem-btn-next, .totem-btn-final {
+        padding: 16px !important;
+        font-size: 1.1rem !important;
+        border-radius: 12px !important;
+    }
+
+    .totem-cashback-box h3 {
+        font-size: 1rem !important;
+    }
+
+    /* ── TOTEM SUCESSO MOBILE ── */
+    .t-icon {
+        font-size: 3rem !important;
+        margin-bottom: 10px !important;
+    }
+
+    .totem-success h1 {
+        font-size: 1.8rem !important;
+    }
+
+    .t-number-box {
+        padding: 20px !important;
+        border-radius: 20px !important;
+        margin-bottom: 25px !important;
+    }
+
+    .t-number-box strong {
+        font-size: 3rem !important;
+    }
+
+    .t-number-box span {
+        font-size: 1rem !important;
+    }
+
+    .totem-success p {
+        font-size: 1rem !important;
+        margin-bottom: 15px !important;
+    }
+
     /* ── ESTOQUE ── */
     .est-container {
         padding: 12px !important;
