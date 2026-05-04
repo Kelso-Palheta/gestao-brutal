@@ -3590,12 +3590,12 @@ select.est-input option {
     background: #111;
     border: 2px solid #333;
     width: 90%;
-    max-width: 700px;
-    border-radius: 30px;
+    max-width: 480px;
+    border-radius: 24px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
+    max-height: 85vh;
 }
 
 .totem-modal-header {
@@ -4241,25 +4241,76 @@ select.est-input option {
         font-size: 1rem;
     }
 
-    /* Modal de personalização em mobile */
+    /* Modal de personalização em mobile — card compacto */
     .totem-modal-overlay {
         padding: 10px;
+        align-items: center;
     }
 
     .totem-modal {
-        max-height: 90vh;
-        overflow-y: auto;
+        width: 100%;
+        max-width: 400px;
+        max-height: 80vh;
+        border-radius: 20px;
+        margin: auto;
+    }
+
+    .totem-modal-header {
+        padding: 16px 20px;
     }
 
     .totem-modal-header h2 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+        font-weight: 700;
     }
 
     .totem-modal-body {
         flex: 1;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        padding: 15px !important;
+        padding: 16px 20px !important;
+    }
+
+    .totem-modal-desc {
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+    }
+
+    .totem-modal-price {
+        font-size: 1.6rem;
+        margin-bottom: 16px;
+    }
+
+    .totem-modal-footer {
+        padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+        background: #0a0a0a;
+    }
+
+    .totem-btn-confirm-add {
+        font-size: 1.1rem !important;
+        padding: 14px !important;
+        border-radius: 14px;
+    }
+
+    .totem-qty-selector {
+        padding: 12px 16px;
+        border-radius: 14px;
+    }
+
+    .totem-qty-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        font-size: 1.4rem;
+    }
+
+    .totem-qty-value {
+        font-size: 1.4rem !important;
+    }
+
+    .totem-chip {
+        padding: 8px 16px;
+        font-size: 0.9rem;
     }
 
     /* FAB Carrinho Mobile — Aplicável a Home e Totem */
