@@ -3,6 +3,7 @@
 @using BatatasFritas.Shared.Enums
 @inject HttpClient Http
 @inject BatatasFritas.Web.Services.CarrinhoState Carrinho
+@inject NavigationManager Navigation
 
 <PageTitle>Cardápio — Palheta Brutal</PageTitle>
 
@@ -170,6 +171,62 @@ else
             </div>
         </div>
     }
+    }
+
+    @if (Carrinho.Itens.Any())
+    {
+        <!-- FAB Mobile Home -->
+        <button class="home-mobile-cart-fab" @onclick="() => mostrarCarrinhoMobile = true">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="home-mobile-cart-count">@Carrinho.Itens.Sum(x => x.Quantidade)</div>
+                <span>Ver Pedido</span>
+            </div>
+            <span>@Carrinho.Subtotal.ToString("C2")</span>
+        </button>
+    }
+
+    @if (mostrarCarrinhoMobile)
+    {
+        <div class="home-mobile-cart-sheet" @onclick="() => mostrarCarrinhoMobile = false">
+            <div class="home-sheet-content" @onclick:stopPropagation>
+                <div class="totem-sheet-handle"></div>
+                <div class="totem-sheet-header">
+                    <h2 style="color: #fff; font-weight: 900;">🛒 Seu Carrinho</h2>
+                    <button class="totem-btn-clear" @onclick="() => { mostrarCarrinhoMobile = false; Carrinho.LimparCarrinho(); }">Limpar</button>
+                </div>
+
+                <div class="totem-cart-items" style="max-height: 50dvh; overflow-y: auto;">
+                    @for (var idx = 0; idx < Carrinho.Itens.Count; idx++)
+                    {
+                        var item = Carrinho.Itens[idx];
+                        var indice = idx;
+                        <div class="totem-cart-item">
+                            <div class="totem-item-qnty">@item.Quantidade</div>
+                            <div class="totem-item-details">
+                                <strong style="color: #fff;">@item.NomeProduto</strong>
+                                @if (!string.IsNullOrEmpty(item.Observacao))
+                                {
+                                    <span class="totem-item-obs">@item.Observacao</span>
+                                }
+                            </div>
+                            <div class="totem-item-price" style="color: #ffcc00;">@((item.PrecoUnitario * item.Quantidade).ToString("C2"))</div>
+                            <button class="totem-btn-remove" @onclick="() => Carrinho.RemoverItemPorIndice(indice)">×</button>
+                        </div>
+                    }
+                </div>
+
+                <div class="totem-sidebar-footer" style="padding: 20px 0 0 0; margin-top: auto;">
+                    <div class="totem-total-line">
+                        <span style="color: #aaa;">Total:</span>
+                        <strong style="color: #fff; font-size: 1.6rem;">@Carrinho.Subtotal.ToString("C2")</strong>
+                    </div>
+                    <button class="totem-btn-checkout" style="background: #ffcc00; color: #000; font-weight: 900;" @onclick='() => Navigation.NavigateTo("/carrinho")'>
+                        ✅ Finalizar Pedido
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
@@ -180,6 +237,7 @@ else
     private bool menuDigitalAtivo = true;
     private string menuDigitalMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
     private string? erroCarregamento;
+    private bool mostrarCarrinhoMobile = false;
 
     // Modal State
     private bool mostrarModal = false;
