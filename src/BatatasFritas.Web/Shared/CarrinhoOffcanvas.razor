@@ -344,7 +344,7 @@ else if (mostrarModalConfirmacao)
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                     <div>
                         <p style="margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; font-weight: bold;">Chave PIX / Dúvidas:</p>
-                        <p style="margin: 5px 0; font-size: 1.4rem; font-weight: 900; color: #000;">@Config["Pagamento:ChavePix"]</p>
+                        <p style="margin: 5px 0; font-size: 1.1rem; font-weight: 900; color: #000; word-break: break-all; line-height: 1.2;">@Config["Pagamento:ChavePix"]</p>
                     </div>
                     <div style="text-align: right;">
                         <p style="margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; font-weight: bold;">Total:</p>
@@ -366,7 +366,7 @@ else if (mostrarModalConfirmacao)
 
             @{
                 string msgStatus = "";
-                var resumoItensFormatado = string.Join("\n", Carrinho.Itens.Select(i => $"• {i.Quantidade}x {i.NomeProduto}"));
+                var resumoItensFormatado = "• " + resumoItensPedido.Replace(", ", "\n• ");
                 
                 if (valorSegundoPagamento > 0 && !string.IsNullOrEmpty(segundoPagamento))
                 {
