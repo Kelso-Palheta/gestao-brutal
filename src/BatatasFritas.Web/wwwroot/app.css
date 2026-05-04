@@ -4599,30 +4599,59 @@ select.est-input option {
 
 
 /* ────────────────────────────────────────────────────────
-   BRUTAL iOS OVERRIDES — Correção de Safe Areas e Safari Bars
+   BRUTAL iOS OVERRIDES — Versão Slim & Estável
    ──────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-    /* Libera o botão de "Adicionar" nos popups */
+    /* Libera o botão de "Adicionar" nos popups sem exagerar no tamanho */
     .modal-footer, .totem-modal-footer {
-        padding: 15px 15px calc(20px + env(safe-area-inset-bottom)) 15px !important;
+        padding: 12px 15px calc(12px + env(safe-area-inset-bottom)) 15px !important;
         background: #111 !important;
         border-top: 1px solid #333 !important;
     }
 
-    /* Evita que o modal transborde a tela */
+    /* Modal mais equilibrado */
     .modal-content, .totem-modal {
-        max-height: 90dvh !important;
-        margin-bottom: env(safe-area-inset-bottom) !important;
+        width: 92vw !important;
+        max-width: 450px !important;
+        max-height: 85dvh !important;
+        margin: auto !important;
+        overflow-x: hidden !important;
     }
 
-    /* Garante que o corpo do modal role corretamente */
-    .modal-body, .totem-modal-body {
-        padding-bottom: 30px !important;
+    /* Ícones e textos em tamanho real, não gigante */
+    .totem-card-img, .produto-img-placeholder {
+        width: 55px !important;
+        height: 55px !important;
+        font-size: 1.8rem !important;
     }
 
-    /* Ajuste fino do FAB para não "dançar" com a barra do Safari */
+    .totem-card-info h3, .produto-nome {
+        font-size: 0.95rem !important;
+    }
+
+    /* FAB Carrinho — Compacto e centralizado para NÃO travar o scroll da tela */
     .home-mobile-cart-fab, .totem-mobile-cart-fab {
-        bottom: calc(15px + env(safe-area-inset-bottom)) !important;
-        box-shadow: 0 -5px 25px rgba(0,0,0,0.8) !important;
+        position: fixed;
+        bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: auto !important;
+        min-width: 200px;
+        max-width: 90vw;
+        background: #ffcc00 !important;
+        color: #000 !important;
+        padding: 14px 24px !important;
+        border-radius: 50px !important; /* Estilo pílula */
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+        z-index: 9999 !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* Bottom Sheet estável */
+    .home-sheet-content, .totem-sheet-content {
+        padding: 15px 15px calc(20px + env(safe-area-inset-bottom)) 15px !important;
+        max-height: 80dvh !important;
     }
 }
