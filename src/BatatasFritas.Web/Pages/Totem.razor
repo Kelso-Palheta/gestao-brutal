@@ -266,6 +266,8 @@
             selecionadosIds.Remove(c.Id);
         else
             selecionadosIds.Add(c.Id);
+            
+        StateHasChanged();
     }
 
     private void AlterarQuantidade(int id, int delta)
@@ -276,6 +278,8 @@
         quantidadesAdicionais[id] += delta;
         if (quantidadesAdicionais[id] <= 0)
             quantidadesAdicionais.Remove(id);
+            
+        StateHasChanged();
     }
 
     private void AdicionarAoCarrinho()

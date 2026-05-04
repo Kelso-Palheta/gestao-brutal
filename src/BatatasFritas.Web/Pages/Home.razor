@@ -221,6 +221,8 @@ else
             selecionadosIds.Remove(c.Id);
         else
             selecionadosIds.Add(c.Id);
+            
+        StateHasChanged();
     }
 
     private void AlterarQuantidade(int id, int delta)
@@ -230,6 +232,8 @@ else
         quantidadesAdicionais[id] += delta;
         if (quantidadesAdicionais[id] <= 0)
             quantidadesAdicionais.Remove(id);
+            
+        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()
