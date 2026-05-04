@@ -173,7 +173,7 @@ else
     }
     }
 
-    @if (Carrinho.Itens.Any())
+    @if (Carrinho.Itens.Any() && !mostrarCarrinhoMobile)
     {
         <!-- FAB Mobile Home -->
         <button class="home-mobile-cart-fab" @onclick="() => mostrarCarrinhoMobile = true">

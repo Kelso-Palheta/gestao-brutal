@@ -4691,59 +4691,87 @@ select.est-input option {
 
 
 /* ────────────────────────────────────────────────────────
-   BRUTAL iOS OVERRIDES — Versão Slim & Estável
+   BRUTAL iOS OVERRIDES — Versão Ultra-Slim & Scroll Livre
    ──────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-    /* Libera o botão de "Adicionar" nos popups sem exagerar no tamanho */
-    .modal-footer, .totem-modal-footer {
-        padding: 12px 15px calc(12px + env(safe-area-inset-bottom)) 15px !important;
-        background: #111 !important;
-        border-top: 1px solid #333 !important;
+    /* Libera o scroll de vez na Home do Totem */
+    .totem-app-shell {
+        position: relative !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow: visible !important;
+        display: block !important;
     }
 
-    /* Modal mais equilibrado */
+    .totem-grid, .totem-flow, .totem-menu-area {
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow-y: visible !important;
+        display: block !important;
+        position: relative !important;
+    }
+
+    /* Reduz a barra de categorias gigante */
+    .cardapio-filtros, .totem-categories {
+        padding: 8px !important;
+        gap: 5px !important;
+    }
+
+    .filtro-btn {
+        padding: 6px 12px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Popups e Modais "Slim" */
     .modal-content, .totem-modal {
-        width: 92vw !important;
-        max-width: 450px !important;
-        max-height: 85dvh !important;
-        margin: auto !important;
-        overflow-x: hidden !important;
-    }
-
-    /* Ícones e textos em tamanho real, não gigante */
-    .totem-card-img, .produto-img-placeholder {
-        width: 55px !important;
-        height: 55px !important;
-        font-size: 1.8rem !important;
-    }
-
-    .totem-card-info h3, .produto-nome {
-        font-size: 0.95rem !important;
-    }
-
-    /* FAB Carrinho — Compacto e centralizado para NÃO travar o scroll da tela */
-    .home-mobile-cart-fab, .totem-mobile-cart-fab {
-        position: fixed;
-        bottom: calc(20px + env(safe-area-inset-bottom)) !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        width: auto !important;
-        min-width: 200px;
-        max-width: 90vw;
-        background: #ffcc00 !important;
-        color: #000 !important;
-        padding: 14px 24px !important;
-        border-radius: 50px !important; /* Estilo pílula */
-        box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
-        z-index: 9999 !important;
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
-
-    /* Bottom Sheet estável */
-    .home-sheet-content, .totem-sheet-content {
-        padding: 15px 15px calc(20px + env(safe-area-inset-bottom)) 15px !important;
+        width: 95vw !important;
         max-height: 80dvh !important;
+        padding: 10px !important;
+    }
+
+    .totem-modal-header h2, .modal-content h2 {
+        font-size: 1.1rem !important;
+    }
+
+    .totem-modal-body, .modal-body {
+        padding: 10px !important;
+    }
+
+    /* Botão Amarelo de Adicionar (Popup) */
+    .totem-btn-confirm-add, .btn-confirmar {
+        padding: 12px !important;
+        font-size: 1rem !important;
+        height: 50px !important;
+    }
+
+    /* FAB Carrinho — Compacto pílula */
+    .home-mobile-cart-fab, .totem-mobile-cart-fab {
+        bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+        padding: 10px 20px !important;
+        font-size: 0.95rem !important;
+        min-width: 160px !important;
+        height: 45px !important;
+    }
+
+    /* Checkout: fontes e inputs normais */
+    .totem-checkout-box h1 { font-size: 1.4rem !important; }
+    .totem-step-title { font-size: 1rem !important; margin: 10px 0 !important; }
+    .totem-input-lg { 
+        padding: 10px !important; 
+        font-size: 1rem !important; 
+        height: 45px !important; 
+        margin-bottom: 12px !important; 
+    }
+    
+    .totem-opt-btn { padding: 10px !important; font-size: 0.9rem !important; }
+    .totem-opt-icon { font-size: 1.6rem !important; }
+    .totem-btn-next, .totem-btn-final { padding: 12px !important; font-size: 1rem !important; height: 50px !important; }
+
+    /* Inputs de pagamento dividido */
+    .totem-dividir-pagamento input {
+        font-size: 0.9rem !important;
+        padding: 5px !important;
+        height: 38px !important;
+        max-width: 100px !important;
     }
 }
