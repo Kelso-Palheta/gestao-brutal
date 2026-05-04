@@ -40,8 +40,7 @@
             Esta mensagem aparece para o cliente no cardápio digital quando o delivery estiver encerrado.
         </p>
 
-        @if (!string.IsNullOrEmpty(msgDeliveryOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgDeliveryOk</div>  }
-        @if (!string.IsNullOrEmpty(msgDeliveryErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgDeliveryErro</div> }
+
 
         <div class="admin-form-actions" style="margin-top:12px;">
             <button class="admin-btn-salvar" @onclick="SalvarDelivery" disabled="@salvandoDelivery">
@@ -85,8 +84,7 @@
             Esta mensagem aparece para o cliente no totem quando estiver encerrado.
         </p>
 
-        @if (!string.IsNullOrEmpty(msgTotemOk))  { <div class="admin-alert admin-alert-ok"   style="margin-top:8px;">✅ @msgTotemOk</div>  }
-        @if (!string.IsNullOrEmpty(msgTotemErro)) { <div class="admin-alert admin-alert-erro" style="margin-top:8px;">❌ @msgTotemErro</div> }
+
 
         <div class="admin-form-actions" style="margin-top:12px;">
             <button class="admin-btn-salvar" @onclick="SalvarTotem" disabled="@salvandoTotem">
@@ -110,8 +108,7 @@
                 <input type="number" step="0.1" min="0" max="100" @bind="porcentagemCashback" placeholder="Ex: 5" style="max-width: 150px;" />
             </div>
         </div>
-        @if (!string.IsNullOrEmpty(msgCashbackOk))   { <div class="admin-alert admin-alert-ok"   style="margin-top:12px;">✅ @msgCashbackOk</div> }
-        @if (!string.IsNullOrEmpty(msgCashbackErro))  { <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgCashbackErro</div> }
+
         <div class="admin-form-actions" style="margin-top:16px;">
             <button class="admin-btn-salvar" @onclick="SalvarCashback" disabled="@salvandoCashback">
                 @(salvandoCashback ? "Salvando..." : "💾 Salvar Configuração")
@@ -143,8 +140,7 @@
                 <input type="password" @bind="confirmarSenha" placeholder="Repita a nova senha..." />
             </div>
         </div>
-        @if (!string.IsNullOrEmpty(msgSenhaOk))   { <div class="admin-alert admin-alert-ok"   style="margin-top:12px;">✅ @msgSenhaOk</div> }
-        @if (!string.IsNullOrEmpty(msgSenhaErro))  { <div class="admin-alert admin-alert-erro" style="margin-top:12px;">❌ @msgSenhaErro</div> }
+
         <div class="admin-form-actions" style="margin-top:16px;">
             <button class="admin-btn-salvar" @onclick="AlterarSenha" disabled="@alterandoSenha">
                 @(alterandoSenha ? "Salvando..." : "🔑 Alterar Senha")
@@ -161,28 +157,20 @@
     private bool   deliveryAtivo    = true;
     private string deliveryMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
     private bool   salvandoDelivery = false;
-    private string msgDeliveryOk    = "";
-    private string msgDeliveryErro  = "";
 
     // ── Totem ──
     private bool   totemAtivo    = true;
     private string totemMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
     private bool   salvandoTotem = false;
-    private string msgTotemOk    = "";
-    private string msgTotemErro  = "";
 
     // ── Cashback ──
     private decimal porcentagemCashback = 0;
-    private string  msgCashbackOk       = string.Empty;
-    private string  msgCashbackErro     = string.Empty;
     private bool    salvandoCashback    = false;
 
     // ── Segurança ──
     private string senhaAtual      = string.Empty;
     private string novaSenha       = string.Empty;
     private string confirmarSenha  = string.Empty;
-    private string msgSenhaOk      = string.Empty;
-    private string msgSenhaErro    = string.Empty;
     private bool   alterandoSenha  = false;
 
     protected override async Task OnInitializedAsync() => await Carregar();
@@ -208,18 +196,17 @@
 
     private async Task EnviarStatusDelivery()
     {
-        msgDeliveryOk = ""; msgDeliveryErro = "";
         salvandoDelivery = true;
         try
         {
             var dto = new DeliveryStatusDto { Ativo = deliveryAtivo, Mensagem = deliveryMensagem };
             var res = await Http.PostAsJsonAsync("api/configuracoes/delivery-status", dto);
             if (res.IsSuccessStatusCode)
-                msgDeliveryOk = deliveryAtivo ? "Delivery aberto com sucesso!" : "Delivery encerrado. Mensagem ativa.";
+                Alert.MostrarSucesso(deliveryAtivo ? "Delivery aberto com sucesso!" : "Delivery encerrado. Mensagem ativa.");
             else
-                msgDeliveryErro = await res.Content.ReadAsStringAsync();
+                Alert.MostrarErro(await res.Content.ReadAsStringAsync());
         }
-        catch (Exception ex) { msgDeliveryErro = $"Erro: {ex.Message}"; }
+        catch (Exception ex) { Alert.MostrarErro($"Erro: {ex.Message}"); }
         finally { salvandoDelivery = false; }
     }
 
@@ -228,45 +215,42 @@
 
     private async Task EnviarStatusTotem()
     {
-        msgTotemOk = ""; msgTotemErro = "";
         salvandoTotem = true;
         try
         {
             var dto = new TotemStatusDto { Ativo = totemAtivo, Mensagem = totemMensagem };
             var res = await Http.PostAsJsonAsync("api/configuracoes/totem-status", dto);
             if (res.IsSuccessStatusCode)
-                msgTotemOk = totemAtivo ? "Totem ativado com sucesso!" : "Totem encerrado. Mensagem ativa.";
+                Alert.MostrarSucesso(totemAtivo ? "Totem ativado com sucesso!" : "Totem encerrado. Mensagem ativa.");
             else
-                msgTotemErro = await res.Content.ReadAsStringAsync();
+                Alert.MostrarErro(await res.Content.ReadAsStringAsync());
         }
-        catch (Exception ex) { msgTotemErro = $"Erro: {ex.Message}"; }
+        catch (Exception ex) { Alert.MostrarErro($"Erro: {ex.Message}"); }
         finally { salvandoTotem = false; }
     }
 
     private async Task SalvarCashback()
     {
-        msgCashbackOk = string.Empty; msgCashbackErro = string.Empty;
         salvandoCashback = true;
         try
         {
             var body = new CashbackConfigDto { Porcentagem = porcentagemCashback };
             var response = await Http.PostAsJsonAsync("api/cashback/configuracao", body);
             if (response.IsSuccessStatusCode)
-                msgCashbackOk = "Configuração de Cashback salva com sucesso!";
+                Alert.MostrarSucesso("Configuração de Cashback salva com sucesso!");
             else
-                msgCashbackErro = await response.Content.ReadAsStringAsync();
+                Alert.MostrarErro(await response.Content.ReadAsStringAsync());
         }
-        catch (Exception ex) { msgCashbackErro = $"Erro de conexão: {ex.Message}"; }
+        catch (Exception ex) { Alert.MostrarErro($"Erro de conexão: {ex.Message}"); }
         finally { salvandoCashback = false; }
     }
 
     private async Task AlterarSenha()
     {
-        msgSenhaOk = string.Empty; msgSenhaErro = string.Empty;
         if (string.IsNullOrWhiteSpace(senhaAtual) || string.IsNullOrWhiteSpace(novaSenha) || string.IsNullOrWhiteSpace(confirmarSenha))
-            { msgSenhaErro = "Preencha todos os campos."; return; }
-        if (novaSenha != confirmarSenha) { msgSenhaErro = "A nova senha e a confirmação não coincidem."; return; }
-        if (novaSenha.Length < 4)        { msgSenhaErro = "A nova senha deve ter ao menos 4 caracteres."; return; }
+            { Alert.MostrarErro("Preencha todos os campos."); return; }
+        if (novaSenha != confirmarSenha) { Alert.MostrarErro("A nova senha e a confirmação não coincidem."); return; }
+        if (novaSenha.Length < 4)        { Alert.MostrarErro("A nova senha deve ter ao menos 4 caracteres."); return; }
 
         alterandoSenha = true;
         try
@@ -275,12 +259,12 @@
             var response = await Http.PostAsJsonAsync("api/configuracoes/auth/alterar-senha", body);
             if (response.IsSuccessStatusCode)
             {
-                msgSenhaOk = "Senha alterada com sucesso! Use a nova senha no próximo login.";
+                Alert.MostrarSucesso("Senha alterada com sucesso! Use a nova senha no próximo login.");
                 senhaAtual = string.Empty; novaSenha = string.Empty; confirmarSenha = string.Empty;
             }
-            else { msgSenhaErro = await response.Content.ReadAsStringAsync(); }
+            else { Alert.MostrarErro(await response.Content.ReadAsStringAsync()); }
         }
-        catch (Exception ex) { msgSenhaErro = $"Erro de conexão: {ex.Message}"; }
+        catch (Exception ex) { Alert.MostrarErro($"Erro de conexão: {ex.Message}"); }
         finally { alterandoSenha = false; }
     }
 }

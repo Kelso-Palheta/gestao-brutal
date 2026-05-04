@@ -12,18 +12,26 @@ public class AdminAlertService
     /// <summary>Callback invocado após cada mudança de estado (chama StateHasChanged no shell).</summary>
     public Action? OnMudou { get; set; }
 
-    public void MostrarSucesso(string msg)
+    public async void MostrarSucesso(string msg)
     {
         MsgSucesso = msg;
         MsgErro    = "";
         OnMudou?.Invoke();
+
+        // Auto-hide após 4 segundos
+        await Task.Delay(4000);
+        if (MsgSucesso == msg) Limpar();
     }
 
-    public void MostrarErro(string msg)
+    public async void MostrarErro(string msg)
     {
         MsgErro    = msg;
         MsgSucesso = "";
         OnMudou?.Invoke();
+
+        // Auto-hide após 4 segundos
+        await Task.Delay(4000);
+        if (MsgErro == msg) Limpar();
     }
 
     public void Limpar()
