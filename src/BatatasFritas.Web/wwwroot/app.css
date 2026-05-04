@@ -3121,31 +3121,31 @@ select.est-input option {
    MÓDULO TOTEM - FULLSCREEN DARK/NEON THEME
    ===================================================================== */
 
-/* Layout base Fullscreen */
+/* Layout base Fullscreen — Otimizado para Mobile Safari */
 .totem-app-shell {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    width: 100vw;
     background: #000;
     color: #fff;
     font-family: 'Inter', system-ui, sans-serif;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    /* Evita pull-to-refresh em tablets */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 /* Tela Principal Grid */
 .totem-grid {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    flex: 1;
     display: flex;
     flex-direction: row;
+    min-height: 0;
+    position: relative;
 }
 
 .totem-menu-area {
@@ -3390,286 +3390,146 @@ select.est-input option {
     font-size: 1.5rem;
 }
 
-/* Responsividade Totem */
-@media (max-width: 900px) {
-    .totem-app-shell {
-        position: relative !important;
-        overflow: visible !important;
-        height: auto !important;
-        min-height: 100vh;
-        display: block !important;
+/* Responsividade Totem — Unificada e Otimizada */
+@media (max-width: 1024px) {
+    .totem-sidebar {
+        width: 320px;
     }
+}
 
+@media (max-width: 900px) {
     .totem-grid {
-        position: relative !important;
-        flex-direction: column !important;
-        height: auto !important;
-        min-height: 100vh;
-        inset: auto !important;
+        flex-direction: column;
     }
 
     .totem-sidebar {
         width: 100%;
         height: auto;
-        min-height: 200px;
-        max-height: 40vh;
+        max-height: 35vh;
         border-left: none;
         border-top: 2px solid #222;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
     }
 
-    .totem-sidebar-header {
-        padding: 8px 12px;
+    .totem-menu-area {
+        padding: 20px;
     }
+    
+    .totem-logo { font-size: 2.2rem; }
+    .totem-header p { font-size: 1rem; }
+}
 
-    .totem-sidebar-header h2 {
-        font-size: 1.1rem;
-    }
-
-    .totem-btn-clear {
-        font-size: 0.9rem;
-        padding: 5px;
-    }
-
-    .totem-sidebar-footer {
-        padding: 10px 12px;
-    }
-
-    .totem-total-line {
-        margin-bottom: 8px;
-    }
-
-    .totem-total-line span {
-        font-size: 0.95rem;
-    }
-
-    .totem-total-line strong {
-        font-size: 1.3rem;
-    }
-
-    .totem-btn-checkout {
-        padding: 10px;
-        font-size: 1rem;
-    }
-
-    .totem-cart-items {
-        padding: 6px 10px;
-    }
-
-    .totem-cart-item {
-        padding: 8px;
-        gap: 8px;
-        margin-bottom: 6px;
-    }
-
-    .totem-item-qnty {
-        width: 30px;
-        height: 30px;
-        font-size: 1rem;
-        border-radius: 6px;
-    }
-
-    .totem-item-details strong {
-        font-size: 0.9rem;
-    }
-
-    .totem-item-price {
-        font-size: 0.9rem;
-    }
-
-    .totem-btn-remove {
-        width: 28px;
-        height: 28px;
-        font-size: 1rem;
-    }
-
-    .totem-empty-cart {
-        margin-top: 10%;
-        font-size: 1rem;
-    }
-
-    .totem-empty-cart span {
-        font-size: 2rem !important;
+/* Mobile-First Totem (< 600px) — Solução Bottom Sheet + FAB */
+@media (max-width: 600px) {
+    .totem-sidebar {
+        display: none !important; /* Esconde sidebar fixa */
     }
 
     .totem-menu-area {
         padding: 15px;
-        flex: none;
-        height: auto;
-        overflow: visible !important;
-    }
-
-    .totem-logo {
-        font-size: 1.6rem;
-    }
-
-    .totem-header {
-        margin-bottom: 8px;
-    }
-
-    .totem-header p {
-        font-size: 0.85rem;
-    }
-
-    .totem-filters {
-        gap: 8px;
-        padding: 5px 2px 10px 2px;
-        margin-bottom: 10px;
-    }
-
-    .totem-btn-filter {
-        padding: 8px 14px;
-        font-size: 0.9rem;
+        flex: 1;
+        overflow-y: auto;
     }
 
     .totem-products-list {
         grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        padding-bottom: 20px;
+        gap: 12px;
+        padding-bottom: 100px; /* Espaço para o FAB */
     }
 
     .totem-product-card {
         flex-direction: column;
         padding: 12px;
-        gap: 8px;
         text-align: center;
-        user-select: auto;
-        touch-action: pan-y;
+        gap: 8px;
     }
 
     .totem-card-img {
         width: 60px;
         height: 60px;
         font-size: 2.2rem;
+    }
+
+    .totem-card-info h3 { font-size: 0.95rem; margin: 0; }
+    .totem-card-info p { display: none; }
+    
+    .totem-price { font-size: 1rem; }
+
+    /* FAB Carrinho Mobile */
+    .totem-mobile-cart-fab {
+        position: fixed;
+        bottom: calc(20px + env(safe-area-inset-bottom));
+        left: 20px;
+        right: 20px;
+        background: #ffcc00;
+        color: #000;
+        padding: 18px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 900;
+        font-size: 1.1rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        z-index: 1000;
+        border: none;
+    }
+
+    .totem-mobile-cart-count {
+        background: #000;
+        color: #ffcc00;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+
+    /* Bottom Sheet Carrinho */
+    .totem-mobile-cart-sheet {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(8px);
+        z-index: 1100;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .totem-sheet-content {
+        background: #111;
+        border-radius: 30px 30px 0 0;
+        padding: 20px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        border-top: 2px solid #333;
+        animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+    }
+
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    .totem-sheet-handle {
+        width: 40px;
+        height: 5px;
+        background: #444;
         border-radius: 10px;
+        margin: 0 auto 15px;
     }
 
-    .totem-card-info h3 {
-        font-size: 0.95rem;
-        margin-bottom: 3px;
+    .totem-sheet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
     }
 
-    .totem-card-info p {
-        font-size: 0.75rem;
-        margin-bottom: 5px;
-    }
-
-    .totem-price {
-        font-size: 1rem;
-    }
-
-    /* Totem Modal Mobile Refinement */
-    .totem-modal {
-        width: 95vw !important;
-        max-width: 95vw !important;
-        max-height: 92vh;
-        border-radius: 20px;
-    }
-
-    .totem-modal-header {
-        padding: 12px 16px !important;
-    }
-
-    .totem-modal-header h2 {
-        font-size: 1.4rem !important;
-        font-weight: bold !important;
-    }
-
-    .totem-close-lg {
-        font-size: 1.8rem !important;
-    }
-
-    .totem-modal-body {
-        padding: 15px !important;
-    }
-
-    .totem-modal-desc {
-        font-size: 0.9rem !important;
-        margin-bottom: 10px;
-        line-height: 1.3 !important;
-    }
-
-    .totem-modal-price {
-        font-size: 1.6rem !important;
-        margin-bottom: 15px !important;
-    }
-
-    .totem-obs-box label {
-        font-size: 1rem !important;
-        margin-bottom: 8px;
-    }
-
-    .totem-quick-obs {
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .totem-chip {
-        padding: 8px 14px !important;
-        font-size: 0.9rem !important;
-    }
-
-    .totem-qty-selector {
-        padding: 10px !important;
-        gap: 10px;
-        border-radius: 12px;
-    }
-
-    .totem-qty-selector span {
-        font-size: 1rem !important;
-    }
-
-    .totem-qty-btn {
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 1.2rem !important;
-        border-radius: 10px;
-    }
-
-    .totem-qty-value {
-        font-size: 1.4rem !important;
-        width: 44px !important;
-    }
-
-    .totem-modal-footer {
-        padding: 12px 16px !important;
-    }
-
-    .totem-btn-confirm-add {
-        padding: 15px !important;
-        font-size: 1.2rem !important;
-        border-radius: 12px !important;
-    }
-
-    /* Totem Checkout */
-    .totem-flow {
-        padding: 15px !important;
-    }
-
-    .totem-checkout-box {
-        padding: 15px !important;
-    }
-
-    .totem-checkout-box h1 {
-        font-size: 1.6rem !important;
-    }
-
-    .totem-options {
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .totem-opt-btn {
-        flex: 1 1 40%;
-        min-width: 120px;
-        padding: 15px 10px !important;
-    }
-
-    .totem-input-lg {
-        font-size: 16px !important; /* Prevent iOS auto-zoom */
-    }
+    .totem-sheet-header h2 { font-size: 1.5rem; margin: 0; }
 }
 
 .totem-sidebar-footer {
