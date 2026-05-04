@@ -90,6 +90,7 @@
                     <option value="" disabled selected>Forma de Pagamento...</option>
                     <option value="1">💵 Dinheiro</option>
                     <option value="4">📱 PIX</option>
+                    <option value="2">💳 Cartão (Na Entrega)</option>
                 </select>
 
                 @if (saldoCashback > 0)
@@ -365,11 +366,27 @@ else if (mostrarModalConfirmacao)
 
             @{
                 string msgStatus = "";
-                if (metodo == MetodoPagamento.Pix) msgStatus = $"Aqui está o comprovante do PIX no valor de R$ {valorFinalDoPedido:N2} e minha localização para a entrega.";
-                else if (metodo == MetodoPagamento.Dinheiro) msgStatus = $"O pagamento será em Dinheiro (Total: R$ {valorFinalDoPedido:N2}). Segue minha localização para a entrega.";
-                else if (metodo == MetodoPagamento.Cartao) msgStatus = $"O pagamento será no Cartão Crédito/Débito (Total: R$ {valorFinalDoPedido:N2}). Segue minha localização para a entrega.";
+                var resumoItensFormatado = string.Join("\n", Carrinho.Itens.Select(i => $"• {i.Quantidade}x {i.NomeProduto}"));
                 
-                var textoWhats = $"Olá! Acabei de fazer o pedido #{idPedidoConfirmado:D3}. {msgStatus}";
+                if (valorSegundoPagamento > 0 && !string.IsNullOrEmpty(segundoPagamento))
+                {
+                    var m1 = metodoPagamentoEscolhido switch { MetodoPagamento.Pix => "Pix", MetodoPagamento.Dinheiro => "Dinheiro", MetodoPagamento.Cartao => "Cartão", _ => "1º Método" };
+                    var m2 = (MetodoPagamento)int.Parse(segundoPagamento) switch { MetodoPagamento.Pix => "Pix", MetodoPagamento.Dinheiro => "Dinheiro", MetodoPagamento.Cartao => "Cartão", _ => "2º Método" };
+                    msgStatus = $"Vou pagar em 2 métodos:\n- {m1}: R$ {valorPrimeiroPagamento:N2}\n- {m2}: R$ {valorSegundoPagamento:N2}";
+                }
+                else
+                {
+                    if (metodo == MetodoPagamento.Pix) msgStatus = $"Pagamento via Pix: R$ {valorFinalDoPedido:N2}";
+                    else if (metodo == MetodoPagamento.Dinheiro) msgStatus = $"Pagamento em Dinheiro: R$ {valorFinalDoPedido:N2}";
+                    else if (metodo == MetodoPagamento.Cartao) msgStatus = $"Pagamento no Cartão: R$ {valorFinalDoPedido:N2}";
+                }
+                
+                var textoWhats = $"🍟 *NOVO PEDIDO #{idPedidoConfirmado:D3}*\n\n" +
+                                 $"*Itens:*\n{resumoItensFormatado}\n\n" +
+                                 $"*Total:* R$ {valorFinalDoPedido:N2}\n" +
+                                 $"*Pagamento:* {msgStatus}\n\n" +
+                                 $"📍 *Segue minha localização para a entrega:*";
+                
                 var linkWhats = $"https://wa.me/{Config["Pagamento:NumeroWhatsApp"]}?text={Uri.EscapeDataString(textoWhats)}";
             }
             @if (metodo == MetodoPagamento.Pix && !string.IsNullOrWhiteSpace(linkPagamentoMP))
@@ -639,7 +656,7 @@ else if (mostrarModalConfirmacao)
         }
     }
 
-    private decimal ValorTotalPedido => (Carrinho.Subtotal + TaxaEntregaAtual) - ValorCashbackAplicado;
+    private decimal ValorTotalPedido => Math.Round((Carrinho.Subtotal + TaxaEntregaAtual) - ValorCashbackAplicado, 2);
 
     private async Task OnTelefoneChanged(ChangeEventArgs e)
     {
@@ -732,12 +749,14 @@ else if (mostrarModalConfirmacao)
             return;
         }
 
-        // FASE 7: cartão → mostrar Brick antes de criar pedido
+        // FASE 7: Removido temporariamente para focar no WhatsApp
+        /*
         if (Carrinho.TempPagamento == "2")
         {
             await AbrirModalCartaoAsync();
             return;
         }
+        */
 
         await ProcessarPedidoRealmente();
     }
@@ -751,11 +770,6 @@ else if (mostrarModalConfirmacao)
     private async Task RecusarSugestao()
     {
         mostrarModalSugestao = false;
-        if (Carrinho.TempPagamento == "2")
-        {
-            await AbrirModalCartaoAsync();
-            return;
-        }
         await ProcessarPedidoRealmente();
     }
 

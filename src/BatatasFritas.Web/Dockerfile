@@ -57,7 +57,8 @@ COPY src/BatatasFritas.Web/nginx.conf /etc/nginx/conf.d/default.conf
 # de /api/ e /hubs/ para o container da API internamente.
 # O Blazor WASM usará HostEnvironment.BaseAddress como base, o que funciona
 # corretamente com o proxy nginx configurado.
-RUN printf '{"ApiSettings":{"BaseUrl":""}}' > /usr/share/nginx/html/appsettings.json
+# Ajusta a BaseUrl no appsettings.json para vazio (o nginx fará o proxy) sem apagar as outras configurações
+RUN sed -i 's/"BaseUrl": ".*"/"BaseUrl": ""/g' /usr/share/nginx/html/appsettings.json
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
