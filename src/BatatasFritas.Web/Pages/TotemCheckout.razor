@@ -126,16 +126,12 @@
                 </button>
             </div>
 
-            <!-- BOTÃO PARA ATIVAR PAGAMENTO DIVIDIDO (oculto por padrão) -->
-            @if (!string.IsNullOrEmpty(pagamento) && TotalPagar > 0 && !mostrarDivisaoPagamento)
+            @if (!mostrarDivisaoPagamento)
             {
-                <button @onclick="AtivarDivisaoPagamento" 
-                        style="background: linear-gradient(135deg, #4CAF50, #2E7D32); border: none; color: #fff; padding: 16px 24px; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; margin-top: 20px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4); transition: transform 0.2s, box-shadow 0.2s;">
-                    💰 Pagar com 2 Meios de Pagamento
+                <button class="totem-btn-secondary" @onclick="AtivarDivisaoPagamento" style="width:100%; margin-top:20px; background:#222; border:2px solid #555; color:#aaa; padding:12px; border-radius:12px; font-weight:bold; cursor:pointer;">
+                    💳 Pagar em 2 Meios (Pix + Dinheiro, etc)
                 </button>
-            }
-
-            <!-- DIVISÃO DE PAGAMENTO (só aparece ao ativar manualmente) -->
+            }            <!-- DIVISÃO DE PAGAMENTO (só aparece ao ativar manualmente) -->
             @if (mostrarDivisaoPagamento && !string.IsNullOrEmpty(pagamento) && TotalPagar > 0)
             {
                 <div class="totem-dividir-pagamento" style="background:#222; border:2px solid #4CAF50; border-radius:12px; padding:16px; margin-top:20px; text-align:left;">
@@ -407,15 +403,8 @@
 
                 Carrinho.LimparCarrinho();
 
-                // Cartão e Pix no totem → maquininha (MP Point Smart 2)
-                if (pagamento == "Cartao" || pagamento == "Pix")
-                {
-                    Nav.NavigateTo($"/totem/pagamento-point/{idRecebido}/{valorCentavos}");
-                }
-                else
-                {
-                    Nav.NavigateTo($"/totem/sucesso/{idRecebido}?tipo={pagamento}&amount={valorCentavos}", forceLoad: true);
-                }
+                // After order, go to success page (MP removed)
+                Nav.NavigateTo($"/totem/sucesso/{idRecebido}?tipo={pagamento}&amount={valorCentavos}", forceLoad: true);
             }
             else msgErro = "Erro ao enviar pedido: " + await r.Content.ReadAsStringAsync();
         }
