@@ -462,16 +462,13 @@
 
     private void IniciarPollingSeguranca()
     {
-        // Fallback: Busca pedidos a cada 30 segundos caso o SignalR falhe
+        // Polling sempre ativo: garante consistência mesmo quando SignalR recebe eventos
         _ = Task.Run(async () =>
         {
             while (true)
             {
-                await Task.Delay(30000);
-                if (signalrStatus != "Conectado")
-                {
-                    await LoadPedidos(primeiraVez: false);
-                }
+                await Task.Delay(15000);
+                await LoadPedidos(primeiraVez: false);
             }
         });
     }
@@ -578,9 +575,9 @@
             idsConhecidos = idsRecebidosAgora;
             await InvokeAsync(StateHasChanged);
         }
-        catch
+        catch (Exception ex)
         {
-            // Falha passageira de rede — ignora para não travar o polling
+            Console.Error.WriteLine($"[KDS] LoadPedidos falhou: {ex.Message}");
         }
         finally
         {
