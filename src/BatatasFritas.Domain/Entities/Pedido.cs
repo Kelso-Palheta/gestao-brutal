@@ -156,10 +156,10 @@ public class Pedido : EntityBase
         return Status switch
         {
             StatusPedido.Recebido          => novoStatus is StatusPedido.Aceito or StatusPedido.Cancelado,
-            StatusPedido.Aceito            => novoStatus is StatusPedido.EmPreparo or StatusPedido.Cancelado,
-            StatusPedido.EmPreparo         => novoStatus is StatusPedido.ProntoParaEntrega or StatusPedido.Cancelado,
-            StatusPedido.ProntoParaEntrega => novoStatus is StatusPedido.SaiuParaEntrega or StatusPedido.Entregue or StatusPedido.Cancelado,
-            StatusPedido.SaiuParaEntrega   => novoStatus is StatusPedido.Entregue or StatusPedido.Cancelado,
+            StatusPedido.Aceito            => novoStatus is StatusPedido.EmPreparo or StatusPedido.Recebido or StatusPedido.Cancelado,
+            StatusPedido.EmPreparo         => novoStatus is StatusPedido.ProntoParaEntrega or StatusPedido.Aceito or StatusPedido.Cancelado,
+            StatusPedido.ProntoParaEntrega => novoStatus is StatusPedido.SaiuParaEntrega or StatusPedido.Entregue or StatusPedido.EmPreparo or StatusPedido.Cancelado,
+            StatusPedido.SaiuParaEntrega   => novoStatus is StatusPedido.Entregue or StatusPedido.ProntoParaEntrega or StatusPedido.Cancelado,
             StatusPedido.Entregue          => false,
             StatusPedido.Cancelado         => false,
             _                              => false

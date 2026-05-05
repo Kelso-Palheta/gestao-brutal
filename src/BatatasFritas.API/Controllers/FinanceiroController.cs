@@ -114,9 +114,9 @@ public class FinanceiroController : ControllerBase
             despesasPeriodo = dPeriodo.Sum(d => d.Valor);
             totalPedidosPeriodo = pPeriodo.Count;
 
-            pixPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
-            cartaoPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal);
-            dinheiroPeriodo = pPeriodo.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
+            pixPeriodo      = SomaPorMetodo(pPeriodo, MetodoPagamento.Pix);
+            cartaoPeriodo   = SomaPorMetodo(pPeriodo, MetodoPagamento.Cartao);
+            dinheiroPeriodo = SomaPorMetodo(pPeriodo, MetodoPagamento.Dinheiro);
 
             // Cashback concedido = transações Entrada no período (filtrado no banco)
             var inicioUtcCb = inicio.Value.Date.AddHours(3);
@@ -150,9 +150,9 @@ public class FinanceiroController : ControllerBase
         }
 
         // --- DETALHES DO MÊS ---
-        var pixMes      = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal);
-        var cartaoMes   = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal);
-        var dinheiroMes = pedidosMes.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal);
+        var pixMes      = SomaPorMetodo(pedidosMes, MetodoPagamento.Pix);
+        var cartaoMes   = SomaPorMetodo(pedidosMes, MetodoPagamento.Cartao);
+        var dinheiroMes = SomaPorMetodo(pedidosMes, MetodoPagamento.Dinheiro);
 
         var despFuncMes    = despesasMes.Where(d => d.Categoria == "Funcionario").Sum(d => d.Valor);
         var despEnergMes   = despesasMes.Where(d => d.Categoria == "Energia/Agua").Sum(d => d.Valor);
@@ -189,9 +189,9 @@ public class FinanceiroController : ControllerBase
             DespesasMes = despesasMes.Sum(d => d.Valor),
 
             // Métodos Hoje
-            PixHoje     = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Pix).Sum(p => p.ValorTotal),
-            CartaoHoje  = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Cartao).Sum(p => p.ValorTotal),
-            DinheiroHoje = pedidosHoje.Where(p => p.MetodoPagamento == MetodoPagamento.Dinheiro).Sum(p => p.ValorTotal),
+            PixHoje      = SomaPorMetodo(pedidosHoje, MetodoPagamento.Pix),
+            CartaoHoje   = SomaPorMetodo(pedidosHoje, MetodoPagamento.Cartao),
+            DinheiroHoje = SomaPorMetodo(pedidosHoje, MetodoPagamento.Dinheiro),
 
             MetaDiaria = metaDiaria,
 
@@ -472,5 +472,18 @@ public class FinanceiroController : ControllerBase
         };
 
         return Ok(dto);
+    }
+
+    private static decimal SomaPorMetodo(IEnumerable<Pedido> pedidos, MetodoPagamento metodo)
+    {
+        return pedidos.Sum(p =>
+        {
+            var v2 = p.ValorSegundoPagamento ?? 0m;
+            var v1 = p.ValorTotal - v2;
+            var soma = 0m;
+            if (p.MetodoPagamento == metodo) soma += v1;
+            if (p.SegundoMetodoPagamento == metodo) soma += v2;
+            return soma;
+        });
     }
 }
