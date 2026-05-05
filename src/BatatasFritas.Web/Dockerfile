@@ -2,19 +2,13 @@
 # NOTA: usa sdk:8.0 (mesma imagem da API — JÁ CACHEADA no servidor Hetzner).
 # A imagem customizada ghcr.io foi descartada pois causava download duplicado de 543MB.
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-RUN apt-get update && apt-get install -y python3
 WORKDIR /app
 
-# ── LAYER CACHEADA: instala wasm-tools UMA VEZ e reutiliza em todos os deploys ──
-# Adicionamos variáveis de ambiente para estabilizar o build (datas e telemetria)
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV CI=true
-
-# Forçamos a instalação limpa do workload e verificamos a versão
-RUN dotnet workload install wasm-tools && dotnet workload --version
 
 # Copy the solution file and project files for restore
 COPY ["BatatasFritas.sln", "./"]
