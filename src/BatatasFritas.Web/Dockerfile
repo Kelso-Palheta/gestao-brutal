@@ -32,7 +32,7 @@ WORKDIR "/app/src/BatatasFritas.Web"
 RUN dotnet publish "BatatasFritas.Web.csproj" \
     -c Release \
     -o /app/publish \
-    -v n
+    -v d
 
 # Final Nginx image to serve static files
 FROM nginx:alpine AS final
