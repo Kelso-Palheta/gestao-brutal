@@ -63,10 +63,11 @@
 
     @if (carregando)
     {
-        <div class="est-loading">⏳ Carregando...</div>
+        <div style="position:fixed; top:0; left:0; width:100%; height:3px; background:#ffb347; z-index:9999; animation: est-progress 2s infinite linear;"></div>
+        <style> @("@")keyframes est-progress { 0% { left: -100%; width: 30%; } 50% { width: 30%; } 100% { left: 100%; width: 30%; } } </style>
     }
-    else
-    {
+
+    <div>
         <!-- ================================================================
              ABA: VISÃO GERAL
              ================================================================ -->
@@ -432,10 +433,14 @@
                 </div>
             </div>
         }
-    }
+    </div>
 
     <!-- ── MODAL DE ENTRADA RÁPIDA ──────────────────────────────── -->
-    @if (mostrarModalEntrada && insumoEntrada != null)
+    @if (carregando)
+    {
+        <div class="loading-indicator">Carregando...</div>
+    }
+    else if (mostrarModalEntrada && insumoEntrada != null)
     {
         <div class="est-modal-overlay" @onclick="@(() => FecharModalEntrada())">
             <div class="est-modal" @onclick:stopPropagation="true">
@@ -559,11 +564,9 @@
             var de  = filtroInicioStr;
             var ate = filtroFimStr;
 
-            // Verifica autenticação antes de carregar
             var dashResp = await Http.GetAsync($"api/insumos/dashboard?de={de}&ate={ate}");
             if (dashResp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                // Sessão expirada — redireciona para login
                 Nav.NavigateTo("/kds/login?returnUrl=/admin/estoque", replace: true);
                 return;
             }
@@ -586,28 +589,12 @@
         finally { carregando = false; }
     }
 
-    private void AplicarAtalho(string atalho)
-    {
-        var hoje = DateTime.Today;
-        var (inicio, fim) = atalho switch
-        {
-            "hoje"   => (hoje, hoje),
-            "7dias"  => (hoje.AddDays(-6), hoje),
-            "30dias" => (hoje.AddDays(-29), hoje),
-            "mes"    => (new DateTime(hoje.Year, hoje.Month, 1), hoje),
-            _        => (DateTime.Parse(filtroInicioStr), DateTime.Parse(filtroFimStr))
-        };
-        filtroInicioStr = inicio.ToString("yyyy-MM-dd");
-        filtroFimStr = fim.ToString("yyyy-MM-dd");
-    }
-
     private async Task MudarAba(string aba)
     {
         abaAtiva = aba;
         await CarregarTudo();
     }
 
-    // ── Insumos ───────────────────────────────────────────────────────────
     private void NovoInsumo() => editandoInsumo = new();
     private void EditarInsumo(InsumoDto i) => editandoInsumo = new InsumoDto
     {
@@ -629,7 +616,6 @@
 
         if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            // Sessão expirada — avisa e redireciona
             await JS.InvokeVoidAsync("alert", "Sessão expirada! Você será redirecionado para o login.");
             Nav.NavigateTo("/kds/login?returnUrl=/admin/estoque", replace: true);
             return;
@@ -667,7 +653,6 @@
         else msgErro = "Erro ao restaurar.";
     }
 
-    // ── Movimentações ─────────────────────────────────────────────────────
     private async Task RegistrarEntrada()
     {
         LimparMensagens();
@@ -707,7 +692,6 @@
         else msgErro = await r.Content.ReadAsStringAsync();
     }
 
-    // ── Modal entrada rápida ──────────────────────────────────────────────
     private void AbrirEntrada(InsumoDto i)
     {
         insumoEntrada = i;
@@ -737,7 +721,6 @@
         else msgErro = await r.Content.ReadAsStringAsync();
     }
 
-    // ── Modal Ajuste Direto ─────────────────────────────────────────────
     private void AbrirAjuste(InsumoDto i)
     {
         insumoAjuste = i;
@@ -770,6 +753,21 @@
             await CarregarTudo();
         }
         else msgErro = await r.Content.ReadAsStringAsync();
+    }
+
+    private void AplicarAtalho(string atalho)
+    {
+        var hoje = DateTime.Today;
+        var (inicio, fim) = atalho switch
+        {
+            "hoje"   => (hoje, hoje),
+            "7dias"  => (hoje.AddDays(-6), hoje),
+            "30dias" => (hoje.AddDays(-29), hoje),
+            "mes"    => (new DateTime(hoje.Year, hoje.Month, 1), hoje),
+            _        => (DateTime.Parse(filtroInicioStr), DateTime.Parse(filtroFimStr))
+        };
+        filtroInicioStr = inicio.ToString("yyyy-MM-dd");
+        filtroFimStr = fim.ToString("yyyy-MM-dd");
     }
 
     private void LimparMensagens() { msgSucesso = string.Empty; msgErro = string.Empty; }

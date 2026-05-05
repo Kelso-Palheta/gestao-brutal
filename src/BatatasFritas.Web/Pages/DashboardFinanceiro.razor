@@ -311,6 +311,13 @@
         <div class="print-footer print-only">
             <p>Assinatura Responsável: _______________________________</p>
         </div>
+    else if (!carregando && dados == null)
+    {
+        <div style="text-align:center; padding:100px 20px;">
+            <h2 style="color:#e74c3c;">❌ Erro ao carregar Dashboard</h2>
+            <p style="color:#888;">Não foi possível conectar ao servidor financeiro. Verifique sua conexão.</p>
+            <button class="dash-btn-filtrar" style="margin-top:20px;" @onclick="CarregarDados">🔄 Tentar Novamente</button>
+        </div>
     }
 </div>
 

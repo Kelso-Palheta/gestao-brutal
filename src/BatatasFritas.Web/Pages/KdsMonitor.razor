@@ -457,6 +457,23 @@
 
         await LoadPedidos(primeiraVez: true);
         await ConectarSignalR();
+        IniciarPollingSeguranca();
+    }
+
+    private void IniciarPollingSeguranca()
+    {
+        // Fallback: Busca pedidos a cada 30 segundos caso o SignalR falhe
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                await Task.Delay(30000);
+                if (signalrStatus != "Conectado")
+                {
+                    await LoadPedidos(primeiraVez: false);
+                }
+            }
+        });
     }
 
     private async Task ConectarSignalR()
