@@ -40,13 +40,17 @@ public class KdsController : ControllerBase
     [HttpGet("ativos")]
     public async Task<IActionResult> GetPedidosAtivos()
     {
-        // FindManyAsync filtra no banco — evita full table scan
+        var statusAtivos = new[] {
+            StatusPedido.Recebido, StatusPedido.Aceito, StatusPedido.EmPreparo,
+            StatusPedido.ProntoParaEntrega, StatusPedido.SaiuParaEntrega
+        };
+        var pagamentoPendente = new[] {
+            StatusPagamento.Pendente, StatusPagamento.Recusado, StatusPagamento.PagamentoParcial
+        };
+
         var pedidos = await _pedidoRepository.FindManyAsync(p =>
-            p.Status != StatusPedido.Cancelado &&
-            (p.Status != StatusPedido.Entregue ||
-             (p.Status == StatusPedido.Entregue &&
-              p.StatusPagamento != StatusPagamento.Aprovado &&
-              p.StatusPagamento != StatusPagamento.Presencial)));
+            statusAtivos.Contains(p.Status) ||
+            (p.Status == StatusPedido.Entregue && pagamentoPendente.Contains(p.StatusPagamento)));
 
         var ativos = pedidos
             .OrderBy(p => p.DataHoraPedido)
