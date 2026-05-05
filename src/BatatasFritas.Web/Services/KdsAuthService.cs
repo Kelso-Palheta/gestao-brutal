@@ -51,12 +51,40 @@ public class KdsAuthService
             _authStateProvider.MarkUserAsAuthenticated();
     }
 
-    /// <summary>Verifica se há um token válido em memória.</summary>
+    /// <summary>Verifica se há um token válido (não expirado) em memória.</summary>
     public async Task<bool> EstaAutenticadoAsync()
     {
-        if (!string.IsNullOrEmpty(_token)) return true;
-        _token = await _js.InvokeAsync<string?>("localStorage.getItem", TokenKey);
-        return !string.IsNullOrEmpty(_token);
+        if (string.IsNullOrEmpty(_token))
+            _token = await _js.InvokeAsync<string?>("localStorage.getItem", TokenKey);
+
+        if (string.IsNullOrEmpty(_token)) return false;
+
+        // Verifica expiração do JWT sem biblioteca externa
+        try
+        {
+            var parts = _token.Split('.');
+            if (parts.Length != 3) { await LogoutAsync(); return false; }
+
+            var payload = parts[1];
+            // Padding base64url
+            var padded = payload.Replace('-', '+').Replace('_', '/');
+            padded = padded.PadRight(padded.Length + (4 - padded.Length % 4) % 4, '=');
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(padded));
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("exp", out var expEl))
+            {
+                var exp = expEl.GetInt64();
+                var expDate = DateTimeOffset.FromUnixTimeSeconds(exp);
+                if (expDate < DateTimeOffset.UtcNow)
+                {
+                    await LogoutAsync();
+                    return false;
+                }
+            }
+        }
+        catch { /* token malformado — trata como inválido */ await LogoutAsync(); return false; }
+
+        return true;
     }
 
     /// <summary>
