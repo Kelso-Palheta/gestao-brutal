@@ -22,12 +22,22 @@ public class AuthDelegatingHandler : DelegatingHandler
             var js = _sp.GetRequiredService<IJSRuntime>();
             var token = await js.InvokeAsync<string?>("localStorage.getItem", "kds_jwt_token");
             if (!string.IsNullOrEmpty(token))
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
-        catch { /* Falha silenciosa se o JS não estiver disponível */ }
+        catch { /* JS não disponível — prossegue sem token */ }
 
-        return await base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            try
+            {
+                var js = _sp.GetRequiredService<IJSRuntime>();
+                await js.InvokeVoidAsync("localStorage.removeItem", "kds_jwt_token");
+            }
+            catch { }
+        }
+
+        return response;
     }
 }
