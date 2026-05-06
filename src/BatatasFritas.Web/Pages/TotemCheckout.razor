@@ -266,7 +266,7 @@
     {
         if (decimal.TryParse(e.Value?.ToString(), out decimal valor))
         {
-            valorPrimeiroPagamento = valor;
+            valorPrimeiroPagamento = Math.Round(valor, 2);
             if (valorPrimeiroPagamento < 0) valorPrimeiroPagamento = 0;
             if (valorPrimeiroPagamento > TotalPagar) valorPrimeiroPagamento = TotalPagar;
             valorSegundoPagamento = Math.Round(TotalPagar - valorPrimeiroPagamento, 2);
