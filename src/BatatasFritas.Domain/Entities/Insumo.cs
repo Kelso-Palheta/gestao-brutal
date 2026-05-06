@@ -9,6 +9,9 @@ public class Insumo : EntityBase
     public virtual decimal EstoqueMinimo { get; protected set; } = 0;
     public virtual decimal CustoPorUnidade { get; protected set; } = 0;
     public virtual bool Ativo { get; set; } = true;
+    public virtual bool MostrarNoCardapio { get; set; } = false;
+    public virtual bool AutoDesativarAoZerar { get; set; } = false;
+    public virtual Produto? ProdutoAssociado { get; set; }
 
     protected Insumo() { } // NHibernate
 
