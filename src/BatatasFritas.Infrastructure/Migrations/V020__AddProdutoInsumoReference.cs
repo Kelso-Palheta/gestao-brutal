@@ -9,7 +9,7 @@ public class V020__AddProdutoInsumoReference : Migration
     {
         Alter.Table("produtos")
             .AddColumn("insumo_id").AsInt32().Nullable()
-            .ForeignKey("fk_produtos_insumo_id").References("insumos")(id);
+            .ForeignKey("fk_produtos_insumo_id", "insumos", "id");
     }
 
     public override void Down()
