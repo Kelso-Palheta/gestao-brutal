@@ -357,6 +357,10 @@
         {
             <p>PAGAMENTO: @NomeMetodo(pedidoAtualParaImpressao.MetodoPagamento)</p>
         }
+        @if (pedidoAtualParaImpressao.ValorCashbackUsado > 0)
+        {
+            <p>DESCONTO CASHBACK: -@pedidoAtualParaImpressao.ValorCashbackUsado.ToString("C2")</p>
+        }
         <p style="font-weight:900; font-size:14px; border:2px solid #000; padding:4px; text-align:center;">@(pedidoAtualParaImpressao.StatusPagamento == StatusPagamento.Aprovado || pedidoAtualParaImpressao.StatusPagamento == StatusPagamento.Presencial ? "✅ PAGO" : "⚠️ PAGAMENTO PENDENTE")</p>
         <div class="cupom-total">TOTAL: @pedidoAtualParaImpressao.ValorTotal.ToString("C2")</div>
         @if (pedidoAtualParaImpressao.MetodoPagamento == MetodoPagamento.Dinheiro && pedidoAtualParaImpressao.TrocoPara != null)
