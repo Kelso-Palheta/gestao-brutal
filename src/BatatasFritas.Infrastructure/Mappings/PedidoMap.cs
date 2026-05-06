@@ -12,7 +12,7 @@ public class PedidoMap : ClassMap<Pedido>
 
         Id(x => x.Id).GeneratedBy.Identity().Column("id");
         Map(x => x.NomeCliente).Not.Nullable().Length(100).Column("nome_cliente");
-        Map(x => x.TelefoneCliente).Not.Nullable().Length(20).Column("telefone_cliente");
+        Map(x => x.TelefoneCliente).Length(20).Column("telefone_cliente").Nullable();
         Map(x => x.EnderecoEntrega).Length(200).Column("endereco_entrega");
         References(x => x.BairroEntrega).Column("bairro_id").Nullable();
 
