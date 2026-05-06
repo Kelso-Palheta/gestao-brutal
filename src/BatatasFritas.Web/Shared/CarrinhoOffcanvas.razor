@@ -552,7 +552,7 @@ else if (mostrarModalConfirmacao)
     private void AtivarDivisaoPagamento()
     {
         mostrarDivisaoPagamento = true;
-        valorPrimeiroPagamento = ValorTotalPedido;
+        valorPrimeiroPagamento = Math.Round(ValorTotalPedido, 2);
         valorSegundoPagamento = 0;
         segundoPagamento = "";
     }
@@ -569,7 +569,7 @@ else if (mostrarModalConfirmacao)
     {
         if (decimal.TryParse(e.Value?.ToString(), out decimal valor))
         {
-            valorPrimeiroPagamento = valor;
+            valorPrimeiroPagamento = Math.Round(valor, 2);
             if (valorPrimeiroPagamento < 0) valorPrimeiroPagamento = 0;
             if (valorPrimeiroPagamento > ValorTotalPedido) valorPrimeiroPagamento = ValorTotalPedido;
             valorSegundoPagamento = Math.Round(ValorTotalPedido - valorPrimeiroPagamento, 2);
@@ -582,13 +582,13 @@ else if (mostrarModalConfirmacao)
         else
         {
             valorPrimeiroPagamento = 0;
-            valorSegundoPagamento = ValorTotalPedido;
+            valorSegundoPagamento = Math.Round(ValorTotalPedido, 2);
         }
     }
 
     private void UsarValorTotalPrimeiro()
     {
-        valorPrimeiroPagamento = ValorTotalPedido;
+        valorPrimeiroPagamento = Math.Round(ValorTotalPedido, 2);
         valorSegundoPagamento = 0;
         segundoPagamento = "";
     }

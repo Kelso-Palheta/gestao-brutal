@@ -249,7 +249,7 @@
     private void AtivarDivisaoPagamento()
     {
         mostrarDivisaoPagamento = true;
-        valorPrimeiroPagamento = TotalPagar;
+        valorPrimeiroPagamento = Math.Round(TotalPagar, 2);
         valorSegundoPagamento = 0;
         segundoPagamento = "";
     }
@@ -285,7 +285,7 @@
 
     private void UsarValorTotalPrimeiro()
     {
-        valorPrimeiroPagamento = TotalPagar;
+        valorPrimeiroPagamento = Math.Round(TotalPagar, 2);
         valorSegundoPagamento = 0;
         segundoPagamento = "";
     }
