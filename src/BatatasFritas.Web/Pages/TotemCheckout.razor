@@ -269,7 +269,7 @@
             valorPrimeiroPagamento = valor;
             if (valorPrimeiroPagamento < 0) valorPrimeiroPagamento = 0;
             if (valorPrimeiroPagamento > TotalPagar) valorPrimeiroPagamento = TotalPagar;
-            valorSegundoPagamento = TotalPagar - valorPrimeiroPagamento;
+            valorSegundoPagamento = Math.Round(TotalPagar - valorPrimeiroPagamento, 2);
             if (valorSegundoPagamento <= 0.01m)
             {
                 valorSegundoPagamento = 0;
