@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BatatasFritas.Shared.Enums;
 
 namespace BatatasFritas.Shared.DTOs;
 
@@ -48,5 +49,7 @@ public class PedidoResumoDto
     public decimal ValorBebidas { get; set; }
     public decimal TaxaEntrega { get; set; }
     public decimal ValorTotal { get; set; }
+    public decimal ValorCashbackUsado { get; set; }
+    public MetodoPagamento MetodoPagamento { get; set; }
     public int QtdItens { get; set; }
 }

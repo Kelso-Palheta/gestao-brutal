@@ -1,6 +1,7 @@
 @page "/admin/dashboard-analytics"
 @layout EmptyLayout
 @using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
 @using BatatasFritas.Web.Services
 @using System.Net.Http.Json
 @inject HttpClient Http
@@ -145,6 +146,8 @@
                                 <th>Bebidas</th>
                                 <th>Entrega</th>
                                 <th>Total</th>
+                                <th>Cashback</th>
+                                <th>Pagamento</th>
                                 <th>Itens</th>
                             </tr>
                         </thead>
@@ -160,6 +163,17 @@
                                     <td class="cor-bebida">@pedido.ValorBebidas.ToString("C2")</td>
                                     <td class="cor-entrega">@pedido.TaxaEntrega.ToString("C2")</td>
                                     <td class="cor-total"><strong>@pedido.ValorTotal.ToString("C2")</strong></td>
+                                    <td class="cor-cashback">
+                                        @if (pedido.ValorCashbackUsado > 0)
+                                        {
+                                            <span>-@pedido.ValorCashbackUsado.ToString("C2")</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#666;">—</span>
+                                        }
+                                    </td>
+                                    <td class="cor-pagamento">@ObterNomeMetodo(pedido.MetodoPagamento)</td>
                                     <td>@pedido.QtdItens</td>
                                 </tr>
                             }
@@ -567,6 +581,8 @@
 .cor-bebida { color: #3b82f6; }
 .cor-entrega { color: #22c55e; }
 .cor-total { color: #4caf50; }
+.cor-cashback { color: #ffb347; }
+.cor-pagamento { color: #9b59b6; }
 
 /* Mobile */
 @@media (max-width: 768px) {
@@ -683,4 +699,12 @@
         filtroInicioComHora = null;
         await CarregarDados();
     }
+
+    private string ObterNomeMetodo(MetodoPagamento metodo) => metodo switch
+    {
+        MetodoPagamento.Pix => "PIX",
+        MetodoPagamento.Dinheiro => "Dinheiro",
+        MetodoPagamento.Cartao => "Cartão",
+        _ => metodo.ToString()
+    };
 }
