@@ -318,7 +318,7 @@ else if (mostrarModalConfirmacao)
             <h2 style="color: #000; font-weight: 900; margin-bottom: 5px; text-transform: uppercase;">@titulo</h2>
             <p style="color: #ffb347; font-weight: 700; margin-bottom: 20px;">Pedido #@idPedidoConfirmado.ToString("D3")</p>
             
-            <p style="font-size: 1.1rem; margin-bottom: 15px; line-height: 1.4;">
+            <p style="font-size: 1.1rem; margin-bottom: 15px; line-height: 1.4; color: #333;">
                 @if (metodo == MetodoPagamento.Pix && !string.IsNullOrWhiteSpace(linkPagamentoMP))
                 {
                     <text>Pague pelo Mercado Pago. <b>Seu pedido será preparado automaticamente após a confirmação.</b></text>
@@ -572,7 +572,7 @@ else if (mostrarModalConfirmacao)
             valorPrimeiroPagamento = valor;
             if (valorPrimeiroPagamento < 0) valorPrimeiroPagamento = 0;
             if (valorPrimeiroPagamento > ValorTotalPedido) valorPrimeiroPagamento = ValorTotalPedido;
-            valorSegundoPagamento = ValorTotalPedido - valorPrimeiroPagamento;
+            valorSegundoPagamento = Math.Round(ValorTotalPedido - valorPrimeiroPagamento, 2);
             if (valorSegundoPagamento <= 0.01m)
             {
                 valorSegundoPagamento = 0;
