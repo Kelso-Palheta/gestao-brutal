@@ -440,6 +440,8 @@ public class FinanceiroController : ControllerBase
                     .Sum(i => i.PrecoUnitario * i.Quantidade),
                 TaxaEntrega = p.TaxaEntrega,
                 ValorTotal = p.ValorTotal,
+                ValorCashbackUsado = p.ValorCashbackUsado,
+                MetodoPagamento = p.MetodoPagamento,
                 QtdItens = p.Itens.Sum(i => i.Quantidade)
             })
             .ToList();

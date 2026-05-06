@@ -839,7 +839,8 @@
             string url = "api/financeiro/dashboard";
             if (filtroAtivo && !string.IsNullOrEmpty(filtroInicioStr) && !string.IsNullOrEmpty(filtroFimStr))
             {
-                url += $"?inicio={filtroInicioStr}&fim={filtroFimStr}";
+                var dataInicio = filtroInicioComHora?.ToString("yyyy-MM-ddTHH:mm:ss") ?? filtroInicioStr;
+                url += $"?inicio={dataInicio}&fim={filtroFimStr}";
             }
             dados = await Http.GetFromJsonAsync<FinanceiroDashboardDto>(url);
         }
@@ -859,11 +860,13 @@
     private string filtroFimStr    = DateTime.Today.ToString("yyyy-MM-dd");
     private bool   filtroAtivo  = false;
     private string filtroAtalho = "";
+    private DateTime? filtroInicioComHora = null;
 
     private async Task AplicarFiltro()
     {
         filtroAtalho = "";
         filtroAtivo  = true;
+        filtroInicioComHora = null;
         await CarregarDados();
     }
 
@@ -881,10 +884,12 @@
     {
         var hoje = DateTime.Today;
         int diasDesdeSegunda = ((int)hoje.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
-        filtroInicioStr = hoje.AddDays(-diasDesdeSegunda).ToString("yyyy-MM-dd");
+        var segunda = hoje.AddDays(-diasDesdeSegunda);
+        filtroInicioStr = segunda.ToString("yyyy-MM-dd");
         filtroFimStr    = hoje.ToString("yyyy-MM-dd");
         filtroAtalho    = "semana";
         filtroAtivo     = true;
+        filtroInicioComHora = new DateTime(segunda.Year, segunda.Month, segunda.Day, 8, 0, 0);
         await CarregarDados();
     }
 
@@ -904,6 +909,7 @@
         filtroFimStr    = DateTime.Today.ToString("yyyy-MM-dd");
         filtroAtivo     = false;
         filtroAtalho    = "";
+        filtroInicioComHora = null;
         await CarregarDados();
     }
 
