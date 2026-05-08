@@ -1046,7 +1046,10 @@ else if (mostrarModalConfirmacao)
             }
             else
             {
-                mensagemErro = "Ops! Não conseguimos enviar o pedido para a cozinha. Tente novamente.";
+                var errorBody = await response.Content.ReadAsStringAsync();
+                mensagemErro = string.IsNullOrWhiteSpace(errorBody)
+                    ? "Ops! Não conseguimos enviar o pedido para a cozinha. Tente novamente."
+                    : errorBody.Trim('"');
             }
         }
         catch (Exception ex)
