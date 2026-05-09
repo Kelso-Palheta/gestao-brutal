@@ -106,13 +106,15 @@ public class ConfiguracoesController : ControllerBase
     [HttpGet("delivery-status")]
     public async Task<ActionResult<DeliveryStatusDto>> GetDeliveryStatus()
     {
-        var configAtivo    = await _repo.FindAsync(c => c.Chave == "delivery_ativo");
-        var configMensagem = await _repo.FindAsync(c => c.Chave == "delivery_mensagem");
+        var configAtivo          = await _repo.FindAsync(c => c.Chave == "delivery_ativo");
+        var configMensagem       = await _repo.FindAsync(c => c.Chave == "delivery_mensagem");
+        var configSomenteRetirada = await _repo.FindAsync(c => c.Chave == "delivery_somente_retirada");
 
-        bool ativo = configAtivo == null || configAtivo.Valor == "true"; // padrão: aberto
-        string mensagem = configMensagem?.Valor ?? "Atendimento encerrado. Voltamos em breve! 🍟";
+        bool ativo           = configAtivo == null || configAtivo.Valor == "true";
+        string mensagem      = configMensagem?.Valor ?? "Atendimento encerrado. Voltamos em breve! 🍟";
+        bool somenteRetirada = configSomenteRetirada?.Valor == "true";
 
-        return Ok(new DeliveryStatusDto { Ativo = ativo, Mensagem = mensagem });
+        return Ok(new DeliveryStatusDto { Ativo = ativo, Mensagem = mensagem, SomenteRetirada = somenteRetirada });
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -125,8 +127,9 @@ public class ConfiguracoesController : ControllerBase
         {
             _uow.BeginTransaction();
 
-            await UpsertConfig("delivery_ativo",    dto.Ativo ? "true" : "false");
-            await UpsertConfig("delivery_mensagem", dto.Mensagem ?? "Atendimento encerrado. Voltamos em breve! 🍟");
+            await UpsertConfig("delivery_ativo",           dto.Ativo ? "true" : "false");
+            await UpsertConfig("delivery_mensagem",        dto.Mensagem ?? "Atendimento encerrado. Voltamos em breve! 🍟");
+            await UpsertConfig("delivery_somente_retirada", dto.SomenteRetirada ? "true" : "false");
 
             await _uow.CommitAsync();
             return Ok(new { mensagem = dto.Ativo ? "Delivery ativado!" : "Delivery encerrado." });

@@ -36,11 +36,29 @@
                    placeholder="Ex: Atendimento encerrado. Voltamos amanhã às 11h! 🍟"
                    style="width:100%;" />
         </div>
-        <p style="font-size:0.8rem; color:#999; margin:0 0 12px 0;">
+        <p style="font-size:0.8rem; color:#999; margin:0 0 16px 0;">
             Esta mensagem aparece para o cliente no cardápio digital quando o delivery estiver encerrado.
         </p>
 
-
+        <div style="border:2px solid @(somenteRetirada ? "#e67e22" : "#ddd"); border-radius:8px; padding:14px; margin-bottom:12px; background:@(somenteRetirada ? "#fff8f0" : "#fafafa");">
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                <div style="font-size:2rem;">@(somenteRetirada ? "🏪" : "🛵")</div>
+                <div style="flex:1;">
+                    <strong style="font-size:0.95rem;">@(somenteRetirada ? "Modo: Somente Retirada no Local" : "Modo: Delivery + Retirada")</strong>
+                    <p style="margin:2px 0 0 0; color:#666; font-size:0.82rem;">
+                        @(somenteRetirada
+                            ? "Endereço e seleção de bairro estão ocultos. Clientes só podem retirar no local."
+                            : "Clientes podem escolher entre entrega (bairro) ou retirada no local.")
+                    </p>
+                </div>
+                <button @onclick="ToggleSomenteRetirada"
+                        disabled="@salvandoDelivery"
+                        style="padding:10px 20px; font-size:0.9rem; font-weight:bold; border:none; border-radius:8px; cursor:pointer;
+                               background:@(somenteRetirada ? "#27ae60" : "#e67e22"); color:#fff;">
+                    @(somenteRetirada ? "🛵 Habilitar Delivery" : "🏪 Somente Retirada")
+                </button>
+            </div>
+        </div>
 
         <div class="admin-form-actions" style="margin-top:12px;">
             <button class="admin-btn-salvar" @onclick="SalvarDelivery" disabled="@salvandoDelivery">
@@ -154,9 +172,10 @@
     [CascadingParameter] private AdminAlertService Alert { get; set; } = default!;
 
     // ── Delivery ──
-    private bool   deliveryAtivo    = true;
-    private string deliveryMensagem = "Atendimento encerrado. Voltamos em breve! 🍟";
-    private bool   salvandoDelivery = false;
+    private bool   deliveryAtivo     = true;
+    private string deliveryMensagem  = "Atendimento encerrado. Voltamos em breve! 🍟";
+    private bool   somenteRetirada   = false;
+    private bool   salvandoDelivery  = false;
 
     // ── Totem ──
     private bool   totemAtivo    = true;
@@ -183,7 +202,7 @@
             if (cbConfig != null) porcentagemCashback = cbConfig.Porcentagem;
 
             var deliveryStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
-            if (deliveryStatus != null) { deliveryAtivo = deliveryStatus.Ativo; deliveryMensagem = deliveryStatus.Mensagem; }
+            if (deliveryStatus != null) { deliveryAtivo = deliveryStatus.Ativo; deliveryMensagem = deliveryStatus.Mensagem; somenteRetirada = deliveryStatus.SomenteRetirada; }
 
             var totemStatus = await Http.GetFromJsonAsync<TotemStatusDto>("api/configuracoes/totem-status");
             if (totemStatus != null) { totemAtivo = totemStatus.Ativo; totemMensagem = totemStatus.Mensagem; }
@@ -191,15 +210,16 @@
         catch (Exception ex) { Alert.MostrarErro($"Erro ao carregar configurações: {ex.Message}"); }
     }
 
-    private async Task ToggleDelivery() { deliveryAtivo = !deliveryAtivo; await EnviarStatusDelivery(); }
-    private async Task SalvarDelivery()  => await EnviarStatusDelivery();
+    private async Task ToggleDelivery()        { deliveryAtivo = !deliveryAtivo; await EnviarStatusDelivery(); }
+    private async Task ToggleSomenteRetirada() { somenteRetirada = !somenteRetirada; await EnviarStatusDelivery(); }
+    private async Task SalvarDelivery()        => await EnviarStatusDelivery();
 
     private async Task EnviarStatusDelivery()
     {
         salvandoDelivery = true;
         try
         {
-            var dto = new DeliveryStatusDto { Ativo = deliveryAtivo, Mensagem = deliveryMensagem };
+            var dto = new DeliveryStatusDto { Ativo = deliveryAtivo, Mensagem = deliveryMensagem, SomenteRetirada = somenteRetirada };
             var res = await Http.PostAsJsonAsync("api/configuracoes/delivery-status", dto);
             if (res.IsSuccessStatusCode)
                 Alert.MostrarSucesso(deliveryAtivo ? "Delivery aberto com sucesso!" : "Delivery encerrado. Mensagem ativa.");

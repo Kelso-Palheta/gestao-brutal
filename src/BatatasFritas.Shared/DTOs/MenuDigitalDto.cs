@@ -19,6 +19,9 @@ public class DeliveryStatusDto
 
     /// <summary>Mensagem exibida ao cliente quando o delivery está encerrado.</summary>
     public string Mensagem { get; set; } = "Atendimento encerrado. Voltamos em breve! 🍟";
+
+    /// <summary>true = apenas retirada no local (oculta bairros e endereço no cardápio digital)</summary>
+    public bool SomenteRetirada { get; set; }
 }
 
 /// <summary>
