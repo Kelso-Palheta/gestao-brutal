@@ -70,21 +70,33 @@
                 </div>
 
 
-                
-                <input @bind="Carrinho.TempRuaAvenida" type="text" placeholder="Rua / Avenida" style="padding: 10px; border: 2px solid #000;" />
-                
-                <div style="display: flex; gap: 10px;">
-                    <input @bind="Carrinho.TempNumeroLocal" type="text" placeholder="Nº da Casa" style="padding: 10px; border: 2px solid #000; width: 35%;" />
-                    <input @bind="Carrinho.TempComplementoLocal" type="text" placeholder="Ponto de Referência" style="padding: 10px; border: 2px solid #000; flex: 1;" />
-                </div>
-                
-                <select @bind="Carrinho.TempBairro" style="padding: 10px; border: 2px solid #000; color: #000; background-color: #fff;">
-                    <option value="" disabled selected>Bairro de Entrega...</option>
-                    @foreach (var b in bairrosDisponiveis)
-                    {
-                        <option value="@b.Id">@b.Nome (+ R$ @b.TaxaEntrega.ToString("F2"))</option>
-                    }
-                </select>
+                @if (somenteRetirada)
+                {
+                    <div style="background:#fff8f0; border:2px solid #e67e22; border-radius:8px; padding:14px; display:flex; align-items:center; gap:12px;">
+                        <span style="font-size:1.8rem;">🏪</span>
+                        <div>
+                            <strong style="display:block; color:#e67e22;">Retirada no Local</strong>
+                            <span style="font-size:0.85rem; color:#666;">No momento só estamos trabalhando com retirada no local. Sem entrega.</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <input @bind="Carrinho.TempRuaAvenida" type="text" placeholder="Rua / Avenida" style="padding: 10px; border: 2px solid #000;" />
+
+                    <div style="display: flex; gap: 10px;">
+                        <input @bind="Carrinho.TempNumeroLocal" type="text" placeholder="Nº da Casa" style="padding: 10px; border: 2px solid #000; width: 35%;" />
+                        <input @bind="Carrinho.TempComplementoLocal" type="text" placeholder="Ponto de Referência" style="padding: 10px; border: 2px solid #000; flex: 1;" />
+                    </div>
+
+                    <select @bind="Carrinho.TempBairro" style="padding: 10px; border: 2px solid #000; color: #000; background-color: #fff;">
+                        <option value="" disabled selected>Bairro de Entrega...</option>
+                        @foreach (var b in bairrosDisponiveis)
+                        {
+                            <option value="@b.Id">@b.Nome (+ R$ @b.TaxaEntrega.ToString("F2"))</option>
+                        }
+                    </select>
+                }
 
                 <select value="@Carrinho.TempPagamento" @onchange="@(e => { Carrinho.TempPagamento = e.Value?.ToString(); StateHasChanged(); })" style="padding: 10px; border: 2px solid #000; color: #000; background-color: #fff;">
                     <option value="" disabled selected>Forma de Pagamento...</option>
@@ -541,7 +553,8 @@ else if (mostrarModalConfirmacao)
     private string? mpPublicKey = null;
     private DotNetObjectReference<CarrinhoOffcanvas>? _dotnetRef;
     private List<BairroDto> bairrosDisponiveis = new();
-    private List<ProdutoDto> produtosLoja = new(); // Used for checking "Apples to Apples" stock
+    private List<ProdutoDto> produtosLoja = new();
+    private bool somenteRetirada = false;
 
     // Divisão de Pagamento
     private string segundoPagamento = "";
@@ -604,14 +617,18 @@ else if (mostrarModalConfirmacao)
 
             var prods = await Http.GetFromJsonAsync<List<ProdutoDto>>("api/produtos");
             if (prods != null) produtosLoja = prods;
+
+            var deliveryStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
+            if (deliveryStatus != null) somenteRetirada = deliveryStatus.SomenteRetirada;
         }
         catch { /* fail silently if API unavailable */ }
     }
 
-    private decimal TaxaEntregaAtual 
+    private decimal TaxaEntregaAtual
     {
-        get 
+        get
         {
+            if (somenteRetirada) return 0m;
             if (!string.IsNullOrEmpty(Carrinho.TempBairro) && int.TryParse(Carrinho.TempBairro, out int bairroId))
             {
                 var bairro = bairrosDisponiveis.FirstOrDefault(b => b.Id == bairroId);
@@ -709,18 +726,25 @@ else if (mostrarModalConfirmacao)
 
     private async Task FinalizarPedido()
     {
-        if (string.IsNullOrWhiteSpace(Carrinho.TempNome) || 
-            string.IsNullOrWhiteSpace(Carrinho.TempRuaAvenida) || 
-            string.IsNullOrWhiteSpace(Carrinho.TempNumeroLocal))
+        if (string.IsNullOrWhiteSpace(Carrinho.TempNome))
         {
-            mensagemErro = "Por favor, preencha seu nome, a rua e o número da casa!";
+            mensagemErro = "Por favor, preencha seu nome!";
             return;
         }
-        
-        if (string.IsNullOrEmpty(Carrinho.TempBairro))
+
+        if (!somenteRetirada)
         {
-            mensagemErro = "Por favor, escolha o seu bairro para a entrega!";
-            return;
+            if (string.IsNullOrWhiteSpace(Carrinho.TempRuaAvenida) || string.IsNullOrWhiteSpace(Carrinho.TempNumeroLocal))
+            {
+                mensagemErro = "Por favor, preencha a rua e o número da casa!";
+                return;
+            }
+
+            if (string.IsNullOrEmpty(Carrinho.TempBairro))
+            {
+                mensagemErro = "Por favor, escolha o seu bairro para a entrega!";
+                return;
+            }
         }
         
         if (string.IsNullOrEmpty(Carrinho.TempPagamento))
@@ -834,12 +858,22 @@ else if (mostrarModalConfirmacao)
         {
             // Monta pedidoDto com token
             pedidoDto = new NovoPedidoDto();
-            pedidoDto.Itens               = Carrinho.Itens.ToList();
-            pedidoDto.NomeCliente         = Carrinho.TempNome;
-            pedidoDto.TelefoneCliente     = Carrinho.TempTelefone;
-            pedidoDto.EnderecoEntrega     = $"{Carrinho.TempRuaAvenida}, Nº {Carrinho.TempNumeroLocal} - {Carrinho.TempComplementoLocal}".TrimEnd(' ', '-');
-            pedidoDto.MetodoPagamento     = MetodoPagamento.Cartao;
-            pedidoDto.BairroEntregaId     = int.Parse(Carrinho.TempBairro);
+            pedidoDto.Itens           = Carrinho.Itens.ToList();
+            pedidoDto.NomeCliente     = Carrinho.TempNome;
+            pedidoDto.TelefoneCliente = Carrinho.TempTelefone;
+            pedidoDto.MetodoPagamento = MetodoPagamento.Cartao;
+            if (somenteRetirada)
+            {
+                pedidoDto.EnderecoEntrega = "Retirada no local";
+                pedidoDto.BairroEntregaId = 0;
+                pedidoDto.TipoAtendimento = TipoAtendimento.Balcao;
+            }
+            else
+            {
+                pedidoDto.EnderecoEntrega = $"{Carrinho.TempRuaAvenida}, Nº {Carrinho.TempNumeroLocal} - {Carrinho.TempComplementoLocal}".TrimEnd(' ', '-');
+                pedidoDto.BairroEntregaId = int.Parse(Carrinho.TempBairro);
+                pedidoDto.TipoAtendimento = TipoAtendimento.Delivery;
+            }
             pedidoDto.ValorCashbackUsado  = ValorCashbackAplicado;
             pedidoDto.MomentoPagamento    = BatatasFritas.Shared.Enums.MomentoPagamento.Online; // cartão online
             pedidoDto.CardToken           = token;
@@ -937,12 +971,23 @@ else if (mostrarModalConfirmacao)
         pedidoDto.Itens = Carrinho.Itens.ToList();
         
         // Push State properties to Request DTO
-        pedidoDto.NomeCliente = Carrinho.TempNome;
+        pedidoDto.NomeCliente    = Carrinho.TempNome;
         pedidoDto.TelefoneCliente = Carrinho.TempTelefone;
-        pedidoDto.EnderecoEntrega = $"{Carrinho.TempRuaAvenida}, Nº {Carrinho.TempNumeroLocal} - {Carrinho.TempComplementoLocal}".TrimEnd(' ', '-');
         pedidoDto.MetodoPagamento = (MetodoPagamento)int.Parse(Carrinho.TempPagamento);
-        pedidoDto.BairroEntregaId = int.Parse(Carrinho.TempBairro);
         pedidoDto.ValorCashbackUsado = ValorCashbackAplicado;
+
+        if (somenteRetirada)
+        {
+            pedidoDto.EnderecoEntrega  = "Retirada no local";
+            pedidoDto.BairroEntregaId  = 0;
+            pedidoDto.TipoAtendimento  = TipoAtendimento.Balcao;
+        }
+        else
+        {
+            pedidoDto.EnderecoEntrega = $"{Carrinho.TempRuaAvenida}, Nº {Carrinho.TempNumeroLocal} - {Carrinho.TempComplementoLocal}".TrimEnd(' ', '-');
+            pedidoDto.BairroEntregaId = int.Parse(Carrinho.TempBairro);
+            pedidoDto.TipoAtendimento = TipoAtendimento.Delivery;
+        }
 
         // Configurar divisão de pagamento se houver
         if (valorSegundoPagamento > 0 && !string.IsNullOrEmpty(segundoPagamento))
