@@ -1,6 +1,7 @@
 @page "/admin/estoque"
 @layout EmptyLayout
 @using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
 @using BatatasFritas.Web.Services
 @using System.Net.Http.Json
 @inject HttpClient Http
@@ -196,6 +197,48 @@
                             <input type="number" step="0.01" @bind="editandoInsumo.CustoPorUnidade" class="est-input" />
                         </div>
                     </div>
+
+                    <!-- Cardápio -->
+                    <div style="border-top:1px solid #333; margin-top:16px; padding-top:16px;">
+                        <label class="est-switch-label" style="margin-bottom:10px;">
+                            <input type="checkbox" @bind="editandoInsumo.MostrarNoCardapio" />
+                            🛒 Este insumo é um <strong>produto vendável</strong> no cardápio (ex: bebida, porção avulsa)
+                        </label>
+
+                        @if (editandoInsumo.MostrarNoCardapio)
+                        {
+                            <div class="est-form-grid" style="margin-top:10px; border:1px dashed #ffb347; padding:12px; border-radius:8px; background:#1a1400;">
+                                <div class="est-form-grupo">
+                                    <label>Preço de Venda (R$) *</label>
+                                    <input type="number" step="0.01" min="0.01" @bind="editandoInsumo.PrecoCardapio" class="est-input" placeholder="Ex: 6.00" />
+                                </div>
+                                <div class="est-form-grupo">
+                                    <label>Categoria no Cardápio *</label>
+                                    <select @bind="editandoInsumo.CategoriaCardapio" class="est-input">
+                                        @foreach (var cat in Enum.GetValues<CategoriaEnum>())
+                                        {
+                                            <option value="@cat">@cat</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="est-form-grupo" style="grid-column: 1 / -1;">
+                                    <label class="est-switch-label">
+                                        <input type="checkbox" @bind="editandoInsumo.AutoDesativarAoZerar" />
+                                        ⚡ Auto-desativar no cardápio quando o estoque zerar
+                                    </label>
+                                </div>
+                            </div>
+                            @if (editandoInsumo.ProdutoAssociadoId > 0)
+                            {
+                                <p style="font-size:0.8rem; color:#4caf50; margin-top:8px;">✅ Produto vinculado ao cardápio (ID #@editandoInsumo.ProdutoAssociadoId)</p>
+                            }
+                            else
+                            {
+                                <p style="font-size:0.8rem; color:#ffb347; margin-top:8px;">⚠️ Ao salvar, um produto será criado automaticamente no cardápio.</p>
+                            }
+                        }
+                    </div>
+
                     <div class="est-form-btns">
                         <button class="est-btn-salvar" @onclick="@(() => SalvarInsumo())">💾 Salvar</button>
                         @if (editandoInsumo.Id > 0)
@@ -599,7 +642,10 @@
     private void EditarInsumo(InsumoDto i) => editandoInsumo = new InsumoDto
     {
         Id = i.Id, Nome = i.Nome, Unidade = i.Unidade,
-        EstoqueMinimo = i.EstoqueMinimo, CustoPorUnidade = i.CustoPorUnidade
+        EstoqueMinimo = i.EstoqueMinimo, CustoPorUnidade = i.CustoPorUnidade,
+        MostrarNoCardapio = i.MostrarNoCardapio, AutoDesativarAoZerar = i.AutoDesativarAoZerar,
+        PrecoCardapio = i.PrecoCardapio, CategoriaCardapio = i.CategoriaCardapio,
+        ProdutoAssociadoId = i.ProdutoAssociadoId
     };
 
     private async Task SalvarInsumo()

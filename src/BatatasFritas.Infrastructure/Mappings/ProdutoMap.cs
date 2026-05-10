@@ -21,5 +21,6 @@ public class ProdutoMap : ClassMap<Produto>
         Map(x => x.ComplementosPermitidos).Nullable().Length(500).Column("complementos_permitidos").Default("''");
         Map(x => x.EstoqueAtual).Not.Nullable().Column("estoque_atual").Default("0");
         Map(x => x.EstoqueMinimo).Not.Nullable().Column("estoque_minimo").Default("0");
+        Map(x => x.InsumoId).Nullable().Column("insumo_id");
     }
 }
