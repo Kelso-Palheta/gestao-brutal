@@ -92,16 +92,16 @@ public class DespesasController : ControllerBase
     }
 
     // ── POST api/despesas/extrair-nf ──────────────────────────────────────
-    // Recebe imagem base64, chama Claude Vision, retorna campos pré-preenchidos.
+    // Recebe imagem base64, chama Sabiá Vision (Maritaca AI), retorna campos pré-preenchidos.
     [HttpPost("extrair-nf")]
     public async Task<IActionResult> ExtrairNf([FromBody] ExtrairNfRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.ImagemBase64))
             return BadRequest("Imagem não enviada.");
 
-        var apiKey = _config["Anthropic:ApiKey"];
+        var apiKey = _config["Maritaca:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
-            return StatusCode(503, "Chave Anthropic não configurada. Adicione Anthropic:ApiKey no appsettings.");
+            return StatusCode(503, "Chave Maritaca não configurada. Adicione Maritaca:ApiKey no appsettings ou variável de ambiente Maritaca__ApiKey.");
 
         try
         {
@@ -120,9 +120,11 @@ public class DespesasController : ControllerBase
                 Se não conseguir extrair algum campo, use null ou um valor razoável.
                 """;
 
+            // Maritaca AI — API OpenAI-compatible com suporte a visão (sabiazinho-4)
+            var dataUri = $"data:{req.MimeType};base64,{req.ImagemBase64}";
             var body = new
             {
-                model = "claude-opus-4-5",
+                model = "sabiazinho-4",
                 max_tokens = 512,
                 messages = new[]
                 {
@@ -131,7 +133,7 @@ public class DespesasController : ControllerBase
                         role = "user",
                         content = new object[]
                         {
-                            new { type = "image", source = new { type = "base64", media_type = req.MimeType, data = req.ImagemBase64 } },
+                            new { type = "image_url", image_url = new { url = dataUri } },
                             new { type = "text", text = prompt }
                         }
                     }
@@ -139,22 +141,24 @@ public class DespesasController : ControllerBase
             };
 
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
 
             var jsonBody = JsonSerializer.Serialize(body);
             var httpContent = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync("https://api.anthropic.com/v1/messages", httpContent);
+            var response = await client.PostAsync("https://chat.maritaca.ai/api/v1/chat/completions", httpContent);
 
             var responseText = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-                return StatusCode(502, $"Erro da API Claude: {responseText}");
+                return StatusCode(502, $"Erro da API Maritaca: {responseText}");
 
+            // Resposta OpenAI-compatible: choices[0].message.content
             using var doc = JsonDocument.Parse(responseText);
             var textContent = doc.RootElement
-                .GetProperty("content")[0]
-                .GetProperty("text")
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
                 .GetString() ?? "{}";
 
             // Remove possível markdown ```json ... ```
