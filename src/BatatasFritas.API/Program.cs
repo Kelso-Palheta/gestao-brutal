@@ -27,6 +27,7 @@ builder.Host.UseSerilog((ctx, lc) => lc
     .WriteTo.Console(new JsonFormatter()));
 
 // ── Controllers ──────────────────────────────────────────────────────────────
+builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
