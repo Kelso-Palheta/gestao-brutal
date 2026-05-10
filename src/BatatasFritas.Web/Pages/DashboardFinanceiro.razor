@@ -1128,7 +1128,8 @@
             var mime = file.ContentType ?? "image/jpeg";
 
             var req = new ExtrairNfRequest { ImagemBase64 = base64, MimeType = mime };
-            var resp = await Http.PostAsJsonAsync("api/despesas/extrair-nf", req);
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(300));
+            var resp = await Http.PostAsJsonAsync("api/despesas/extrair-nf", req, cts.Token);
 
             if (!resp.IsSuccessStatusCode)
             {
