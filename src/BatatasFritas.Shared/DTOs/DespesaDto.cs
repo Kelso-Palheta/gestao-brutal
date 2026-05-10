@@ -36,3 +36,20 @@ public class ExtrairNfResponse
     public string? CnpjEmitente { get; set; }
     public string? NomeEmitente { get; set; }
 }
+
+public class ExtrairNfRequest
+{
+    /// <summary>Imagem da NF em base64 (sem o prefixo data:image/...).</summary>
+    public string ImagemBase64 { get; set; } = string.Empty;
+    public string MimeType { get; set; } = "image/jpeg";
+}
+
+public class ExtrairNfResponse
+{
+    public bool Sucesso { get; set; }
+    public string? Erro { get; set; }
+    public DespesaDto Despesa { get; set; } = new();
+    public string? NumeroNF { get; set; }
+    public string? CnpjEmitente { get; set; }
+    public string? NomeEmitente { get; set; }
+}
