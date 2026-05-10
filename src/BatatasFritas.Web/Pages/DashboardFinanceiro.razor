@@ -380,7 +380,7 @@
                 <div style="border: 1px solid #f39c12; border-radius: 8px; padding: 12px; margin-bottom: 16px; background: #1a1200;">
                     <p style="margin: 0 0 10px 0; font-size: 0.85rem; color: #f39c12; font-weight: bold;">📦 Atualizar estoque automaticamente (opcional)</p>
                     <label style="font-size:0.85rem; color:#ccc;">Insumo comprado</label>
-                    <select @bind="novaDespesaInsumoId" style="width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 5px; background: #111; border: 1px solid #555; color: #fff;">
+                    <select @bind="_insumoIdStr" style="width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 5px; background: #111; border: 1px solid #555; color: #fff;">
                         <option value="">-- Não vincular ao estoque --</option>
                         @foreach (var ins in _insumosDisponiveis)
                         {
@@ -799,8 +799,9 @@
 
     // ── Compra de Insumo ───────────────────────────────────────────────
     private List<InsumoDto> _insumosDisponiveis = new();
-    private int? novaDespesaInsumoId = null;
+    private string _insumoIdStr = "";   // string evita erro de bind int? com empty option
     private decimal novaDespesaQuantidade = 0;
+    private int? novaDespesaInsumoId => int.TryParse(_insumoIdStr, out var v) && v > 0 ? v : null;
 
     // Extração NF via foto
     private bool extraindoNf = false;
@@ -1110,7 +1111,7 @@
                 novaDespesaValor = 0;
                 novaDespesaObservacao = "";
                 novaDespesaDataStr = DateTime.Today.ToString("yyyy-MM-dd");
-                novaDespesaInsumoId = null;
+                _insumoIdStr = "";
                 novaDespesaQuantidade = 0;
                 await CarregarDados();
             }

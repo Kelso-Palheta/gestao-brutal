@@ -1,5 +1,3 @@
-using BatatasFritas.Shared.Enums;
-
 namespace BatatasFritas.Shared.DTOs;
 
 public class InsumoDto
@@ -13,17 +11,8 @@ public class InsumoDto
     public bool Ativo { get; set; } = true;
     public bool AbaixoDoMinimo { get; set; }
     public bool EstoqueNegativo { get; set; }
-
-    /// <summary>Quando true, cria/mantém um Produto ativo no cardápio vinculado a este insumo.</summary>
     public bool MostrarNoCardapio { get; set; }
-    /// <summary>Quando true, desativa o Produto vinculado ao zerar estoque.</summary>
     public bool AutoDesativarAoZerar { get; set; }
-    /// <summary>Preço de venda para o produto gerado automaticamente.</summary>
-    public decimal PrecoCardapio { get; set; }
-    /// <summary>Categoria do produto gerado automaticamente.</summary>
-    public CategoriaEnum CategoriaCardapio { get; set; } = CategoriaEnum.Bebidas;
-    /// <summary>ID do Produto vinculado (0 se nenhum).</summary>
-    public int ProdutoAssociadoId { get; set; }
 }
 
 public class MovimentacaoDto
