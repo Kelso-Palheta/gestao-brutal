@@ -185,6 +185,7 @@ public class DespesasController : ControllerBase
             };
 
             var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(300); // Maritaca vision pode demorar com imagens grandes
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
 
