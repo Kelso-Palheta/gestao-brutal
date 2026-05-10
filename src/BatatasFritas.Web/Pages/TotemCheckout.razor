@@ -308,7 +308,7 @@
         if (!Carrinho.Itens.Any()) Nav.NavigateTo("/totem");
     }
 
-    private bool PodeAvancar() => !string.IsNullOrEmpty(ondeComer) && !string.IsNullOrWhiteSpace(nomeCliente) && !string.IsNullOrWhiteSpace(telefoneCliente);
+    private bool PodeAvancar() => !string.IsNullOrEmpty(ondeComer) && !string.IsNullOrWhiteSpace(nomeCliente);
 
     private async Task BuscarCashback()
     {

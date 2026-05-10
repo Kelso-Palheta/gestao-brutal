@@ -1,6 +1,7 @@
 @page "/admin/dashboard-analytics"
 @layout EmptyLayout
 @using BatatasFritas.Shared.DTOs
+@using BatatasFritas.Shared.Enums
 @using BatatasFritas.Web.Services
 @using System.Net.Http.Json
 @inject HttpClient Http
@@ -145,6 +146,8 @@
                                 <th>Bebidas</th>
                                 <th>Entrega</th>
                                 <th>Total</th>
+                                <th>Cashback</th>
+                                <th>Pagamento</th>
                                 <th>Itens</th>
                             </tr>
                         </thead>
@@ -160,6 +163,17 @@
                                     <td class="cor-bebida">@pedido.ValorBebidas.ToString("C2")</td>
                                     <td class="cor-entrega">@pedido.TaxaEntrega.ToString("C2")</td>
                                     <td class="cor-total"><strong>@pedido.ValorTotal.ToString("C2")</strong></td>
+                                    <td class="cor-cashback">
+                                        @if (pedido.ValorCashbackUsado > 0)
+                                        {
+                                            <span>-@pedido.ValorCashbackUsado.ToString("C2")</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#666;">—</span>
+                                        }
+                                    </td>
+                                    <td class="cor-pagamento">@ObterNomeMetodo(pedido.MetodoPagamento)</td>
                                     <td>@pedido.QtdItens</td>
                                 </tr>
                             }
@@ -567,6 +581,8 @@
 .cor-bebida { color: #3b82f6; }
 .cor-entrega { color: #22c55e; }
 .cor-total { color: #4caf50; }
+.cor-cashback { color: #ffb347; }
+.cor-pagamento { color: #9b59b6; }
 
 /* Mobile */
 @@media (max-width: 768px) {
@@ -593,6 +609,7 @@
     private string filtroFimStr = DateTime.Today.ToString("yyyy-MM-dd");
     private bool filtroAtivo = false;
     private string filtroAtalho = "";
+    private DateTime? filtroInicioComHora = null; // Para atalhos com hora específica (ex: Esta Semana às 08:00)
 
     protected override async Task OnInitializedAsync()
     {
@@ -613,7 +630,9 @@
             string url = "api/financeiro/analytics";
             if (filtroAtivo && !string.IsNullOrEmpty(filtroInicioStr) && !string.IsNullOrEmpty(filtroFimStr))
             {
-                url += $"?inicio={filtroInicioStr}&fim={filtroFimStr}";
+                // Se filtroInicioComHora está definido (atalhos com hora), usa ele; senão usa a data
+                var dataInicio = filtroInicioComHora?.ToString("yyyy-MM-ddTHH:mm:ss") ?? filtroInicioStr;
+                url += $"?inicio={dataInicio}&fim={filtroFimStr}";
             }
             dados = await Http.GetFromJsonAsync<DashboardAnalyticsDto>(url);
         }
@@ -631,6 +650,7 @@
     {
         filtroAtalho = "";
         filtroAtivo = true;
+        filtroInicioComHora = null; // Limpa hora customizada ao aplicar filtro manual
         await CarregarDados();
     }
 
@@ -648,10 +668,15 @@
     {
         var hoje = DateTime.Today;
         int diasDesdeSegunda = ((int)hoje.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
-        filtroInicioStr = hoje.AddDays(-diasDesdeSegunda).ToString("yyyy-MM-dd");
+        var segunda = hoje.AddDays(-diasDesdeSegunda);
+
+        // Segunda-feira às 08:00 (horário de abertura)
+        filtroInicioStr = segunda.ToString("yyyy-MM-dd");
         filtroFimStr = hoje.ToString("yyyy-MM-dd");
         filtroAtalho = "semana";
         filtroAtivo = true;
+        filtroInicioComHora = new DateTime(segunda.Year, segunda.Month, segunda.Day, 8, 0, 0);
+
         await CarregarDados();
     }
 
@@ -671,6 +696,15 @@
         filtroFimStr = DateTime.Today.ToString("yyyy-MM-dd");
         filtroAtivo = false;
         filtroAtalho = "";
+        filtroInicioComHora = null;
         await CarregarDados();
     }
+
+    private string ObterNomeMetodo(MetodoPagamento metodo) => metodo switch
+    {
+        MetodoPagamento.Pix => "PIX",
+        MetodoPagamento.Dinheiro => "Dinheiro",
+        MetodoPagamento.Cartao => "Cartão",
+        _ => metodo.ToString()
+    };
 }

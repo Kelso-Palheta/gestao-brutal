@@ -15,5 +15,7 @@ public class InsumoMap : ClassMap<Insumo>
         Map(x => x.EstoqueMinimo).Not.Nullable().Column("estoque_minimo");
         Map(x => x.CustoPorUnidade).Not.Nullable().Column("custo_por_unidade");
         Map(x => x.Ativo).Not.Nullable().Column("ativo").Default("true");
+        Map(x => x.MostrarNoCardapio).Not.Nullable().Column("mostrar_no_cardapio").Default("false");
+        Map(x => x.AutoDesativarAoZerar).Not.Nullable().Column("auto_desativar_ao_zerar").Default("false");
     }
 }
