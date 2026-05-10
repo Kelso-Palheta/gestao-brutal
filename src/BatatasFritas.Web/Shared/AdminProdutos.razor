@@ -37,6 +37,24 @@
                     <label>URL da Imagem</label>
                     <input @bind="produtoEdit.ImagemUrl" placeholder="https://..." />
                 </div>
+                <div class="admin-field">
+                    <label>Insumo vinculado (opcional)</label>
+                    <select @bind="produtoEdit.InsumoVinculadoId">
+                        <option value="">— Nenhum —</option>
+                        @foreach (var i in todosInsumos)
+                        {
+                            <option value="@i.Id">@i.Nome (@i.EstoqueAtual @i.Unidade)</option>
+                        }
+                    </select>
+                    <small style="color:#888; font-size:0.8rem;">Para bebidas e itens revendidos 1:1, sem necessidade de cadastrar receita.</small>
+                </div>
+                <div class="admin-field">
+                    <label>Quantidade por unidade vendida</label>
+                    <input type="number" step="0.001" min="0.001"
+                           @bind="produtoEdit.QuantidadePorUnidade"
+                           disabled="@(produtoEdit.InsumoVinculadoId == null)" />
+                    <small style="color:#888; font-size:0.8rem;">Quanto do insumo é consumido a cada unidade vendida (padrão: 1).</small>
+                </div>
                 <div class="admin-field admin-field-full">
                     <label>Descrição</label>
                     <textarea @bind="produtoEdit.Descricao" rows="2" placeholder="Descrição opcional..."></textarea>
@@ -236,6 +254,9 @@
 
             var comps = await Http.GetFromJsonAsync<List<ComplementoDto>>("api/complementos");
             if (comps != null) complementos = comps;
+
+            var ins = await Http.GetFromJsonAsync<List<InsumoDto>>("api/insumos");
+            if (ins != null) todosInsumos = ins;
         }
         catch (Exception ex) { Alert.MostrarErro($"Erro ao carregar produtos: {ex.Message}"); }
     }
@@ -298,7 +319,9 @@
             Id = p.Id, Nome = p.Nome, Descricao = p.Descricao,
             CategoriaId = p.CategoriaId, PrecoBase = p.PrecoBase,
             ImagemUrl = p.ImagemUrl, Ativo = p.Ativo,
-            ComplementosPermitidos = p.ComplementosPermitidos
+            ComplementosPermitidos = p.ComplementosPermitidos,
+            InsumoVinculadoId = p.InsumoVinculadoId,
+            QuantidadePorUnidade = p.QuantidadePorUnidade
         };
         complementosSelecionadosEdit.Clear();
         if (!string.IsNullOrWhiteSpace(p.ComplementosPermitidos))
