@@ -330,13 +330,13 @@
 @if (mostrarModalDespesa)
 {
     <div class="modal-overlay" style="align-items: center; padding: 20px; background: rgba(0,0,0,0.8);">
-        <div class="modal-content" style="max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px; border-radius: 12px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
+        <div class="modal-content" style="max-width: 480px; width: 100%; max-height: 92vh; overflow-y: auto; padding: 30px; border-radius: 12px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
             <h3 style="margin:0 0 4px 0;">💸 Lançar Despesa</h3>
             <p style="color: #aaa; margin-bottom: 16px; font-size:0.85rem;">Deduzirá do lucro no fechamento de caixa.</p>
 
             <!-- BOTÃO FOTO NF -->
             <div style="margin-bottom:16px; border:2px dashed #8e44ad; border-radius:8px; padding:12px; text-align:center; background:#1a0f1f;">
-                <p style="margin:0 0 8px 0; font-size:0.85rem; color:#ccc;">📷 Tem uma nota fiscal? Deixa a IA preencher pra você!</p>
+                <p style="margin:0 0 8px 0; font-size:0.85rem; color:#ccc;">📷 Tem uma nota fiscal? A IA lê todos os produtos de uma vez!</p>
                 <InputFile id="nf-upload" OnChange="@OnNfImagemSelecionada" accept="image/*" capture="environment" style="display:none;" />
                 <label for="nf-upload" style="display:inline-block; padding:10px 20px; background:#8e44ad; color:#fff; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.9rem;">
                     @if (extraindoNf) { <text>⏳ Lendo NF...</text> } else { <text>📷 Tirar Foto / Escolher NF</text> }
@@ -345,14 +345,73 @@
                 {
                     <p style="color:#e74c3c; font-size:0.8rem; margin:6px 0 0 0;">@nfErro</p>
                 }
-                @if (nfSucesso)
+                @if (nfItens.Any() && !extraindoNf)
                 {
-                    <p style="color:#4caf50; font-size:0.8rem; margin:6px 0 0 0;">✅ Campos preenchidos! Revise e confirme.</p>
+                    <p style="color:#4caf50; font-size:0.8rem; margin:6px 0 0 0;">✅ @nfItens.Count produto(s) extraído(s). Revise abaixo e confirme.</p>
                 }
             </div>
 
-            <label>Descrição</label>
-            <input type="text" @bind="novaDespesaDescricao" placeholder="Ex: Diária Chapeiro Marcos" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
+            <!-- LISTA DE ITENS DA NF (modo multi-produto) -->
+            @if (nfItens.Any())
+            {
+                <div style="margin-bottom:16px;">
+                    <p style="font-size:0.85rem; color:#f39c12; font-weight:bold; margin:0 0 10px 0;">📦 Produtos da Nota — confirme ou ajuste cada item:</p>
+                    @foreach (var item in nfItens)
+                    {
+                        <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:10px; background:#1a1a1a;">
+                            <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                                <input type="text" value="@item.NomeProduto" @onchange="@(e => item.NomeProduto = e.Value?.ToString() ?? "")"
+                                       placeholder="Nome do produto" style="flex:1; min-width:120px; padding:6px; border-radius:4px; background:#111; border:1px solid #555; color:#fff; font-size:0.8rem;" />
+                                <select value="@item.Unidade" @onchange="@(e => item.Unidade = e.Value?.ToString() ?? "un")"
+                                        style="width:70px; padding:6px; border-radius:4px; background:#111; border:1px solid #555; color:#fff; font-size:0.8rem;">
+                                    <option>un</option><option>kg</option><option>g</option><option>L</option><option>ml</option><option>cx</option><option>pct</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap; font-size:0.8rem; color:#ccc;">
+                                <label style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:80px;">
+                                    <span>Qtd</span>
+                                    <input type="number" step="0.001" value="@item.Quantidade" @onchange="@(e => { if(decimal.TryParse(e.Value?.ToString(), out var v)) item.Quantidade = v; })"
+                                           style="padding:5px; border-radius:4px; background:#111; border:1px solid #555; color:#fff;" />
+                                </label>
+                                <label style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:80px;">
+                                    <span>Vlr unit (R$)</span>
+                                    <input type="number" step="0.01" value="@item.ValorUnitario" @onchange="@(e => { if(decimal.TryParse(e.Value?.ToString(), out var v)) item.ValorUnitario = v; })"
+                                           style="padding:5px; border-radius:4px; background:#111; border:1px solid #555; color:#fff;" />
+                                </label>
+                                <div style="display:flex; flex-direction:column; gap:2px; align-items:flex-end; min-width:70px;">
+                                    <span>Total</span>
+                                    <span style="padding:5px; color:#4caf50; font-weight:bold;">R$ @((item.Quantidade * item.ValorUnitario).ToString("F2"))</span>
+                                </div>
+                            </div>
+                            <!-- Vínculo com insumo -->
+                            <div style="font-size:0.8rem;">
+                                <label style="color:#ccc;">Insumo no estoque:</label>
+                                <select value="@(item.InsumoId?.ToString() ?? (item.CriarInsumo ? "__novo" : ""))"
+                                        @onchange="@(e => OnItemInsumoChange(item, e.Value?.ToString() ?? ""))"
+                                        style="width:100%; padding:5px; border-radius:4px; background:#111; border:1px solid #555; color:#fff; margin-top:3px;">
+                                    <option value="">-- Não vincular --</option>
+                                    <option value="__novo">➕ Criar novo insumo com este nome</option>
+                                    @foreach (var ins in _insumosDisponiveis)
+                                    {
+                                        <option value="@ins.Id">@ins.Nome (@ins.Unidade)</option>
+                                    }
+                                </select>
+                                @if (item.InsumoId.HasValue)
+                                {
+                                    <span style="color:#27ae60; font-size:0.75rem;">✓ Vai dar entrada no estoque de <b>@(_insumosDisponiveis.FirstOrDefault(i=>i.Id==item.InsumoId)?.Nome ?? "")</b></span>
+                                }
+                                @if (item.CriarInsumo)
+                                {
+                                    <span style="color:#f39c12; font-size:0.75rem;">⚠️ Novo insumo "<b>@item.NomeProduto</b>" será criado</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <label>Descrição da Despesa</label>
+            <input type="text" @bind="novaDespesaDescricao" placeholder="Ex: Compra de insumos Atacadão" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <label>Categoria</label>
             <select @bind="novaDespesaCategoria" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;">
@@ -366,19 +425,20 @@
                 <option value="Outros">Outras Despesas</option>
             </select>
 
-            <label>Valor (R$)</label>
+            <label>Valor Total (R$)</label>
             <input type="number" step="0.01" min="0" @bind="novaDespesaValor" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <label>Data da Despesa</label>
             <input type="date" value="@novaDespesaDataStr" @onchange="@(e => novaDespesaDataStr = e.Value?.ToString() ?? "")" style="width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff;" />
 
             <label>Observação (opcional)</label>
-            <textarea @bind="novaDespesaObservacao" placeholder="Ex: Ref. semana 10/03 a 15/03..." rows="3" style="width: 100%; margin-bottom: 20px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff; resize: none; box-sizing: border-box;"></textarea>
+            <textarea @bind="novaDespesaObservacao" placeholder="Ex: NF 001234 — Atacadão" rows="2" style="width: 100%; margin-bottom: 16px; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #333; color: #fff; resize: none; box-sizing: border-box;"></textarea>
 
-            @if (novaDespesaCategoria == "Compra de Insumo")
+            @if (!nfItens.Any() && novaDespesaCategoria == "Compra de Insumo")
             {
+                <!-- Fallback: modo item único (sem NF ou NF sem itens) -->
                 <div style="border: 1px solid #f39c12; border-radius: 8px; padding: 12px; margin-bottom: 16px; background: #1a1200;">
-                    <p style="margin: 0 0 10px 0; font-size: 0.85rem; color: #f39c12; font-weight: bold;">📦 Atualizar estoque automaticamente (opcional)</p>
+                    <p style="margin: 0 0 10px 0; font-size: 0.85rem; color: #f39c12; font-weight: bold;">📦 Atualizar estoque (item único)</p>
                     <label style="font-size:0.85rem; color:#ccc;">Insumo comprado</label>
                     <select @bind="_insumoIdStr" style="width: 100%; margin-bottom: 10px; padding: 8px; border-radius: 5px; background: #111; border: 1px solid #555; color: #fff;">
                         <option value="">-- Não vincular ao estoque --</option>
@@ -399,7 +459,17 @@
 
             <div style="display: flex; gap: 10px;">
                 <button style="flex: 1; padding: 10px; background: #555; color: #fff; border: none; border-radius: 5px; cursor: pointer;" @onclick="@FecharModalDespesa">Cancelar</button>
-                <button style="flex: 1; padding: 10px; background: #8e44ad; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;" @onclick="@(() => LancarDespesa())" disabled="@(processandoAcao || extraindoNf)">Lançar</button>
+                @if (nfItens.Any())
+                {
+                    <button style="flex: 2; padding: 10px; background: #27ae60; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;"
+                            @onclick="@ConfirmarNfMulti" disabled="@(processandoAcao || extraindoNf)">
+                        ✅ Confirmar NF (@nfItens.Count produto(s))
+                    </button>
+                }
+                else
+                {
+                    <button style="flex: 1; padding: 10px; background: #8e44ad; color: #fff; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;" @onclick="@(() => LancarDespesa())" disabled="@(processandoAcao || extraindoNf)">Lançar</button>
+                }
             </div>
         </div>
     </div>
@@ -807,6 +877,19 @@
     private bool extraindoNf = false;
     private bool nfSucesso   = false;
     private string nfErro    = "";
+    private string _nfNumero = "";
+    private List<NfItemUiModel> nfItens = new();
+
+    /// <summary>Modelo local de cada item da NF para edição na UI.</summary>
+    private class NfItemUiModel
+    {
+        public string NomeProduto { get; set; } = "";
+        public string Unidade { get; set; } = "un";
+        public decimal Quantidade { get; set; }
+        public decimal ValorUnitario { get; set; }
+        public int? InsumoId { get; set; }
+        public bool CriarInsumo { get; set; }
+    }
     
     // Modal Limpeza
     private bool mostrarModalLimpar = false;
@@ -1021,6 +1104,8 @@
         mostrarModalDespesa = false;
         nfSucesso = false;
         nfErro = "";
+        nfItens = new();
+        _nfNumero = "";
     }
 
     private async Task OnNfImagemSelecionada(InputFileChangeEventArgs e)
@@ -1028,6 +1113,7 @@
         extraindoNf = true;
         nfErro = "";
         nfSucesso = false;
+        nfItens = new();
         StateHasChanged();
 
         try
@@ -1057,12 +1143,29 @@
                 return;
             }
 
-            // Preenche os campos do formulário
+            // Preenche campos do cabeçalho da despesa
             novaDespesaDescricao  = result.Despesa.Descricao;
             novaDespesaValor      = result.Despesa.Valor;
             novaDespesaCategoria  = result.Despesa.Categoria;
             novaDespesaDataStr    = result.Despesa.DataRegistro.ToString("yyyy-MM-dd");
             novaDespesaObservacao = result.Despesa.Observacao ?? "";
+            _nfNumero             = result.NumeroNF ?? "";
+
+            // Monta lista de itens editáveis
+            if (result.Itens?.Count > 0)
+            {
+                nfItens = result.Itens.Select(i => new NfItemUiModel
+                {
+                    NomeProduto  = i.NomeProduto,
+                    Unidade      = i.Unidade,
+                    Quantidade   = i.Quantidade,
+                    ValorUnitario = i.ValorUnitario > 0 ? i.ValorUnitario
+                                    : (i.Quantidade > 0 ? i.ValorTotal / i.Quantidade : 0),
+                    InsumoId     = i.InsumoId,
+                    CriarInsumo  = i.InsumoNovo && i.InsumoId == null
+                }).ToList();
+            }
+
             nfSucesso = true;
         }
         catch (Exception ex)
@@ -1072,6 +1175,93 @@
         finally
         {
             extraindoNf = false;
+        }
+    }
+
+    private void OnItemInsumoChange(NfItemUiModel item, string value)
+    {
+        if (value == "__novo")
+        {
+            item.InsumoId = null;
+            item.CriarInsumo = true;
+        }
+        else if (int.TryParse(value, out var id) && id > 0)
+        {
+            item.InsumoId = id;
+            item.CriarInsumo = false;
+        }
+        else
+        {
+            item.InsumoId = null;
+            item.CriarInsumo = false;
+        }
+    }
+
+    private async Task ConfirmarNfMulti()
+    {
+        if (string.IsNullOrWhiteSpace(novaDespesaDescricao) || novaDespesaValor <= 0)
+        {
+            msgErro = "Preencha descrição e valor total!";
+            return;
+        }
+
+        processandoAcao = true;
+        msgErro = ""; msgSucesso = "";
+
+        try
+        {
+            var payload = new ConfirmarNfRequest
+            {
+                NumeroNF = _nfNumero,
+                Despesa = new DespesaDto
+                {
+                    Descricao    = novaDespesaDescricao,
+                    Categoria    = "Compra de Insumo",
+                    Valor        = novaDespesaValor,
+                    DataRegistro = DateTime.Parse(novaDespesaDataStr),
+                    Observacao   = string.IsNullOrWhiteSpace(novaDespesaObservacao) ? null : novaDespesaObservacao
+                },
+                Itens = nfItens.Select(i => new ConfirmarNfItemDto
+                {
+                    InsumoId     = i.InsumoId,
+                    NomeProduto  = i.NomeProduto,
+                    Unidade      = i.Unidade,
+                    Quantidade   = i.Quantidade,
+                    ValorUnitario = i.ValorUnitario,
+                    CriarInsumo  = i.CriarInsumo
+                }).ToList()
+            };
+
+            var r = await Http.PostAsJsonAsync("api/despesas/confirmar-nf", payload);
+            if (r.IsSuccessStatusCode)
+            {
+                mostrarModalDespesa = false;
+                nfItens = new();
+                novaDespesaDescricao = "";
+                novaDespesaValor = 0;
+                novaDespesaObservacao = "";
+                novaDespesaDataStr = DateTime.Today.ToString("yyyy-MM-dd");
+                _nfNumero = "";
+
+                var qtdComEstoque = payload.Itens.Count(i => i.InsumoId.HasValue || i.CriarInsumo);
+                msgSucesso = $"NF lançada! {payload.Itens.Count} produto(s) registrado(s), {qtdComEstoque} com entrada no estoque.";
+                await CarregarDados();
+                // Recarrega insumos (podem ter sido criados novos)
+                await CarregarInsumosParaModal();
+            }
+            else
+            {
+                var err = await r.Content.ReadAsStringAsync();
+                msgErro = $"Erro ao confirmar NF: {err}";
+            }
+        }
+        catch (Exception ex)
+        {
+            msgErro = "Erro: " + ex.Message;
+        }
+        finally
+        {
+            processandoAcao = false;
         }
     }
 
