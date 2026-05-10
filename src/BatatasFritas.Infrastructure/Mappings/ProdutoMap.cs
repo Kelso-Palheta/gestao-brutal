@@ -22,5 +22,7 @@ public class ProdutoMap : ClassMap<Produto>
         Map(x => x.EstoqueAtual).Not.Nullable().Column("estoque_atual").Default("0");
         Map(x => x.EstoqueMinimo).Not.Nullable().Column("estoque_minimo").Default("0");
         References(x => x.Insumo).Column("insumo_id").Nullable();
+        References(x => x.InsumoVinculado).Column("insumo_vinculado_id").Nullable().Cascade.None();
+        Map(x => x.QuantidadePorUnidade).Not.Nullable().Column("quantidade_por_unidade").Default("1");
     }
 }

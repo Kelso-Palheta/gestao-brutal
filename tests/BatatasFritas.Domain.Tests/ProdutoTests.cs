@@ -204,4 +204,38 @@ public class ProdutoTests
 
         produto.Ordem.Should().Be(5);
     }
+
+    // ── InsumoVinculado / QuantidadePorUnidade ─────────────────────────────
+
+    [Fact]
+    public void InsumoVinculado_PadraoNull_NaoVinculadoPorPadrao()
+    {
+        var produto = CriarProduto();
+
+        produto.InsumoVinculado.Should().BeNull();
+        produto.QuantidadePorUnidade.Should().Be(1.0m);
+    }
+
+    [Fact]
+    public void InsumoVinculado_PoderSetar_ArmazenaInsumo()
+    {
+        var produto = CriarProduto();
+        var insumo = new Insumo("Coca 350ml", "un", 1m, 6);
+
+        produto.InsumoVinculado = insumo;
+        produto.QuantidadePorUnidade = 2m;
+
+        produto.InsumoVinculado.Should().BeSameAs(insumo);
+        produto.QuantidadePorUnidade.Should().Be(2m);
+    }
+
+    [Fact]
+    public void QuantidadePorUnidade_AceitaFracionario()
+    {
+        var produto = CriarProduto();
+
+        produto.QuantidadePorUnidade = 0.5m;
+
+        produto.QuantidadePorUnidade.Should().Be(0.5m);
+    }
 }

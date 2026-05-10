@@ -52,7 +52,9 @@ public class ProdutosController : ControllerBase
             Ordem = p.Ordem,
             ComplementosPermitidos = p.ComplementosPermitidos,
             EstoqueAtual = p.EstoqueAtual,
-            EstoqueMinimo = p.EstoqueMinimo
+            EstoqueMinimo = p.EstoqueMinimo,
+            InsumoVinculadoId = p.InsumoVinculado?.Id,
+            QuantidadePorUnidade = p.QuantidadePorUnidade
         }).OrderBy(p => p.Ordem).ThenBy(p => p.CategoriaId).ThenBy(p => p.Nome).ToList();
 
         return Ok(dtos);
@@ -65,6 +67,17 @@ public class ProdutosController : ControllerBase
         try
         {
             var produto = new Produto(dto.Nome, dto.Descricao, dto.CategoriaId, dto.PrecoBase, dto.ImagemUrl, dto.ComplementosPermitidos, dto.EstoqueAtual, dto.EstoqueMinimo);
+
+            if (dto.InsumoVinculadoId.HasValue)
+            {
+                if (dto.QuantidadePorUnidade <= 0)
+                    return BadRequest("Quantidade por unidade deve ser maior que zero.");
+                var insumo = await _insumoRepository.GetByIdAsync(dto.InsumoVinculadoId.Value);
+                if (insumo == null) return BadRequest("Insumo vinculado não encontrado.");
+                produto.InsumoVinculado = insumo;
+                produto.QuantidadePorUnidade = dto.QuantidadePorUnidade;
+            }
+
             _uow.BeginTransaction();
             await _produtoRepository.AddAsync(produto);
             await _uow.CommitAsync();
@@ -92,6 +105,22 @@ public class ProdutosController : ControllerBase
             bool estavaSemEstoque = produto.EstoqueAtual <= 0;
             produto.EstoqueAtual = dto.EstoqueAtual;
             produto.EstoqueMinimo = dto.EstoqueMinimo;
+
+            // Atualiza vínculo com insumo
+            if (dto.InsumoVinculadoId.HasValue)
+            {
+                if (dto.QuantidadePorUnidade <= 0)
+                    return BadRequest("Quantidade por unidade deve ser maior que zero.");
+                var insumo = await _insumoRepository.GetByIdAsync(dto.InsumoVinculadoId.Value);
+                if (insumo == null) return BadRequest("Insumo vinculado não encontrado.");
+                produto.InsumoVinculado = insumo;
+                produto.QuantidadePorUnidade = dto.QuantidadePorUnidade;
+            }
+            else
+            {
+                produto.InsumoVinculado = null;
+                produto.QuantidadePorUnidade = 1m;
+            }
             
             // Se o produto estava desativado por falta de estoque e agora tem estoque, reativa automaticamente
             if (estavaSemEstoque && produto.EstoqueAtual > 0 && !produto.Ativo)
