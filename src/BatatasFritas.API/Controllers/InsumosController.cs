@@ -119,7 +119,7 @@ public class InsumosController : ControllerBase
 
         // Sincronizar visibilidade no cardápio
         var todosOsProdutos = await _produtoRepo.GetAllAsync();
-        var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.InsumoId == insumo.Id);
+        var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.Insumo != null && p.Insumo.Id == insumo.Id);
 
         if (insumo.MostrarNoCardapio)
         {
@@ -130,7 +130,7 @@ public class InsumosController : ControllerBase
                     $"Produto criado a partir do insumo {insumo.Nome}",
                     CategoriaEnum.Bebidas,
                     0m);
-                novoProduto.InsumoId = insumo.Id;
+                novoProduto.Insumo = insumo;
                 await _produtoRepo.AddAsync(novoProduto);
             }
             else
@@ -199,7 +199,7 @@ public class InsumosController : ControllerBase
         if (insumo.AutoDesativarAoZerar && insumo.EstoqueAtual <= 0)
         {
             var todosOsProdutos = await _produtoRepo.GetAllAsync();
-            var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.InsumoId == insumo.Id);
+            var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.Insumo != null && p.Insumo.Id == insumo.Id);
             if (produtoAssociado != null)
             {
                 produtoAssociado.Desativar();
@@ -236,7 +236,7 @@ public class InsumosController : ControllerBase
         if (insumo.AutoDesativarAoZerar && insumo.EstoqueAtual <= 0)
         {
             var todosOsProdutos = await _produtoRepo.GetAllAsync();
-            var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.InsumoId == insumo.Id);
+            var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.Insumo != null && p.Insumo.Id == insumo.Id);
             if (produtoAssociado != null)
             {
                 produtoAssociado.Desativar();
