@@ -5,9 +5,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -136,7 +137,8 @@ public class DespesasController : ControllerBase
     }
 
     // ── POST api/despesas/extrair-nf ──────────────────────────────────────
-    // Recebe imagem base64, chama Sabiá Vision (Maritaca AI), retorna campos pré-preenchidos.
+    // Recebe imagem base64, chama Sabiá Vision (Maritaca AI), retorna campos pré-preenchidos
+    // com lista de produtos extraídos da NF e insumos correspondentes.
     [HttpPost("extrair-nf")]
     public async Task<IActionResult> ExtrairNf([FromBody] ExtrairNfRequest req)
     {
@@ -150,26 +152,33 @@ public class DespesasController : ControllerBase
         try
         {
             var prompt = """
-                Analise esta imagem de uma nota fiscal ou cupom fiscal brasileiro.
-                Extraia as seguintes informações e responda APENAS com um JSON válido, sem markdown:
+                Analise esta nota fiscal ou cupom fiscal brasileiro.
+                Responda APENAS com JSON válido (sem markdown, sem explicações):
                 {
-                  "valor_total": <número decimal, total da NF em reais>,
-                  "data": "<data no formato YYYY-MM-DD, ou hoje se não encontrar>",
-                  "descricao": "<descrição resumida: o que foi comprado, de qual estabelecimento>",
-                  "categoria": "<uma destas opções exatas: Funcionario | Energia/Agua | Imposto | Aluguel | Compra de Insumo | Embalagem | Manutencao | Outros>",
+                  "valor_total": <decimal total pago em reais>,
+                  "data": "<YYYY-MM-DD, ou hoje se não encontrar>",
+                  "descricao": "<resumo: o que foi comprado e de qual estabelecimento>",
                   "numero_nf": "<número da NF/cupom ou null>",
                   "cnpj_emitente": "<CNPJ do emissor ou null>",
-                  "nome_emitente": "<nome do estabelecimento ou null>"
+                  "nome_emitente": "<nome do estabelecimento ou null>",
+                  "itens": [
+                    {
+                      "nome": "<nome do produto exatamente como na nota>",
+                      "unidade": "<un|kg|g|L|ml|cx|pct — infira pela embalagem se não estiver explícito>",
+                      "quantidade": <decimal — quantas unidades/kg/L foram compradas>,
+                      "valor_unitario": <decimal — preço por unidade/kg/L>,
+                      "valor_total_item": <decimal — valor_unitario × quantidade>
+                    }
+                  ]
                 }
-                Se não conseguir extrair algum campo, use null ou um valor razoável.
+                Liste TODOS os produtos distintos da nota em "itens". Se não conseguir ler algum campo use null ou valor razoável.
                 """;
 
-            // Maritaca AI — API OpenAI-compatible com suporte a visão (sabiazinho-4)
             var dataUri = $"data:{req.MimeType};base64,{req.ImagemBase64}";
             var body = new
             {
                 model = "sabiazinho-4",
-                max_tokens = 512,
+                max_tokens = 1024,
                 messages = new[]
                 {
                     new
@@ -194,11 +203,9 @@ public class DespesasController : ControllerBase
             var response = await client.PostAsync("https://chat.maritaca.ai/api/v1/chat/completions", httpContent);
 
             var responseText = await response.Content.ReadAsStringAsync();
-
             if (!response.IsSuccessStatusCode)
                 return StatusCode(502, $"Erro da API Maritaca: {responseText}");
 
-            // Resposta OpenAI-compatible: choices[0].message.content
             using var doc = JsonDocument.Parse(responseText);
             var textContent = doc.RootElement
                 .GetProperty("choices")[0]
@@ -206,7 +213,7 @@ public class DespesasController : ControllerBase
                 .GetProperty("content")
                 .GetString() ?? "{}";
 
-            // Remove possível markdown ```json ... ```
+            // Remove markdown fences
             textContent = textContent.Trim();
             if (textContent.StartsWith("```")) textContent = textContent.Split('\n', 2)[1];
             if (textContent.EndsWith("```")) textContent = textContent[..^3];
@@ -214,18 +221,52 @@ public class DespesasController : ControllerBase
             using var extracted = JsonDocument.Parse(textContent.Trim());
             var root = extracted.RootElement;
 
+            decimal ParseDecimal(string raw) =>
+                decimal.TryParse(raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : 0;
+
             var valorStr = root.TryGetProperty("valor_total", out var vp) ? vp.GetRawText() : "0";
-            decimal.TryParse(valorStr, System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var valor);
+            var valor = ParseDecimal(valorStr);
 
             var dataStr = root.TryGetProperty("data", out var dp) ? dp.GetString() ?? "" : "";
             DateTime data = DateTime.TryParse(dataStr, out var d) ? d : DateTime.Today;
 
-            var descricao   = root.TryGetProperty("descricao", out var desc) ? desc.GetString() ?? "" : "";
-            var categoria   = root.TryGetProperty("categoria", out var cat)  ? cat.GetString()  ?? "Outros" : "Outros";
-            var numeroNf    = root.TryGetProperty("numero_nf", out var nf)   ? nf.GetString() : null;
-            var cnpj        = root.TryGetProperty("cnpj_emitente", out var cn) ? cn.GetString() : null;
-            var nomeEmit    = root.TryGetProperty("nome_emitente", out var ne) ? ne.GetString() : null;
+            var descricao = root.TryGetProperty("descricao", out var desc) ? desc.GetString() ?? "" : "";
+            var numeroNf  = root.TryGetProperty("numero_nf",  out var nf)  ? nf.GetString() : null;
+            var cnpj      = root.TryGetProperty("cnpj_emitente", out var cn) ? cn.GetString() : null;
+            var nomeEmit  = root.TryGetProperty("nome_emitente", out var ne) ? ne.GetString() : null;
+
+            // ── Parse itens ───────────────────────────────────────────────
+            var itensResponse = new List<ExtrairNfItemResponse>();
+            if (root.TryGetProperty("itens", out var itensEl) && itensEl.ValueKind == JsonValueKind.Array)
+            {
+                var todosInsumos = (await _insumoRepo.GetAllAsync()).ToList();
+
+                foreach (var el in itensEl.EnumerateArray())
+                {
+                    var nomeProd    = el.TryGetProperty("nome", out var nom) ? nom.GetString() ?? "" : "";
+                    var unidade     = el.TryGetProperty("unidade", out var un) ? un.GetString() ?? "un" : "un";
+                    var qtd         = ParseDecimal(el.TryGetProperty("quantidade", out var qtdP) ? qtdP.GetRawText() : "0");
+                    var vlrUnit     = ParseDecimal(el.TryGetProperty("valor_unitario", out var vuP) ? vuP.GetRawText() : "0");
+                    var vlrTotal    = ParseDecimal(el.TryGetProperty("valor_total_item", out var vtP) ? vtP.GetRawText() : "0");
+
+                    if (vlrTotal == 0 && vlrUnit > 0 && qtd > 0) vlrTotal = vlrUnit * qtd;
+
+                    // Correspondência por nome normalizado
+                    var insumoMatch = MatchInsumo(nomeProd, todosInsumos);
+
+                    itensResponse.Add(new ExtrairNfItemResponse
+                    {
+                        NomeProduto  = nomeProd,
+                        Unidade      = unidade,
+                        Quantidade   = qtd,
+                        ValorUnitario = vlrUnit,
+                        ValorTotal   = vlrTotal,
+                        InsumoId     = insumoMatch?.Id,
+                        InsumoNome   = insumoMatch?.Nome,
+                        InsumoNovo   = insumoMatch == null
+                    });
+                }
+            }
 
             var result = new ExtrairNfResponse
             {
@@ -233,12 +274,13 @@ public class DespesasController : ControllerBase
                 NumeroNF     = numeroNf,
                 CnpjEmitente = cnpj,
                 NomeEmitente = nomeEmit,
+                Itens        = itensResponse,
                 Despesa = new DespesaDto
                 {
                     Descricao    = descricao,
                     Valor        = valor,
                     DataRegistro = data,
-                    Categoria    = categoria,
+                    Categoria    = "Compra de Insumo",
                     Observacao   = string.IsNullOrEmpty(numeroNf) ? null : $"NF {numeroNf}"
                 }
             };
@@ -247,8 +289,129 @@ public class DespesasController : ControllerBase
         }
         catch (Exception ex)
         {
-            return Ok(new ExtrairNfResponse { Sucesso = false, Erro = ex.Message, Despesa = new DespesaDto { DataRegistro = DateTime.Today, Categoria = "Outros" } });
+            return Ok(new ExtrairNfResponse
+            {
+                Sucesso = false,
+                Erro = ex.Message,
+                Despesa = new DespesaDto { DataRegistro = DateTime.Today, Categoria = "Compra de Insumo" }
+            });
         }
+    }
+
+    // ── POST api/despesas/confirmar-nf ────────────────────────────────────
+    // Cria 1 Despesa + N MovimentacaoEstoque(Entrada), auto-cria insumos ausentes.
+    [HttpPost("confirmar-nf")]
+    public async Task<IActionResult> ConfirmarNf([FromBody] ConfirmarNfRequest req)
+    {
+        if (req.Despesa.Valor <= 0)
+            return BadRequest("Valor da despesa deve ser maior que zero.");
+        if (!req.Itens.Any())
+            return BadRequest("Nenhum item informado.");
+
+        var dataCorrigida = req.Despesa.DataRegistro.Date.AddHours(12);
+        var disp = new Despesa(req.Despesa.Descricao, req.Despesa.Valor, dataCorrigida,
+            "Compra de Insumo", req.Despesa.Observacao);
+
+        _uow.BeginTransaction();
+        try
+        {
+            await _repo.AddAsync(disp);
+
+            foreach (var item in req.Itens)
+            {
+                if (item.Quantidade <= 0) continue;
+
+                Insumo? insumo;
+                if (item.InsumoId.HasValue)
+                {
+                    insumo = await _insumoRepo.GetByIdAsync(item.InsumoId.Value);
+                }
+                else if (item.CriarInsumo && !string.IsNullOrWhiteSpace(item.NomeProduto))
+                {
+                    insumo = new Insumo(item.NomeProduto, item.Unidade, 0, item.ValorUnitario);
+                    await _insumoRepo.AddAsync(insumo);
+                }
+                else
+                {
+                    continue; // sem insumo vinculado e sem flag de criação → pula
+                }
+
+                if (insumo == null) continue;
+
+                var mov = new MovimentacaoEstoque(
+                    insumo,
+                    TipoMovimentacao.Entrada,
+                    item.Quantidade,
+                    item.ValorUnitario,
+                    motivo: $"Compra NF \"{req.NumeroNF}\" — despesa #{disp.Id}",
+                    numeroNF: req.NumeroNF
+                );
+                await _movRepo.AddAsync(mov);
+            }
+
+            await _uow.CommitAsync();
+            return Ok(new { despesaId = disp.Id });
+        }
+        catch
+        {
+            await _uow.RollbackAsync();
+            throw;
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    /// <summary>Normaliza string para comparação: minúsculo, sem acentos, sem pontuação.</summary>
+    private static string Normalizar(string s)
+    {
+        var norm = s.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in norm)
+        {
+            var cat = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (cat != System.Globalization.UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().ToLowerInvariant().Trim();
+    }
+
+    /// <summary>Retorna o insumo mais parecido com nomeProduto ou null se não houver match razoável.</summary>
+    private static Insumo? MatchInsumo(string nomeProduto, IList<Insumo> insumos)
+    {
+        if (string.IsNullOrWhiteSpace(nomeProduto) || !insumos.Any()) return null;
+
+        var normProd = Normalizar(nomeProduto);
+        var palavrasProd = normProd.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                   .Where(p => p.Length > 2).ToHashSet();
+
+        Insumo? melhor = null;
+        int melhorScore = 0;
+
+        foreach (var ins in insumos)
+        {
+            var normIns = Normalizar(ins.Nome);
+
+            // Exact match
+            if (normIns == normProd) return ins;
+
+            // Containment
+            int score = 0;
+            if (normProd.Contains(normIns) || normIns.Contains(normProd))
+                score += 10;
+
+            // Palavras em comum
+            var palavrasIns = normIns.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                     .Where(p => p.Length > 2).ToHashSet();
+            score += palavrasProd.Intersect(palavrasIns).Count() * 3;
+
+            if (score > melhorScore && score >= 3)
+            {
+                melhorScore = score;
+                melhor = ins;
+            }
+        }
+
+        return melhor;
     }
 
     private static DespesaDto ToDto(Despesa d) => new()

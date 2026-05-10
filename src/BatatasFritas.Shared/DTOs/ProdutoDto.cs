@@ -15,6 +15,8 @@ public class ProdutoDto
     public string ComplementosPermitidos { get; set; } = string.Empty;
     public int EstoqueAtual { get; set; } = 0;
     public int EstoqueMinimo { get; set; } = 0;
+    public int? InsumoVinculadoId { get; set; }
+    public decimal QuantidadePorUnidade { get; set; } = 1m;
 }
 
 /// <summary>Item para reordenação batch de produtos.</summary>

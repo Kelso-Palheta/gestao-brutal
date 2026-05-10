@@ -16,8 +16,9 @@ public class Produto : EntityBase
     public virtual string ComplementosPermitidos { get; protected set; } = string.Empty;
     public virtual int EstoqueAtual { get; set; } = 0;
     public virtual int EstoqueMinimo { get; set; } = 0;
-    public virtual int? InsumoId { get; set; }
     public virtual Insumo? Insumo { get; set; }
+    public virtual Insumo? InsumoVinculado { get; set; }
+    public virtual decimal QuantidadePorUnidade { get; set; } = 1.0m;
 
     protected Produto() { } // NHibernate
 

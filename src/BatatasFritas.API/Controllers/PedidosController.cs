@@ -57,18 +57,30 @@ public class PedidosController : ControllerBase
             System.Console.WriteLine($"DTO RECEBIDO: Nome={dto.NomeCliente}, Telefone={dto.TelefoneCliente}, Endereco={dto.EnderecoEntrega}, BairroId={dto.BairroEntregaId}, Pag={dto.MetodoPagamento}, Troco={dto.TrocoPara}, QtdItens={dto.Itens?.Count}, Cashback={dto.ValorCashbackUsado}");
 
             // ── PRÉ-CHECK de estoque (ANTES da transação) ────────────────────
+            var consumoInsumoVinculado = new Dictionary<int, decimal>();
             foreach (var item in dto.Itens)
             {
                 var receitas = await _receitaRepository.FindManyAsync(ir => ir.Produto.Id == item.ProdutoId);
-                if (!receitas.Any())
+                if (receitas.Any()) continue;
+
+                var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
+                if (produto == null)
+                    return BadRequest($"Estoque insuficiente para produto id {item.ProdutoId}. Disponível: 0, Solicitado: {item.Quantidade}.");
+
+                if (produto.InsumoVinculado != null)
                 {
-                    var produto = await _produtoRepository.GetByIdAsync(item.ProdutoId);
-                    if (produto == null || produto.EstoqueAtual < item.Quantidade)
-                    {
-                        var nomeProduto = produto?.Nome ?? $"produto id {item.ProdutoId}";
-                        return BadRequest($"Estoque insuficiente para o produto {nomeProduto}. Disponível: {produto?.EstoqueAtual ?? 0}, Solicitado: {item.Quantidade}.");
-                    }
+                    var consumo = item.Quantidade * produto.QuantidadePorUnidade;
+                    var insumoId = produto.InsumoVinculado.Id;
+                    consumoInsumoVinculado[insumoId] = consumoInsumoVinculado.GetValueOrDefault(insumoId) + consumo;
+
+                    if (produto.InsumoVinculado.EstoqueAtual < consumoInsumoVinculado[insumoId])
+                        return BadRequest($"Estoque insuficiente para {produto.Nome} (insumo: {produto.InsumoVinculado.Nome}). Disponível: {produto.InsumoVinculado.EstoqueAtual}, Solicitado: {consumoInsumoVinculado[insumoId]}.");
+
+                    continue;
                 }
+
+                if (produto.EstoqueAtual < item.Quantidade)
+                    return BadRequest($"Estoque insuficiente para o produto {produto.Nome}. Disponível: {produto.EstoqueAtual}, Solicitado: {item.Quantidade}.");
             }
 
             var bairro = await _bairroRepository.GetByIdAsync(dto.BairroEntregaId);
@@ -256,9 +268,30 @@ public class PedidosController : ControllerBase
             {
                 // ── Produto com Receita: estoque controlado pelos Insumos ──────────
             }
+            else if (produto.InsumoVinculado != null)
+            {
+                // ── Produto vinculado 1:1 a Insumo: baixa via MovimentacaoEstoque ──
+                var insumo = await _insumoRepository.GetByIdAsync(produto.InsumoVinculado.Id);
+                if (insumo == null)
+                    throw new System.Exception($"Insumo vinculado ao produto {produto.Nome} não encontrado.");
+
+                var qtdConsumida = item.Quantidade * produto.QuantidadePorUnidade;
+                if (insumo.EstoqueAtual < qtdConsumida)
+                    throw new System.Exception($"Estoque insuficiente para {produto.Nome} (insumo: {insumo.Nome}). Disponível: {insumo.EstoqueAtual}, Solicitado: {qtdConsumida}.");
+
+                var mov = new MovimentacaoEstoque(
+                    insumo,
+                    TipoMovimentacao.Saida,
+                    qtdConsumida,
+                    insumo.CustoPorUnidade,
+                    $"Baixa automática (vínculo) — Pedido #{pedidoId}");
+
+                await _movRepository.AddAsync(mov);
+                await _insumoRepository.UpdateAsync(insumo);
+            }
             else
             {
-                // ── Produto sem Receita: usa estoque direto do produto ─────────────
+                // ── Produto sem Receita nem vínculo: usa estoque direto do produto ─
                 produto = await _produtoRepository.GetByIdAsync(item.ProdutoId) ?? produto;
 
                 if (produto.EstoqueAtual >= item.Quantidade)
