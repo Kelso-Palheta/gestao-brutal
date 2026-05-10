@@ -20,13 +20,23 @@ namespace BatatasFritas.API.Controllers;
 public class DespesasController : ControllerBase
 {
     private readonly IRepository<Despesa> _repo;
+    private readonly IRepository<Insumo> _insumoRepo;
+    private readonly IRepository<MovimentacaoEstoque> _movRepo;
     private readonly IUnitOfWork _uow;
     private readonly IConfiguration _config;
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public DespesasController(IRepository<Despesa> repo, IUnitOfWork uow, IConfiguration config, IHttpClientFactory httpClientFactory)
+    public DespesasController(
+        IRepository<Despesa> repo,
+        IRepository<Insumo> insumoRepo,
+        IRepository<MovimentacaoEstoque> movRepo,
+        IUnitOfWork uow,
+        IConfiguration config,
+        IHttpClientFactory httpClientFactory)
     {
         _repo = repo;
+        _insumoRepo = insumoRepo;
+        _movRepo = movRepo;
         _uow = uow;
         _config = config;
         _httpClientFactory = httpClientFactory;
@@ -48,14 +58,48 @@ public class DespesasController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Descricao) || dto.Valor <= 0) return BadRequest();
 
+        // Valida insumo antes de abrir transação
+        Insumo? insumo = null;
+        var vincularEstoque = dto.InsumoId.HasValue && dto.QuantidadeInsumo.GetValueOrDefault() > 0;
+        if (vincularEstoque)
+        {
+            insumo = await _insumoRepo.GetByIdAsync(dto.InsumoId!.Value);
+            if (insumo == null) return BadRequest("Insumo não encontrado.");
+        }
+
         // Usa a data escolhida pelo usuário ao meio-dia (12:00) para evitar que o offset
         // UTC-3 faça a despesa aparecer no dia anterior ao filtrar (00:00 UTC → 21:00 BRT = dia errado).
         var dataCorrigida = dto.DataRegistro.Date.AddHours(12);
         var disp = new Despesa(dto.Descricao, dto.Valor, dataCorrigida, dto.Categoria, dto.Observacao);
-        
+
         _uow.BeginTransaction();
-        await _repo.AddAsync(disp);
-        await _uow.CommitAsync();
+        try
+        {
+            await _repo.AddAsync(disp);
+
+            // ── Movimentação de estoque automática ────────────────────────
+            if (vincularEstoque && insumo != null)
+            {
+                var quantidade = dto.QuantidadeInsumo!.Value;
+                var valorUnitario = quantidade > 0 ? dto.Valor / quantidade : 0;
+                var movimentacao = new MovimentacaoEstoque(
+                    insumo,
+                    TipoMovimentacao.Entrada,
+                    quantidade,
+                    valorUnitario,
+                    motivo: $"Compra via despesa #{disp.Id}",
+                    numeroNF: dto.NumeroNFMovimentacao ?? string.Empty
+                );
+                await _movRepo.AddAsync(movimentacao);
+            }
+
+            await _uow.CommitAsync();
+        }
+        catch
+        {
+            await _uow.RollbackAsync();
+            throw;
+        }
 
         return Ok(ToDto(disp));
     }
