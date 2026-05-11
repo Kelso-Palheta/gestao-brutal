@@ -145,9 +145,12 @@ public class DespesasController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.ImagemBase64))
             return BadRequest("Imagem não enviada.");
 
-        var apiKey = _config["Maritaca:ApiKey"];
+        // Tenta config hierárquico (.NET padrão) e depois env var direta como fallback
+        var apiKey = _config["Maritaca:ApiKey"]
+            ?? Environment.GetEnvironmentVariable("Maritaca__ApiKey")
+            ?? Environment.GetEnvironmentVariable("MARITACA_API_KEY");
         if (string.IsNullOrWhiteSpace(apiKey))
-            return StatusCode(503, "Chave Maritaca não configurada. Adicione Maritaca:ApiKey no appsettings ou variável de ambiente Maritaca__ApiKey.");
+            return StatusCode(503, "Chave Maritaca não configurada. Adicione Maritaca__ApiKey ou MARITACA_API_KEY nas variáveis de ambiente.");
 
         try
         {
