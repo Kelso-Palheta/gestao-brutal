@@ -32,7 +32,7 @@ public class Program
         {
             var handler = sp.GetRequiredService<AuthDelegatingHandler>();
             handler.InnerHandler = new HttpClientHandler();
-            return new HttpClient(handler) { BaseAddress = new Uri(apiUrl) };
+            return new HttpClient(handler) { BaseAddress = new Uri(apiUrl), Timeout = TimeSpan.FromSeconds(300) };
         });
 
         builder.Services.AddSingleton<CarrinhoState>();
