@@ -28,7 +28,7 @@ services:
       - DatabaseProvider=postgres
       - ConnectionStrings__DefaultConnection=Host=db;Database=batatasfritasdb;Username=postgres;Password=mysecretpassword
       - Jwt__SecretKey=${Jwt__SecretKey:-CHANGE_ME_SET_IN_COOLIFY}
-      - Maritaca__ApiKey=${Maritaca__ApiKey:-}
+      - Maritaca__ApiKey=${Maritaca__ApiKey}
     ports:
       - "8080"
     depends_on:
