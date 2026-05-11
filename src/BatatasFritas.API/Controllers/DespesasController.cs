@@ -177,7 +177,7 @@ public class DespesasController : ControllerBase
             var dataUri = $"data:{req.MimeType};base64,{req.ImagemBase64}";
             var body = new
             {
-                model = "sabia-3",
+                model = "sabiazinho-4",
                 max_tokens = 1024,
                 messages = new[]
                 {

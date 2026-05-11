@@ -1119,13 +1119,15 @@
         try
         {
             var file = e.File;
-            if (file.Size > 10 * 1024 * 1024) { nfErro = "Imagem muito grande (máx 10 MB)."; return; }
+            if (file.Size > 20 * 1024 * 1024) { nfErro = "Imagem muito grande (máx 20 MB)."; return; }
 
-            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
-            var bytes = new byte[file.Size];
+            // Redimensiona para máx 1024×1024 JPEG antes de enviar — reduz de ~8MB para ~200KB
+            var resized = await file.RequestImageFileAsync("image/jpeg", 1024, 1024);
+            using var stream = resized.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            var bytes = new byte[resized.Size];
             _ = await stream.ReadAsync(bytes);
             var base64 = Convert.ToBase64String(bytes);
-            var mime = file.ContentType ?? "image/jpeg";
+            var mime = "image/jpeg";
 
             var req = new ExtrairNfRequest { ImagemBase64 = base64, MimeType = mime };
             using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(300));
