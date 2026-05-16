@@ -125,12 +125,15 @@ public class InsumosController : ControllerBase
         {
             if (produtoAssociado == null)
             {
+                var categoria = Enum.TryParse<CategoriaEnum>(dto.Categoria, out var cat) ? cat : CategoriaEnum.Bebidas;
                 var novoProduto = new Produto(
                     insumo.Nome,
                     $"Produto criado a partir do insumo {insumo.Nome}",
-                    CategoriaEnum.Bebidas,
+                    categoria,
                     0m);
                 novoProduto.Insumo = insumo;
+                novoProduto.InsumoVinculado = insumo;
+                novoProduto.QuantidadePorUnidade = 1m;
                 await _produtoRepo.AddAsync(novoProduto);
             }
             else
@@ -195,14 +198,18 @@ public class InsumosController : ControllerBase
         _uow.BeginTransaction();
         await _movRepo.AddAsync(mov);
 
-        // Auto-desativar se marcado e estoque zerou
-        if (insumo.AutoDesativarAoZerar && insumo.EstoqueAtual <= 0)
+        // Auto-desativar/reativar produto vinculado
+        if (insumo.MostrarNoCardapio)
         {
             var todosOsProdutos = await _produtoRepo.GetAllAsync();
             var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.Insumo != null && p.Insumo.Id == insumo.Id);
             if (produtoAssociado != null)
             {
-                produtoAssociado.Desativar();
+                if (insumo.AutoDesativarAoZerar && insumo.EstoqueAtual <= 0)
+                    produtoAssociado.Desativar();
+                else if (insumo.EstoqueAtual > 0 && !produtoAssociado.Ativo)
+                    produtoAssociado.Ativar();
+
                 await _produtoRepo.UpdateAsync(produtoAssociado);
             }
         }
@@ -232,14 +239,18 @@ public class InsumosController : ControllerBase
         _uow.BeginTransaction();
         await _movRepo.AddAsync(mov);
 
-        // Auto-desativar se marcado e estoque zerou
-        if (insumo.AutoDesativarAoZerar && insumo.EstoqueAtual <= 0)
+        // Auto-desativar/reativar produto vinculado
+        if (insumo.MostrarNoCardapio)
         {
             var todosOsProdutos = await _produtoRepo.GetAllAsync();
             var produtoAssociado = todosOsProdutos.FirstOrDefault(p => p.Insumo != null && p.Insumo.Id == insumo.Id);
             if (produtoAssociado != null)
             {
-                produtoAssociado.Desativar();
+                if (insumo.AutoDesativarAoZerar && insumo.EstoqueAtual <= 0)
+                    produtoAssociado.Desativar();
+                else if (insumo.EstoqueAtual > 0 && !produtoAssociado.Ativo)
+                    produtoAssociado.Ativar();
+
                 await _produtoRepo.UpdateAsync(produtoAssociado);
             }
         }

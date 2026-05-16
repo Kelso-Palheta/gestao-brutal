@@ -13,6 +13,7 @@ public class InsumoDto
     public bool EstoqueNegativo { get; set; }
     public bool MostrarNoCardapio { get; set; }
     public bool AutoDesativarAoZerar { get; set; }
+    public string Categoria { get; set; } = "Bebidas";
 }
 
 public class MovimentacaoDto
