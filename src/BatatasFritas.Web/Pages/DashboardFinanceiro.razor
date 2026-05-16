@@ -358,8 +358,11 @@
                     <p style="font-size:0.85rem; color:#f39c12; font-weight:bold; margin:0 0 10px 0;">📦 Produtos da Nota — confirme ou ajuste cada item:</p>
                     @foreach (var item in nfItens)
                     {
-                        <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:10px; background:#1a1a1a;">
-                            <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                        <div style="border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:10px; background:#1a1a1a; position:relative;">
+                            <button @onclick="@(() => nfItens.Remove(item))"
+                                    style="position:absolute; top:6px; right:8px; background:transparent; border:none; color:#e74c3c; font-size:1.2rem; cursor:pointer; padding:0 4px; line-height:1;"
+                                    title="Remover item">✕</button>
+                            <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap; padding-right:24px;">
                                 <input type="text" value="@item.NomeProduto" @onchange="@(e => item.NomeProduto = e.Value?.ToString() ?? "")"
                                        placeholder="Nome do produto" style="flex:1; min-width:120px; padding:6px; border-radius:4px; background:#111; border:1px solid #555; color:#fff; font-size:0.8rem;" />
                                 <select value="@item.Unidade" @onchange="@(e => item.Unidade = e.Value?.ToString() ?? "un")"
