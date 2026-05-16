@@ -385,21 +385,28 @@
                             </div>
                             <!-- Vínculo com insumo -->
                             <div style="font-size:0.8rem;">
-                                <label style="color:#ccc;">Insumo no estoque:</label>
+                                @if (item.InsumoId.HasValue)
+                                {
+                                    <div style="background:#1a3a1a; border:1px solid #27ae60; border-radius:4px; padding:4px 8px; margin-bottom:4px;">
+                                        <span style="color:#27ae60;">✓ Sugestão: <b>@(_insumosDisponiveis.FirstOrDefault(i=>i.Id==item.InsumoId)?.Nome ?? "")</b> (@(_insumosDisponiveis.FirstOrDefault(i=>i.Id==item.InsumoId)?.Unidade ?? "")) — dará entrada no estoque</span>
+                                    </div>
+                                }
+                                <label style="color:#ccc;">Vincular a:</label>
                                 <select value="@(item.InsumoId?.ToString() ?? (item.CriarInsumo ? "__novo" : ""))"
                                         @onchange="@(e => OnItemInsumoChange(item, e.Value?.ToString() ?? ""))"
                                         style="width:100%; padding:5px; border-radius:4px; background:#111; border:1px solid #555; color:#fff; margin-top:3px;">
                                     <option value="">-- Não vincular --</option>
                                     <option value="__novo">➕ Criar novo insumo com este nome</option>
-                                    @foreach (var ins in _insumosDisponiveis)
+                                    @if (_insumosDisponiveis.Any())
                                     {
-                                        <option value="@ins.Id">@ins.Nome (@ins.Unidade)</option>
+                                        <optgroup label="── Insumos já cadastrados ──">
+                                        @foreach (var ins in _insumosDisponiveis)
+                                        {
+                                            <option value="@ins.Id">@ins.Nome (@ins.Unidade)</option>
+                                        }
+                                        </optgroup>
                                     }
                                 </select>
-                                @if (item.InsumoId.HasValue)
-                                {
-                                    <span style="color:#27ae60; font-size:0.75rem;">✓ Vai dar entrada no estoque de <b>@(_insumosDisponiveis.FirstOrDefault(i=>i.Id==item.InsumoId)?.Nome ?? "")</b></span>
-                                }
                                 @if (item.CriarInsumo)
                                 {
                                     <span style="color:#f39c12; font-size:0.75rem;">⚠️ Novo insumo "<b>@item.NomeProduto</b>" será criado</span>

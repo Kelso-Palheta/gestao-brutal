@@ -170,21 +170,27 @@ public class DespesasController : ControllerBase
                   "itens": [
                     {
                       "nome": "<nome do produto exatamente como na nota>",
-                      "unidade": "<un|kg|g|L|ml|cx|pct — infira pela embalagem se não estiver explícito>",
+                      "unidade": "<un|kg|g|L|ml|cx|pct — use a unidade que aparece na NF>",
                       "quantidade": <decimal — quantas unidades/kg/L foram compradas>,
-                      "valor_unitario": <decimal — preço por unidade/kg/L>,
+                      "valor_unitario": <decimal — SEMPRE o preço por 1 unidade/kg/L, NUNCA o preço total>,
                       "valor_total_item": <decimal — valor_unitario × quantidade>
                     }
                   ]
                 }
-                Liste TODOS os produtos distintos da nota em "itens". Se não conseguir ler algum campo use null ou valor razoável.
+                REGRAS CRÍTICAS:
+                1. Se a NF mostra "5 kg de linguiça a R$ 22,90/kg — total R$ 114,50", preencha:
+                   { nome: "Linguiça Calabresa", unidade: "kg", quantidade: 5, valor_unitario: 22.90, valor_total_item: 114.50 }
+                2. valor_unitario é SEMPRE o preço de 1 unidade, 1 kg, ou 1 litro. NUNCA coloque o preço total neste campo.
+                3. Se a NF mostra peso em gramas (g), converta para kg (ex: 500g = 0.5 kg).
+                4. Se a NF mostra volume em ml, converta para L (ex: 500ml = 0.5 L).
+                5. Liste TODOS os produtos distintos da nota em "itens". Se não conseguir ler algum campo use null.
                 """;
 
             var dataUri = $"data:{req.MimeType};base64,{req.ImagemBase64}";
             var body = new
             {
                 model = "sabia-3",
-                max_tokens = 1024,
+                max_tokens = 2048,
                 messages = new[]
                 {
                     new
@@ -256,6 +262,18 @@ public class DespesasController : ControllerBase
                     var vlrTotal    = ParseDecimal(el.TryGetProperty("valor_total_item", out var vtP) ? vtP.GetRawText() : "0");
 
                     if (vlrTotal == 0 && vlrUnit > 0 && qtd > 0) vlrTotal = vlrUnit * qtd;
+
+                    // Corrige valor_unitario quando modelo coloca preço total em vez do unitário
+                    // Ex: NF mostra "5 kg a R$ 22,90/kg = R$ 114,50", mas modelo retorna valor_unitario=114.50
+                    var unidadesPesoVolume = new[] { "kg", "g", "L", "ml" };
+                    if (unidadesPesoVolume.Contains(unidade) && vlrUnit > 0 && qtd > 0 && vlrTotal > 0)
+                    {
+                        var unitCalculado = vlrTotal / qtd;
+                        var diff = Math.Abs(vlrUnit - vlrTotal);
+                        // Se valor_unitario está mais próximo do total do que do unitário real, corrige
+                        if (Math.Abs(vlrUnit - vlrTotal) < Math.Abs(vlrUnit - unitCalculado))
+                            vlrUnit = unitCalculado;
+                    }
 
                     // Correspondência por nome normalizado
                     var insumoMatch = MatchInsumo(nomeProd, todosInsumos);
