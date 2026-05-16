@@ -27,12 +27,9 @@ COPY . .
 WORKDIR "/app/src/BatatasFritas.Web"
 
 # Publish the frontend
-# Nota: sem --no-restore pois o find acima apaga os obj/ criados pelo restore anterior
-# E sem o pipe para o 'tee' para não mascarar o erro do dotnet publish
 RUN dotnet publish "BatatasFritas.Web.csproj" \
     -c Release \
-    -o /app/publish \
-    -v d
+    -o /app/publish
 
 # Final Nginx image to serve static files
 FROM nginx:alpine AS final
