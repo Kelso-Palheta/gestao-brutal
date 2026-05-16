@@ -152,7 +152,6 @@ public class DespesasController : ControllerBase
             apiKey = Environment.GetEnvironmentVariable("Maritaca__ApiKey");
         if (string.IsNullOrWhiteSpace(apiKey))
             apiKey = Environment.GetEnvironmentVariable("MARITACA_API_KEY");
-        if (string.IsNullOrWhiteSpace(apiKey))
             return StatusCode(503, "Chave Maritaca não configurada. Adicione Maritaca__ApiKey ou MARITACA_API_KEY nas variáveis de ambiente.");
 
         try
