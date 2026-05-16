@@ -146,10 +146,12 @@ public class DespesasController : ControllerBase
             return BadRequest("Imagem não enviada.");
 
         // Tenta config hierárquico (.NET padrão) e depois env var direta como fallback
-        var apiKey = _config["Maritaca:ApiKey"]
-            ?? Environment.GetEnvironmentVariable("Maritaca__ApiKey")
-            ?? Environment.GetEnvironmentVariable("MARITACA_API_KEY");
+        // IMPORTANTE: não usar ?? — string vazia (default de appsettings) não é null, ?? não avança
+        var apiKey = _config["Maritaca:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
+            apiKey = Environment.GetEnvironmentVariable("Maritaca__ApiKey");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            apiKey = Environment.GetEnvironmentVariable("MARITACA_API_KEY");
             return StatusCode(503, "Chave Maritaca não configurada. Adicione Maritaca__ApiKey ou MARITACA_API_KEY nas variáveis de ambiente.");
 
         try

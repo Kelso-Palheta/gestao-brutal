@@ -1,2 +1,21 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'fix: vincula insumo ao produto auto-criado e reativa ao reabastecer' --body ' *)",
+      "mcp__batata-palheta-mcp__get_skill",
+      "Skill(caveman)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git *)",
+      "Bash(gh pr *)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "batata-palheta-mcp"
+  ]
 }
