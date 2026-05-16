@@ -288,6 +288,13 @@ public class PedidosController : ControllerBase
 
                 await _movRepository.AddAsync(mov);
                 await _insumoRepository.UpdateAsync(insumo);
+
+                if (insumo.AutoDesativarAoZerar && insumo.EstoqueAtual <= 0)
+                {
+                    produto.Desativar();
+                    await _produtoRepository.UpdateAsync(produto);
+                    await _hub.Clients.All.SendAsync("ProdutoDesativado", produto.Id);
+                }
             }
             else
             {
