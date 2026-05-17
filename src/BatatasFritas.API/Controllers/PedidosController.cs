@@ -100,6 +100,13 @@ public class PedidosController : ControllerBase
                     pedido.AdicionarItem(produto, item.Quantidade, item.PrecoUnitario, item.Observacao);
             }
 
+            // Totem: pagamento presencial com dinheiro/cartão → já entra como Pago
+            if (dto.TipoAtendimento == TipoAtendimento.Totem
+                && dto.MetodoPagamento != MetodoPagamento.Pix)
+            {
+                pedido.StatusPagamento = StatusPagamento.Presencial;
+            }
+
             _uow.BeginTransaction();
 
             // ── Verifica e desconta Cashback se solicitado ───────────────────
