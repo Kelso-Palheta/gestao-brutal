@@ -382,14 +382,10 @@
             ValorSegundoPagamento = valorSegundoPgto,
             ValorCashbackUsado = ValorCashbackAplicado,
             Itens = Carrinho.Itens.ToList(),
-            // FASE 6: auto-derivar momento do pagamento (Pix=Online, demais=NaEntrega)
-            MomentoPagamento = metodoFinal == MetodoPagamento.Pix
-                ? BatatasFritas.Shared.Enums.MomentoPagamento.Online
-                : BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega,
+            // Totem é sempre presencial — pagamento é na hora, independente do método
+            MomentoPagamento = BatatasFritas.Shared.Enums.MomentoPagamento.Online,
             SegundoMomentoPagamento = segundoMetodo.HasValue
-                ? (segundoMetodo == MetodoPagamento.Pix
-                    ? BatatasFritas.Shared.Enums.MomentoPagamento.Online
-                    : BatatasFritas.Shared.Enums.MomentoPagamento.NaEntrega)
+                ? BatatasFritas.Shared.Enums.MomentoPagamento.Online
                 : null
         };
 
