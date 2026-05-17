@@ -15,8 +15,8 @@
 
 <div class="carrinho-container">
     <h2>Seu Carrinho</h2>
-    
-    @if (!Carrinho.Itens.Any())
+
+    @if (!(Carrinho?.Itens?.Any() ?? false))
     {
         <div style="text-align: center; margin-top: 50px;">
             <div style="font-size: 4rem; margin-bottom: 20px;">🛒</div>
@@ -606,22 +606,33 @@ else if (mostrarModalConfirmacao)
         segundoPagamento = "";
     }
 
+    private bool _dadosCarregados = false;
+
     protected override async Task OnInitializedAsync()
     {
         Carrinho.OnChange += StateHasChanged;
-        
-        try
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_dadosCarregados)
         {
-            var bairros = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
-            if (bairros != null) bairrosDisponiveis = bairros;
+            _dadosCarregados = true;
+            try
+            {
+                var bairros = await Http.GetFromJsonAsync<List<BairroDto>>("api/bairros");
+                if (bairros != null) bairrosDisponiveis = bairros;
 
-            var prods = await Http.GetFromJsonAsync<List<ProdutoDto>>("api/produtos");
-            if (prods != null) produtosLoja = prods;
+                var prods = await Http.GetFromJsonAsync<List<ProdutoDto>>("api/produtos");
+                if (prods != null) produtosLoja = prods;
 
-            var deliveryStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
-            if (deliveryStatus != null) somenteRetirada = deliveryStatus.SomenteRetirada;
+                var deliveryStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
+                if (deliveryStatus != null) somenteRetirada = deliveryStatus.SomenteRetirada;
+            }
+            catch { /* fail silently */ }
+
+            StateHasChanged();
         }
-        catch { /* fail silently if API unavailable */ }
     }
 
     private decimal TaxaEntregaAtual
