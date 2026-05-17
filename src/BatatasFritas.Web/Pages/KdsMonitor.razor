@@ -476,13 +476,14 @@
 
     private void IniciarPollingSeguranca()
     {
-        // Polling sempre ativo: garante consistência mesmo quando SignalR recebe eventos
+        // Polling de segurança: roda apenas se SignalR não notificou nos últimos 15s
         _ = Task.Run(async () =>
         {
             while (true)
             {
                 await Task.Delay(15000);
-                await LoadPedidos(primeiraVez: false);
+                if (!isLoading)
+                    await LoadPedidos(primeiraVez: false);
             }
         });
     }
@@ -603,9 +604,8 @@
     {
         try
         {
-            var response = await Http.PutAsJsonAsync($"api/kds/{id}/status", novoStatus);
-            if (response.IsSuccessStatusCode)
-                await LoadPedidos();
+            await Http.PutAsJsonAsync($"api/kds/{id}/status", novoStatus);
+            // Não recarregar aqui — SignalR dispara StatusAtualizado e já faz o reload
         }
         catch { }
     }
@@ -649,10 +649,9 @@
 
             if (response.IsSuccessStatusCode)
             {
-                // Toca beep de cancelamento
                 await JS.InvokeVoidAsync("kdsInterop.tocarAlerta", "cancelar");
                 FecharCancelamento();
-                await LoadPedidos();
+                // SignalR dispara StatusAtualizado — não recarregar aqui
             }
             else
             {
@@ -688,9 +687,8 @@
     {
         try
         {
-            var response = await Http.PutAsync($"api/kds/{id}/pagar", null);
-            if (response.IsSuccessStatusCode)
-                await LoadPedidos();
+            await Http.PutAsync($"api/kds/{id}/pagar", null);
+            // SignalR notifica — não recarregar manualmente
         }
         catch { }
     }
@@ -699,9 +697,8 @@
     {
         try
         {
-            var response = await Http.PutAsync($"api/kds/{id}/desfazer-pagamento", null);
-            if (response.IsSuccessStatusCode)
-                await LoadPedidos();
+            await Http.PutAsync($"api/kds/{id}/desfazer-pagamento", null);
+            // SignalR notifica — não recarregar manualmente
         }
         catch { }
     }
@@ -711,9 +708,8 @@
     {
         try
         {
-            var response = await Http.PostAsync($"api/pedidos/{id}/confirmar-pagamento-entrega", null);
-            if (response.IsSuccessStatusCode)
-                await LoadPedidos();
+            await Http.PostAsync($"api/pedidos/{id}/confirmar-pagamento-entrega", null);
+            // SignalR notifica — não recarregar manualmente
         }
         catch { }
     }

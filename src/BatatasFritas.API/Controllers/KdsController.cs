@@ -256,6 +256,8 @@ public class KdsController : ControllerBase
         await _pedidoRepository.UpdateAsync(pedido);
         await _uow.CommitAsync();
 
+        await _hub.Clients.All.SendAsync("StatusAtualizado", id, StatusPedido.Cancelado.ToString());
+
         return NoContent();
     }
 }
