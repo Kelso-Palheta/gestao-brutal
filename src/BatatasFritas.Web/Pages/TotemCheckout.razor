@@ -54,8 +54,20 @@
                 </button>
             </div>
 
-            <h2 class="totem-step-title" style="margin-top:30px">Seu WhatsApp (Ganha Cashback! 🎁)</h2>
-            <input type="tel" class="totem-input-lg" @bind="telefoneCliente" @onblur="BuscarCashback" placeholder="Ex: (11) 99999-9999" />
+            @if (!_mostrarCampoCashback)
+            {
+                <button @onclick="() => _mostrarCampoCashback = true"
+                        style="background: linear-gradient(135deg, #ffb347, #e67e22); border: none; color: #fff; padding: 18px 24px; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; width: 100%; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    🎁 Quero ganhar Cashback! <span style="font-size: 0.85rem; opacity: 0.85; font-weight: 400;">(opcional)</span>
+                </button>
+            }
+            else
+            {
+                <div style="margin-top: 20px; background: #1a1a1a; border: 2px solid #ffb347; border-radius: 14px; padding: 20px;">
+                    <h2 class="totem-step-title" style="margin:0 0 12px 0; color:#ffb347;">📱 Seu WhatsApp <span style="font-size:0.7em; color:#aaa; font-weight:400;">(opcional)</span></h2>
+                    <input type="tel" class="totem-input-lg" @bind="telefoneCliente" @onblur="BuscarCashback" placeholder="Ex: (11) 99999-9999" />
+                </div>
+            }
 
             @if (saldoDisponivel > 0)
             {
@@ -206,6 +218,7 @@
     private decimal saldoDisponivel = 0m;
     
     private bool _usarCashback = false;
+    private bool _mostrarCampoCashback = false;
     private decimal valorCashbackDesejado = 0m;
     
     private void ToggleCashback(ChangeEventArgs e)
