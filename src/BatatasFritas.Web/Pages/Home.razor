@@ -294,23 +294,36 @@ else
         StateHasChanged();
     }
 
+    private bool _homeDadosCarregados = false;
+
     protected override async Task OnInitializedAsync()
     {
-        // Verifica se o cardápio está ativo antes de exibir produtos
-        try
-        {
-            var menuStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
-            if (menuStatus != null)
-            {
-                menuDigitalAtivo    = menuStatus.Ativo;
-                menuDigitalMensagem = menuStatus.Mensagem;
-            }
-        }
-        catch { }
+    }
 
-        if (menuDigitalAtivo)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_homeDadosCarregados)
         {
-            await CarregarDados();
+            _homeDadosCarregados = true;
+
+            // Verifica se o cardápio está ativo antes de exibir produtos
+            try
+            {
+                var menuStatus = await Http.GetFromJsonAsync<DeliveryStatusDto>("api/configuracoes/delivery-status");
+                if (menuStatus != null)
+                {
+                    menuDigitalAtivo    = menuStatus.Ativo;
+                    menuDigitalMensagem = menuStatus.Mensagem;
+                }
+            }
+            catch { }
+
+            if (menuDigitalAtivo)
+            {
+                await CarregarDados();
+            }
+
+            StateHasChanged();
         }
     }
 
